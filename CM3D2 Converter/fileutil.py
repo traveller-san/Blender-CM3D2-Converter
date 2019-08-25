@@ -3,8 +3,6 @@ import os
 import shutil
 import tempfile
 
-
-
 class TemporaryFileWriter(io.BufferedWriter):
     """ファイルをアトミックに更新します。"""
 
@@ -12,18 +10,15 @@ class TemporaryFileWriter(io.BufferedWriter):
     __filepath = None
     __temppath = None
 
-
     @property
     def filepath(self):
         """ファイルパスを取得します。"""
         return self.__filepath
 
-
     @property
     def temppath(self):
         """一時ファイルパスを取得します。"""
         return self.__temppath
-
 
     def __init__(self, filepath, mode='wb', buffer_size=io.DEFAULT_BUFFER_SIZE, backup_filepath=None):
         """ファイルパスを指定して初期化します。
@@ -44,17 +39,14 @@ class TemporaryFileWriter(io.BufferedWriter):
         self.__temppath = temppath
         self.backup_filepath = backup_filepath
 
-
     def __enter__(self):
         return self
-
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is None and exc_value is None and traceback is None:
             self.close()
         else:
             self.abort()
-
 
     def close(self):
         """一時ファイルを閉じてリネームします。"""
@@ -72,7 +64,6 @@ class TemporaryFileWriter(io.BufferedWriter):
         except:
             os.remove(self.temppath)
             raise
-
 
     def abort(self):
         """一時ファイルを閉じて削除します。"""
