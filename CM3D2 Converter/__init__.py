@@ -5,7 +5,7 @@ bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2",
     "version": (2019, 6, 15, 18, 46, 00),
-    "blender": (2, 78, 0),
+    "blender": (2, 80, 0),
     "location": "ファイル > インポート/エクスポート > CM3D2 Model (.model)",
     "description": "カスタムメイド3D2の専用ファイルのインポート/エクスポートを行います",
     "warning": "",
@@ -18,7 +18,9 @@ bl_info = {
 if "bpy" in locals():
     import imp
 
+    imp.reload(compat)
     imp.reload(common)
+    imp.reload(cm3d2_data)
 
     imp.reload(model_import)
     imp.reload(model_export)
@@ -56,7 +58,9 @@ if "bpy" in locals():
     imp.reload(misc_VIEW3D_PT_tools_mesh_shapekey)
 
 else:
+    from . import compat
     from . import common
+    from . import cm3d2_data
 
     from . import model_import
     from . import model_export
