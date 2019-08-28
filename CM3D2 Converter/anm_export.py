@@ -7,6 +7,7 @@ import bpy
 import bmesh
 import mathutils
 from . import common
+from . import compat
 
 
 # メインオペレーター

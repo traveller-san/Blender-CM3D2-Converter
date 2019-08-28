@@ -10,6 +10,7 @@ import xml.sax.saxutils
 import addon_utils
 import bpy
 from . import common
+from . import compat
 
 
 # メニュー等に項目追加

@@ -8,6 +8,8 @@ import bmesh
 import mathutils
 import os
 from . import common
+from . import compat
+
 
 # メインオペレーター
 class import_cm3d2_anm(bpy.types.Operator):

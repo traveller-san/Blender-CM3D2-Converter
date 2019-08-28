@@ -1,6 +1,7 @@
 # 「3Dビュー」エリア → ポーズモード → Ctrl+A (ポーズ → 適用)
 import bpy
 from . import common
+from . import compat
 
 
 # メニュー等に項目追加

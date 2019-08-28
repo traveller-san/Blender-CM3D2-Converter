@@ -2,6 +2,7 @@
 import os
 import bpy
 from . import common
+from . import compat
 
 
 # メニュー等に項目追加

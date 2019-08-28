@@ -7,6 +7,8 @@ import bmesh
 import mathutils
 from collections import Counter
 from . import common
+from . import compat
+from . import cm3d2_data
 
 
 # メインオペレーター

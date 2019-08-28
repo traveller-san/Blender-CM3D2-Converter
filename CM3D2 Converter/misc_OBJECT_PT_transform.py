@@ -1,6 +1,7 @@
 # 「プロパティ」エリア → 「オブジェクト」タブ → 「トランスフォーム」パネル
 import bpy
 from . import common
+from . import compat
 
 
 # メニュー等に項目追加

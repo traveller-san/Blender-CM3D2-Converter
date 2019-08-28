@@ -4,6 +4,8 @@ import struct
 import shutil
 import bpy
 from . import common
+from . import compat
+from . import cm3d2_data
 
 
 class import_cm3d2_mate(bpy.types.Operator):

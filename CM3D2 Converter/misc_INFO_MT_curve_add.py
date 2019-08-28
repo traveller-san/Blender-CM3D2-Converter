@@ -5,6 +5,7 @@ import bpy
 import bpy_extras.view3d_utils
 import mathutils
 from . import common
+from . import compat
 
 
 # メニュー等に項目追加

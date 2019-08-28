@@ -1,5 +1,7 @@
 import bpy
 from . import common
+from . import compat
+from . import cm3d2_data
 
 class export_cm3d2_mate(bpy.types.Operator):
     bl_idname = 'material.export_cm3d2_mate'

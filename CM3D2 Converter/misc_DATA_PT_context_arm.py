@@ -9,6 +9,8 @@ import bmesh
 import mathutils
 import os
 from . import common
+from . import compat
+
 
 # メニュー等に項目追加
 def menu_func(self, context):

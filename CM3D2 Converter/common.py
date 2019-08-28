@@ -7,6 +7,7 @@ import bpy
 import bmesh
 import mathutils
 from . import fileutil
+from . import compat
 
 # アドオン情報
 bl_info = {

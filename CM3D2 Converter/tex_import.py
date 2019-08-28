@@ -1,6 +1,7 @@
 import os
 import bpy
 from . import common
+from . import compat
 
 
 class import_cm3d2_tex(bpy.types.Operator):

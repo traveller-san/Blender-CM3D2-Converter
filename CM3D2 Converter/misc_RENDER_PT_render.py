@@ -8,6 +8,7 @@ import time
 import bmesh
 import mathutils
 from . import common
+from . import compat
 
 
 # メニュー等に項目追加

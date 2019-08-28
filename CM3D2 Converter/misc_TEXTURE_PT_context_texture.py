@@ -4,6 +4,8 @@ import bpy
 import bmesh
 import mathutils
 from . import common
+from . import compat
+from . import cm3d2_data
 
 
 # メニュー等に項目追加

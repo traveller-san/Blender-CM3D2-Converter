@@ -6,6 +6,8 @@ import bmesh
 import mathutils
 from operator import itemgetter
 from . import common
+from . import compat
+from . import cm3d2_data
 
 
 # メインオペレーター

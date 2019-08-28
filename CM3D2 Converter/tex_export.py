@@ -2,6 +2,7 @@ import bpy
 import os
 import struct
 from . import common
+from . import compat
 
 
 class export_cm3d2_tex(bpy.types.Operator):
