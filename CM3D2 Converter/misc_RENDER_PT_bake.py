@@ -34,7 +34,8 @@ def menu_func(self, context):
     row.operator('object.quick_semen_bake_image', icon='MOD_FLUIDSIM', text="白い液体")
 
 
-class add_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_add_bake_image(bpy.types.Operator):
     bl_idname = 'object.add_bake_image'
     bl_label = "ベイク用の画像を作成"
     bl_description = "アクティブオブジェクトに素早くベイク用の空の画像を用意します"
@@ -101,7 +102,8 @@ class add_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_ao_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_ao_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_ao_bake_image'
     bl_label = "AO・ベイク"
     bl_description = "アクティブオブジェクトに素早くAOをベイクします"
@@ -188,7 +190,8 @@ class quick_ao_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_dirty_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_dirty_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_dirty_bake_image'
     bl_label = "擬似AO・ベイク"
     bl_description = "アクティブオブジェクトに素早く擬似AOをベイクします"
@@ -287,7 +290,8 @@ class quick_dirty_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_hemi_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_hemi_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_hemi_bake_image'
     bl_label = "ヘミライト・ベイク"
     bl_description = "アクティブオブジェクトに素早くヘミライトの陰をベイクします"
@@ -395,7 +399,8 @@ class quick_hemi_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_shadow_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_shadow_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_shadow_bake_image'
     bl_label = "影・ベイク"
     bl_description = "アクティブオブジェクトに素早く影をベイクします"
@@ -509,7 +514,8 @@ class quick_shadow_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_side_shadow_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_side_shadow_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_side_shadow_bake_image'
     bl_label = "側面陰・ベイク"
     bl_description = "アクティブオブジェクトに素早く側面陰をベイクします"
@@ -629,7 +635,8 @@ class quick_side_shadow_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_gradation_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_gradation_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_gradation_bake_image'
     bl_label = "グラデーション・ベイク"
     bl_description = "アクティブオブジェクトに素早くグラデーションをベイクします"
@@ -724,7 +731,8 @@ class quick_gradation_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_metal_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_metal_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_metal_bake_image'
     bl_label = "金属・ベイク"
     bl_description = "アクティブオブジェクトに素早く金属風にベイクします"
@@ -835,7 +843,8 @@ class quick_metal_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_hair_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_hair_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_hair_bake_image'
     bl_label = "ヘアー・ベイク"
     bl_description = "アクティブオブジェクトに素早くCM3D2の髪風のテクスチャをベイクします"
@@ -967,7 +976,8 @@ class quick_hair_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_uv_border_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_uv_border_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_uv_border_bake_image'
     bl_label = "UV縁・ベイク"
     bl_description = "アクティブオブジェクトに素早くUVの縁を黒くベイクします"
@@ -1145,7 +1155,8 @@ class quick_uv_border_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_mesh_border_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_mesh_border_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_mesh_border_bake_image'
     bl_label = "メッシュ縁・ベイク"
     bl_description = "アクティブオブジェクトに素早くメッシュの縁を黒くベイクします"
@@ -1258,7 +1269,8 @@ class quick_mesh_border_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_density_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_density_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_density_bake_image'
     bl_label = "密度・ベイク"
     bl_description = "アクティブオブジェクトに素早く密度をベイクします"
@@ -1406,7 +1418,8 @@ class quick_density_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_mesh_distance_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_mesh_distance_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_mesh_distance_bake_image'
     bl_label = "メッシュ間距離・ベイク"
     bl_description = "アクティブオブジェクトに他オブジェクトとの距離をベイクします"
@@ -1509,7 +1522,8 @@ class quick_mesh_distance_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_bulge_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_bulge_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_bulge_bake_image'
     bl_label = "膨らみ・ベイク"
     bl_description = "アクティブオブジェクトに膨らんでいる部分を白くベイクします"
@@ -1614,7 +1628,8 @@ class quick_bulge_bake_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_semen_bake_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_semen_bake_image(bpy.types.Operator):
     bl_idname = 'object.quick_semen_bake_image'
     bl_label = "白い液体・ベイク"
     bl_description = "アクティブオブジェクトに白い液体をベイクします"

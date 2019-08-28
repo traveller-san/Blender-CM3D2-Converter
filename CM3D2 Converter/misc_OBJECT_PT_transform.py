@@ -9,7 +9,8 @@ def menu_func(self, context):
     self.layout.operator('object.sync_object_transform', icon_value=common.preview_collections['main']['KISS'].icon_id)
 
 
-class sync_object_transform(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_sync_object_transform(bpy.types.Operator):
     bl_idname = 'object.sync_object_transform'
     bl_label = "オブジェクトの位置を合わせる"
     bl_description = "アクティブオブジェクトの中心位置を、他の選択オブジェクトの中心位置に合わせます"

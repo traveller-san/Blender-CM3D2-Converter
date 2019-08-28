@@ -253,8 +253,9 @@ toon_texes = [
 
 
 # _ToonRamp設定メニュー
-class TEXTURE_PT_context_texture_ToonRamp(bpy.types.Menu):
-    bl_idname = 'TEXTURE_PT_context_texture_ToonRamp'
+@compat.BlRegister(only_legacy=True)
+class TEXTURE_MT_context_texture_ToonRamp(bpy.types.Menu):
+    bl_idname = 'TEXTURE_MT_context_texture_ToonRamp'
     bl_label = "_ToonRamp 設定"
 
     def draw(self, context):
@@ -266,8 +267,9 @@ class TEXTURE_PT_context_texture_ToonRamp(bpy.types.Menu):
 
 
 # _ShadowRateToon設定メニュー
-class TEXTURE_PT_context_texture_ShadowRateToon(bpy.types.Menu):
-    bl_idname = 'TEXTURE_PT_context_texture_ShadowRateToon'
+@compat.BlRegister(only_legacy=True)
+class TEXTURE_MT_context_texture_ShadowRateToon(bpy.types.Menu):
+    bl_idname = 'TEXTURE_MT_context_texture_ShadowRateToon'
     bl_label = "_ShadowRateToon 設定"
 
     def draw(self, context):
@@ -279,8 +281,9 @@ class TEXTURE_PT_context_texture_ShadowRateToon(bpy.types.Menu):
 
 
 # _OutlineToonRamp設定メニュー
-class TEXTURE_PT_context_texture_OutlineToonRamp(bpy.types.Menu):
-    bl_idname = 'TEXTURE_PT_context_texture_OutlineToonRamp'
+@compat.BlRegister(only_legacy=True)
+class TEXTURE_MT_context_texture_OutlineToonRamp(bpy.types.Menu):
+    bl_idname = 'TEXTURE_MT_context_texture_OutlineToonRamp'
     bl_label = "_OutlineToonRamp 設定"
 
     def draw(self, context):
@@ -292,8 +295,9 @@ class TEXTURE_PT_context_texture_OutlineToonRamp(bpy.types.Menu):
 
 
 # 0.0～1.0までの値設定メニュー
-class TEXTURE_PT_context_texture_values_normal(bpy.types.Menu):
-    bl_idname = 'TEXTURE_PT_context_texture_values_normal'
+@compat.BlRegister()
+class TEXTURE_MT_context_texture_values_normal(bpy.types.Menu):
+    bl_idname = 'TEXTURE_MT_context_texture_values_normal'
     bl_label = "値リスト"
 
     def draw(self, context):
@@ -305,8 +309,9 @@ class TEXTURE_PT_context_texture_values_normal(bpy.types.Menu):
 
 
 # _OutlineWidth用の値設定メニュー
-class TEXTURE_PT_context_texture_values_OutlineWidth(bpy.types.Menu):
-    bl_idname = 'TEXTURE_PT_context_texture_values_OutlineWidth'
+@compat.BlRegister()
+class TEXTURE_MT_context_texture_values_OutlineWidth(bpy.types.Menu):
+    bl_idname = 'TEXTURE_MT_context_texture_values_OutlineWidth'
     bl_label = "値リスト"
 
     def draw(self, context):
@@ -318,8 +323,9 @@ class TEXTURE_PT_context_texture_values_OutlineWidth(bpy.types.Menu):
 
 
 # _RimPower用の値設定メニュー
-class TEXTURE_PT_context_texture_values_RimPower(bpy.types.Menu):
-    bl_idname = 'TEXTURE_PT_context_texture_values_RimPower'
+@compat.BlRegister()
+class TEXTURE_MT_context_texture_values_RimPower(bpy.types.Menu):
+    bl_idname = 'TEXTURE_MT_context_texture_values_RimPower'
     bl_label = "値リスト"
 
     def draw(self, context):
@@ -333,8 +339,9 @@ class TEXTURE_PT_context_texture_values_RimPower(bpy.types.Menu):
 
 
 # _ZTest用の値設定メニュー
-class TEXTURE_PT_context_texture_values_ZTest(bpy.types.Menu):
-    bl_idname = 'TEXTURE_PT_context_texture_values_ZTest'
+@compat.BlRegister(only_latest=True)
+class TEXTURE_MT_context_texture_values_ZTest(bpy.types.Menu):
+    bl_idname = 'TEXTURE_MT_context_texture_values_ZTest'
     bl_label = "値リスト"
 
     def draw(self, context):
@@ -344,7 +351,8 @@ class TEXTURE_PT_context_texture_values_ZTest(bpy.types.Menu):
             self.layout.operator('texture.set_color_value', text=str(value)).color = list(tex_slot.color) + [value]
 
 
-class show_image(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_show_image(bpy.types.Operator):
     bl_idname = 'image.show_image'
     bl_label = "画像を表示"
     bl_description = "指定の画像をUV/画像エディターに表示します"
@@ -368,7 +376,8 @@ class show_image(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class replace_cm3d2_tex(bpy.types.Operator):
+@compat.BlRegister(only_legacy=True)
+class CNV_OT_replace_cm3d2_tex_old(bpy.types.Operator):
     bl_idname = 'image.replace_cm3d2_tex'
     bl_label = "テクスチャを探す"
     bl_description = "CM3D2本体のインストールフォルダからtexファイルを探して開きます"
@@ -391,7 +400,8 @@ class replace_cm3d2_tex(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class sync_tex_color_ramps(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_sync_tex_color_ramps(bpy.types.Operator):
     bl_idname = 'texture.sync_tex_color_ramps'
     bl_label = "設定をプレビューに同期"
     bl_description = "設定値をテクスチャのプレビューに適用してわかりやすくします"
@@ -414,7 +424,8 @@ class sync_tex_color_ramps(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class set_default_toon_textures(bpy.types.Operator):
+@compat.BlRegister(only_legacy=True)
+class CNV_OT_set_default_toon_textures_old(bpy.types.Operator):
     bl_idname = 'texture.set_default_toon_textures'
     bl_label = "トゥーンを選択"
     bl_description = "CM3D2にデフォルトで入っているトゥーンテクスチャを選択できます"
@@ -454,7 +465,8 @@ class set_default_toon_textures(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class auto_set_color_value(bpy.types.Operator):
+@compat.BlRegister(only_legacy=True)
+class CNV_OT_auto_set_color_value_old(bpy.types.Operator):
     bl_idname = 'texture.auto_set_color_value'
     bl_label = "色設定値を自動設定"
     bl_description = "色関係の設定値をテクスチャの色情報から自動で設定します"
@@ -572,7 +584,8 @@ class auto_set_color_value(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_export_cm3d2_tex(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_export_cm3d2_tex(bpy.types.Operator):
     bl_idname = 'image.quick_export_cm3d2_tex'
     bl_label = "texで保存"
     bl_description = "テクスチャの画像を同フォルダにtexとして保存します"
@@ -608,8 +621,9 @@ class quick_export_cm3d2_tex(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class set_color_value(bpy.types.Operator):
-    bl_idname = 'texture.set_color_value'
+@compat.BlRegister(only_legacy=True)
+class CNV_OT_set_color_value_old(bpy.types.Operator):
+    bl_idname = 'texture.set_color_value_old'
     bl_label = "色設定値を設定"
     bl_description = "色タイプの設定値を設定します"
     bl_options = {'REGISTER', 'UNDO'}

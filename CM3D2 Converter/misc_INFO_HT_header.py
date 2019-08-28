@@ -10,7 +10,8 @@ def menu_func(self, context):
     self.layout.operator('mesh.vertices_count_checker', icon_value=common.preview_collections['main']['KISS'].icon_id)
 
 
-class vertices_count_checker(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_vertices_count_checker(bpy.types.Operator):
     bl_idname = 'mesh.vertices_count_checker'
     bl_label = "頂点数をチェック"
     bl_description = "選択メッシュがConverterで出力可能な頂点数に収まっているかをチェックします"

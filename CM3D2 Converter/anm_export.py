@@ -11,7 +11,8 @@ from . import compat
 
 
 # メインオペレーター
-class export_cm3d2_anm(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
     bl_idname = 'export_anim.export_cm3d2_anm'
     bl_label = "CM3D2モーション (.anm)"
     bl_description = "カスタムメイド3D2のanmファイルを保存します"

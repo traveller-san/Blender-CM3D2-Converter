@@ -15,7 +15,8 @@ def menu_func(self, context):
     self.layout.operator('mesh.selected_face_sort_front', text="選択面の描画順を最背面に", icon_value=icon_id).is_back = True
 
 
-class selected_mesh_sort_front(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_selected_mesh_sort_front(bpy.types.Operator):
     bl_idname = 'mesh.selected_face_sort_front'
     bl_label = "選択面の描画順を最前面に"
     bl_description = "選択中の面の描画順を最も前面/背面に並び替えます"

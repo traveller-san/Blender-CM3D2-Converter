@@ -16,7 +16,8 @@ def menu_func(self, context):
     column.operator('mesh.selected_mesh_vertex_group_calculation', text="選択部に四則演算", icon_value=icon_id)
 
 
-class selected_mesh_vertex_group_blur(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_selected_mesh_vertex_group_blur(bpy.types.Operator):
     bl_idname = 'mesh.selected_mesh_vertex_group_blur'
     bl_label = "選択部の頂点グループをぼかす"
     bl_description = "選択メッシュの頂点グループの割り当てをぼかします"
@@ -236,7 +237,8 @@ class selected_mesh_vertex_group_blur(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class selected_mesh_vertex_group_calculation(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_selected_mesh_vertex_group_calculation(bpy.types.Operator):
     bl_idname = 'mesh.selected_mesh_vertex_group_calculation'
     bl_label = "選択部の頂点グループに四則演算"
     bl_description = "選択メッシュの頂点グループの割り当てに四則演算を施します"

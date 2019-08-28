@@ -23,6 +23,7 @@ def menu_func(self, context):
 
 
 # 更新履歴メニュー
+@compat.BlRegister()
 class INFO_MT_help_CM3D2_Converter_RSS(bpy.types.Menu):
     bl_idname = 'INFO_MT_help_CM3D2_Converter_RSS'
     bl_label = "CM3D2 Converterの更新履歴"
@@ -83,7 +84,8 @@ class INFO_MT_help_CM3D2_Converter_RSS(bpy.types.Menu):
             self.layout.label(text="更新の取得に失敗しました", icon='ERROR')
 
 
-class update_cm3d2_converter(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_update_cm3d2_converter(bpy.types.Operator):
     bl_idname = 'script.update_cm3d2_converter'
     bl_label = "CM3D2 Converterを更新"
     bl_description = "GitHubから最新版のCM3D2 Converterアドオンをダウンロードし上書き更新します"
@@ -138,7 +140,8 @@ class update_cm3d2_converter(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class show_cm3d2_converter_preference(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_show_cm3d2_converter_preference(bpy.types.Operator):
     bl_idname = 'wm.show_cm3d2_converter_preference'
     bl_label = "CM3D2 Converterの設定画面を開く"
     bl_description = "CM3D2 Converterアドオンの設定画面を表示します"

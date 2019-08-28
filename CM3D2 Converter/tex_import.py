@@ -4,7 +4,8 @@ from . import common
 from . import compat
 
 
-class import_cm3d2_tex(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_import_cm3d2_tex(bpy.types.Operator):
     bl_idname = 'image.import_cm3d2_tex'
     bl_label = "texファイルを開く"
     bl_description = "CM3D2で使用されるテクスチャファイル(.tex)を読み込みます"

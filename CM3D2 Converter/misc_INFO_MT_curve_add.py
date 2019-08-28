@@ -14,7 +14,8 @@ def menu_func(self, context):
     self.layout.operator('curve.hair_bunch_add', text="髪の房", icon_value=common.preview_collections['main']['KISS'].icon_id)
 
 
-class hair_bunch_add(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_hair_bunch_add(bpy.types.Operator):
     bl_idname = 'curve.hair_bunch_add'
     bl_label = "髪の房を追加"
     bl_description = "アニメ調の髪の房を追加します"

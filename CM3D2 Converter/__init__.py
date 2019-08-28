@@ -101,6 +101,7 @@ import bpy, os.path, bpy.utils.previews
 
 
 # アドオン設定
+@compat.BlRegister()
 class AddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
 

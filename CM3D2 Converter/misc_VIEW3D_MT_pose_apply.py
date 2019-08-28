@@ -10,7 +10,8 @@ def menu_func(self, context):
     self.layout.operator('pose.apply_prime_field', icon_value=common.preview_collections['main']['KISS'].icon_id)
 
 
-class apply_prime_field(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_apply_prime_field(bpy.types.Operator):
     bl_idname = 'pose.apply_prime_field'
     bl_label = "現在のポーズで素体化"
     bl_description = "現在のポーズで衣装をモデリングしやすくする素体を作成します"

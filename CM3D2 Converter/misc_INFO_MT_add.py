@@ -12,8 +12,9 @@ def menu_func(self, context):
 
 
 # サブメニュー
+@compat.BlRegister()
 class misc_INFO_MT_add_cm3d2(bpy.types.Menu):
-    bl_idname = 'misc_INFO_MT_add_cm3d2'
+    bl_idname = 'MISC_INFO_MT_add_cm3d2'
     bl_label = "CM3D2"
 
     def draw(self, context):
@@ -29,7 +30,8 @@ class misc_INFO_MT_add_cm3d2(bpy.types.Menu):
         self.layout.operator('wm.append_cm3d2_figure', text="anm出力用リグ(男)", icon='MOD_ARMATURE').object_name = "anm出力用リグ(男)・身体メッシュ"
 
 
-class append_cm3d2_figure(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_append_cm3d2_figure(bpy.types.Operator):
     bl_idname = 'wm.append_cm3d2_figure'
     bl_label = "CM3D2用の素体をインポート"
     bl_description = "CM3D2関係の素体を現在のシーンにインポートします"

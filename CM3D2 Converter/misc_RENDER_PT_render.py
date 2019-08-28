@@ -16,7 +16,8 @@ def menu_func(self, context):
     self.layout.operator('render.render_cm3d2_icon', icon_value=common.preview_collections['main']['KISS'].icon_id)
 
 
-class render_cm3d2_icon(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_render_cm3d2_icon(bpy.types.Operator):
     bl_idname = 'render.render_cm3d2_icon'
     bl_label = "CM3D2メニュー用のアイコンをレンダリング"
     bl_description = "CM3D2内のアイコン画像に使用できそうな画像をレンダリングします"

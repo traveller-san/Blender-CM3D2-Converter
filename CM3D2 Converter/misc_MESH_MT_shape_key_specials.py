@@ -21,7 +21,8 @@ def menu_func(self, context):
     self.layout.operator('object.change_base_shape_key', icon_value=icon_id)
 
 
-class quick_shape_key_transfer(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
     bl_idname = 'object.quick_shape_key_transfer'
     bl_label = "クイック・シェイプキー転送"
     bl_description = "アクティブなメッシュに他の選択メッシュのシェイプキーを高速で転送します"
@@ -147,7 +148,8 @@ class quick_shape_key_transfer(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class precision_shape_key_transfer(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
     bl_idname = 'object.precision_shape_key_transfer'
     bl_label = "空間ぼかし・シェイプキー転送"
     bl_description = "アクティブなメッシュに他の選択メッシュのシェイプキーを遠いほどぼかして転送します"
@@ -311,7 +313,8 @@ class precision_shape_key_transfer(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class multiply_shape_key(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_multiply_shape_key(bpy.types.Operator):
     bl_idname = 'object.multiply_shape_key'
     bl_label = "シェイプキーの変形に乗算"
     bl_description = "シェイプキーの変形に数値を乗算し、変形の強度を増減させます"
@@ -373,7 +376,8 @@ class multiply_shape_key(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class blur_shape_key(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_blur_shape_key(bpy.types.Operator):
     bl_idname = 'object.blur_shape_key'
     bl_label = "シェイプキーぼかし"
     bl_description = "アクティブ、もしくは全てのシェイプキーをぼかします"
@@ -522,7 +526,8 @@ class blur_shape_key(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class change_base_shape_key(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_change_base_shape_key(bpy.types.Operator):
     bl_idname = 'object.change_base_shape_key'
     bl_label = "このシェイプキーをベースに"
     bl_description = "アクティブなシェイプキーを他のシェイプキーのベースにします"

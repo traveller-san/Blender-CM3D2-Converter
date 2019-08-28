@@ -520,7 +520,8 @@ class new_mate_opr():
         return {'FINISHED'}
 
 
-class new_cm3d2(bpy.types.Operator, new_mate_opr):
+@compat.BlRegister()
+class CNV_OT_new_cm3d2(bpy.types.Operator, new_mate_opr):
     bl_idname = 'material.new_cm3d2'
     bl_label = "CM3D2用マテリアルを新規作成"
     bl_description = "Blender-CM3D2-Converterで使用できるマテリアルを新規で作成します"
@@ -547,7 +548,8 @@ class new_cm3d2(bpy.types.Operator, new_mate_opr):
     type = bpy.props.EnumProperty(items=items, name="種類", default='CM3D2/Toony_Lighted_Outline')
 
 
-class new_com3d2(bpy.types.Operator, new_mate_opr):
+@compat.BlRegister()
+class CNV_OT_new_com3d2(bpy.types.Operator, new_mate_opr):
     bl_idname = 'material.new_com3d2'
     bl_label = "COM3D2用マテリアルを新規作成"
     bl_description = "Blender-CM3D2-Converterで使用できるマテリアルを新規で作成します"
@@ -579,7 +581,8 @@ class new_com3d2(bpy.types.Operator, new_mate_opr):
     type = bpy.props.EnumProperty(items=items, name="種類", default='CM3D2/Toony_Lighted_Outline')
 
 
-class paste_material(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_paste_material(bpy.types.Operator):
     bl_idname = 'material.paste_material'
     bl_label = "クリップボードからマテリアルを貼付け"
     bl_description = "クリップボード内のテキストからマテリアル情報を上書きします"
@@ -834,7 +837,8 @@ class paste_material2(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class copy_material(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_copy_material(bpy.types.Operator):
     bl_idname = 'material.copy_material'
     bl_label = "マテリアルをクリップボードにコピー"
     bl_description = "表示しているマテリアルをテキスト形式でクリップボードにコピーします"
@@ -903,7 +907,8 @@ class copy_material(bpy.types.Operator):
         self.report(type={'INFO'}, message="マテリアルテキストをクリップボードにコピーしました")
         return {'FINISHED'}
 
-class decorate_material(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_decorate_material(bpy.types.Operator):
     bl_idname = 'material.decorate_material'
     bl_label = "マテリアルを装飾"
     bl_description = "スロット内のマテリアルを全て設定に合わせて装飾します"
@@ -932,7 +937,8 @@ class decorate_material(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_texture_show(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_texture_show(bpy.types.Operator):
     bl_idname = 'material.quick_texture_show'
     bl_label = "このテクスチャを見る"
     bl_description = "このテクスチャを見る"

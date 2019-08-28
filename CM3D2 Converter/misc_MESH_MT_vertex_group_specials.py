@@ -22,7 +22,8 @@ def menu_func(self, context):
     self.layout.operator('object.remove_noassign_vertex_groups', icon_value=icon_id)
 
 
-class quick_transfer_vertex_group(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_transfer_vertex_group(bpy.types.Operator):
     bl_idname = 'object.quick_transfer_vertex_group'
     bl_label = "クイック・ウェイト転送"
     bl_description = "アクティブなメッシュに他の選択メッシュの頂点グループを高速で転送します"
@@ -187,7 +188,8 @@ class quick_transfer_vertex_group(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class precision_transfer_vertex_group(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
     bl_idname = 'object.precision_transfer_vertex_group'
     bl_label = "空間ぼかし・ウェイト転送"
     bl_description = "アクティブなメッシュに他の選択メッシュの頂点グループを遠いほどぼかして転送します"
@@ -342,7 +344,8 @@ class precision_transfer_vertex_group(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class quick_blur_vertex_group(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_quick_blur_vertex_group(bpy.types.Operator):
     bl_idname = 'object.quick_blur_vertex_group'
     bl_label = "頂点グループぼかし"
     bl_description = "アクティブ、もしくは全ての頂点グループをぼかします"
@@ -392,7 +395,8 @@ class quick_blur_vertex_group(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class blur_vertex_group(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_blur_vertex_group(bpy.types.Operator):
     bl_idname = 'object.blur_vertex_group'
     bl_label = "旧・頂点グループぼかし"
     bl_description = "アクティブ、もしくは全ての頂点グループをぼかします"
@@ -556,7 +560,8 @@ class blur_vertex_group(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class multiply_vertex_group(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_multiply_vertex_group(bpy.types.Operator):
     bl_idname = 'object.multiply_vertex_group'
     bl_label = "頂点グループに乗算"
     bl_description = "頂点グループのウェイトに数値を乗算し、ウェイトの強度を増減させます"
@@ -645,7 +650,8 @@ class multiply_vertex_group(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class remove_noassign_vertex_groups(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_remove_noassign_vertex_groups(bpy.types.Operator):
     bl_idname = 'object.remove_noassign_vertex_groups'
     bl_label = "割り当てのない頂点グループを削除"
     bl_description = "どの頂点にも割り当てられていない頂点グループを全て削除します"

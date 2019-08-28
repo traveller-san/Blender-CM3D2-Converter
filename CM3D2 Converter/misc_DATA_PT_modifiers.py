@@ -22,7 +22,8 @@ def menu_func(self, context):
                 self.layout.operator('object.forced_modifier_apply', icon_value=common.preview_collections['main']['KISS'].icon_id)
 
 
-class forced_modifier_apply(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_forced_modifier_apply(bpy.types.Operator):
     bl_idname = 'object.forced_modifier_apply'
     bl_label = "モディファイア強制適用"
     bl_description = "シェイプキーのあるメッシュのモディファイアでも強制的に適用します"

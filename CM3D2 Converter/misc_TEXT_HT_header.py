@@ -49,7 +49,8 @@ def menu_func(self, context):
             row.operator('text.remove_all_material_texts', icon='X', text="")
 
 
-class show_text(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_show_text(bpy.types.Operator):
     bl_idname = 'text.show_text'
     bl_label = "テキストを表示"
     bl_description = "指定したテキストをこの領域に表示します"
@@ -66,7 +67,8 @@ class show_text(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class copy_text_bone_data(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_copy_text_bone_data(bpy.types.Operator):
     bl_idname = 'text.copy_text_bone_data'
     bl_label = "テキストのボーン情報をコピー"
     bl_description = "テキストのボーン情報をカスタムプロパティへ貼付ける形にしてクリップボードにコピーします"
@@ -94,7 +96,8 @@ class copy_text_bone_data(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class paste_text_bone_data(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_paste_text_bone_data(bpy.types.Operator):
     bl_idname = 'text.paste_text_bone_data'
     bl_label = "テキストのボーン情報を貼付け"
     bl_description = "クリップボード内のボーン情報をテキストデータに貼付けます"
@@ -137,7 +140,8 @@ class paste_text_bone_data(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class remove_all_material_texts(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_remove_all_material_texts(bpy.types.Operator):
     bl_idname = 'text.remove_all_material_texts'
     bl_label = "マテリアル情報テキストを全削除"
     bl_description = "CM3D2で使用できるマテリアルテキストを全て削除します"

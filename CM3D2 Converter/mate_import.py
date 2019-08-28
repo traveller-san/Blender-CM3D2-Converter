@@ -8,7 +8,8 @@ from . import compat
 from . import cm3d2_data
 
 
-class import_cm3d2_mate(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_import_cm3d2_mate(bpy.types.Operator):
     bl_idname = 'material.import_cm3d2_mate'
     bl_label = "mateを開く"
     bl_description = "mateファイルをマテリアルとして開きます"
@@ -131,7 +132,8 @@ class import_cm3d2_mate(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class import_cm3d2_mate_text(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_import_cm3d2_mate_text(bpy.types.Operator):
     bl_idname = 'text.import_cm3d2_mate_text'
     bl_label = "mateを開く"
     bl_description = "mateファイルをテキストとして開きます"

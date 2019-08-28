@@ -11,7 +11,8 @@ from . import cm3d2_data
 
 
 # メインオペレーター
-class export_cm3d2_model(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_export_cm3d2_model(bpy.types.Operator):
     bl_idname = 'export_mesh.export_cm3d2_model'
     bl_label = "CM3D2モデル (.model)"
     bl_description = "カスタムメイド3D2のmodelファイルを書き出します"

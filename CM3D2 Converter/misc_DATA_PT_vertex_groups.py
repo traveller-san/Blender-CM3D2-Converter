@@ -27,7 +27,8 @@ def menu_func(self, context):
             break
 
 
-class decode_cm3d2_vertex_group_names(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_decode_cm3d2_vertex_group_names(bpy.types.Operator):
     bl_idname = 'object.decode_cm3d2_vertex_group_names'
     bl_label = "頂点グループ名をCM3D2用→Blender用に変換"
     bl_description = "CM3D2で使われてるボーン名(頂点グループ名)をBlenderで左右対称編集できるように変換します"
@@ -78,7 +79,8 @@ class decode_cm3d2_vertex_group_names(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class encode_cm3d2_vertex_group_names(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_encode_cm3d2_vertex_group_names(bpy.types.Operator):
     bl_idname = 'object.encode_cm3d2_vertex_group_names'
     bl_label = "頂点グループ名をBlender用→CM3D2用に変換"
     bl_description = "CM3D2で使われてるボーン名(頂点グループ名)に戻します"

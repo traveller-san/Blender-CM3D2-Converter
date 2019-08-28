@@ -40,8 +40,8 @@ def menu_func(self, context):
         row.operator('object.paste_object_bone_data_property', icon='PASTEDOWN', text="貼付け")
         row.operator('object.remove_object_bone_data_property', icon='X', text="")
 
-
-class copy_object_bone_data_property(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_copy_object_bone_data_property(bpy.types.Operator):
     bl_idname = 'object.copy_object_bone_data_property'
     bl_label = "ボーン情報をコピー"
     bl_description = "カスタムプロパティのボーン情報をクリップボードにコピーします"
@@ -83,7 +83,8 @@ class copy_object_bone_data_property(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class paste_object_bone_data_property(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_paste_object_bone_data_property(bpy.types.Operator):
     bl_idname = 'object.paste_object_bone_data_property'
     bl_label = "ボーン情報を貼付け"
     bl_description = "カスタムプロパティのボーン情報をクリップボードから貼付けます"
@@ -141,7 +142,8 @@ class paste_object_bone_data_property(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class remove_object_bone_data_property(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_remove_object_bone_data_property(bpy.types.Operator):
     bl_idname = 'object.remove_object_bone_data_property'
     bl_label = "ボーン情報を削除"
     bl_description = "カスタムプロパティのボーン情報を全て削除します"

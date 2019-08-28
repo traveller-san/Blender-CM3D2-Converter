@@ -3,7 +3,9 @@ from . import common
 from . import compat
 from . import cm3d2_data
 
-class export_cm3d2_mate(bpy.types.Operator):
+
+@compat.BlRegister()
+class CNV_OT_export_cm3d2_mate(bpy.types.Operator):
     bl_idname = 'material.export_cm3d2_mate'
     bl_label = "mateとして保存"
     bl_description = "表示しているマテリアルをmateファイルとして保存します"
@@ -122,7 +124,8 @@ class export_cm3d2_mate(bpy.types.Operator):
 
         common.write_str(file, 'end')
 
-class export_cm3d2_mate_text(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_export_cm3d2_mate_text(bpy.types.Operator):
     bl_idname = 'text.export_cm3d2_mate_text'
     bl_label = "mateとして保存"
     bl_description = "表示しているテキストデータをmateファイルとして保存します"

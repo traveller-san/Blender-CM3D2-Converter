@@ -5,7 +5,8 @@ from . import common
 from . import compat
 
 
-class export_cm3d2_tex(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_export_cm3d2_tex(bpy.types.Operator):
     bl_idname = 'image.export_cm3d2_tex'
     bl_label = "texファイルを保存"
     bl_description = "CM3D2で使用されるテクスチャファイル(.tex)として保存します"

@@ -94,7 +94,8 @@ def menu_func(self, context):
             sub_row.enabled = False
 
 
-class decode_cm3d2_bone_names(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_decode_cm3d2_bone_names(bpy.types.Operator):
     bl_idname = 'armature.decode_cm3d2_bone_names'
     bl_label = "ボーン名をCM3D2用→Blender用に変換"
     bl_description = "CM3D2で使われてるボーン名をBlenderで左右対称編集できるように変換します"
@@ -128,7 +129,8 @@ class decode_cm3d2_bone_names(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class encode_cm3d2_bone_names(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_encode_cm3d2_bone_names(bpy.types.Operator):
     bl_idname = 'armature.encode_cm3d2_bone_names'
     bl_label = "ボーン名をBlender用→CM3D2用に変換"
     bl_description = "CM3D2で使われてるボーン名に元に戻します"
@@ -162,7 +164,8 @@ class encode_cm3d2_bone_names(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class copy_armature_bone_data_property(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_copy_armature_bone_data_property(bpy.types.Operator):
     bl_idname = 'object.copy_armature_bone_data_property'
     bl_label = "ボーン情報をコピー"
     bl_description = "カスタムプロパティのボーン情報をクリップボードにコピーします"
@@ -206,7 +209,8 @@ class copy_armature_bone_data_property(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class paste_armature_bone_data_property(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_paste_armature_bone_data_property(bpy.types.Operator):
     bl_idname = 'object.paste_armature_bone_data_property'
     bl_label = "ボーン情報を貼付け"
     bl_description = "カスタムプロパティのボーン情報をクリップボードから貼付けます"
@@ -266,7 +270,8 @@ class paste_armature_bone_data_property(bpy.types.Operator):
         return {'FINISHED'}
 
 
-class remove_armature_bone_data_property(bpy.types.Operator):
+@compat.BlRegister()
+class CNV_OT_remove_armature_bone_data_property(bpy.types.Operator):
     bl_idname = 'object.remove_armature_bone_data_property'
     bl_label = "ボーン情報を削除"
     bl_description = "カスタムプロパティのボーン情報を全て削除します"
