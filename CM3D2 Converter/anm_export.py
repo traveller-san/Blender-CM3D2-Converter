@@ -91,11 +91,11 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         sub_box.prop(self, 'is_smooth_handle', icon='SMOOTHCURVE')
 
         sub_box = box.box()
-        sub_box.label("ボーン親情報の参照先", icon='FILE_PARENT')
+        sub_box.label(text="ボーン親情報の参照先", icon='FILE_PARENT')
         sub_box.prop(self, 'bone_parent_from', icon='FILE_PARENT', expand=True)
 
         sub_box = box.box()
-        sub_box.label("除外するボーン", icon='X')
+        sub_box.label(text="除外するボーン", icon='X')
         column = sub_box.column(align=True)
         column.prop(self, 'is_remove_alone_bone', icon='UNLINKED')
         column.prop(self, 'is_remove_ik_bone', icon='CONSTRAINT_BONE')

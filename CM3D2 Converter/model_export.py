@@ -168,7 +168,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         col.label(text="マテリアル情報元", icon='MATERIAL')
         col.prop(self, 'mate_info_mode', icon='MATERIAL', expand=True)
         box = self.layout.box()
-        box.label("メッシュオプション")
+        box.label(text="メッシュオプション")
         box.prop(self, 'is_convert_tris', icon='MESH_DATA')
         box.prop(prefs, 'skip_shapekey', icon='SHAPEKEY_DATA')
         box.prop(self, 'export_tangent', icon='CURVE_BEZCIRCLE')

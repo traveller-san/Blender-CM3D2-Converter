@@ -46,7 +46,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
     def draw(self, context):
         prefs = common.preferences()
         self.layout.prop(prefs, 'custom_normal_blend', icon='SNAP_NORMAL', slider=True)
-        self.layout.label("適用するモディファイア")
+        self.layout.label(text="適用するモディファイア")
         ob = context.active_object
         for index, mod in enumerate(ob.modifiers):
             icon = 'MOD_%s' % mod.type

@@ -58,7 +58,7 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
         box.prop(self, 'set_frame', icon='NEXT_KEYFRAME')
         box.prop(self, 'ignore_automatic_bone', icon='X')
         box = self.layout.box()
-        box.label("読み込むアニメーション情報")
+        box.label(text="読み込むアニメーション情報")
         column = box.column(align=True)
         column.prop(self, 'is_location', icon='MAN_TRANS')
         column.prop(self, 'is_rotation', icon='MAN_ROT')
