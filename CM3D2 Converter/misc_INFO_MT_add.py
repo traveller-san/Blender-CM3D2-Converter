@@ -50,13 +50,13 @@ class CNV_OT_append_cm3d2_figure(bpy.types.Operator):
             data_to.objects = [self.object_name]
 
         ob = data_to.objects[0]
-        context.scene.objects.link(ob)
-        context.scene.objects.active = ob
-        ob.select = True
+        compat.link(context.scene, ob)
+        compat.set_active(context, ob)
+        compat.set_select(ob, True)
 
         for mod in ob.modifiers:
             if mod.type == 'ARMATURE':
-                context.scene.objects.link(mod.object)
-                mod.object.select = True
+                compat.link(context.scene, mod.object)
+                compat.set_select(mod.object, True)
 
         return {'FINISHED'}

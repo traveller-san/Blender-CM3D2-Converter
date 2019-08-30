@@ -84,8 +84,8 @@ class CNV_OT_selected_mesh_vertex_group_blur(bpy.types.Operator):
 
         pre_selected_objects = context.selected_objects[:]
         for selected_object in pre_selected_objects:
-            selected_object.select = False
-        ob.select = True
+            compat.set_select(selected_object, False)
+        compat.set_select(ob, True)
 
         bpy.ops.object.duplicate(linked=False, mode='TRANSLATION')
 
@@ -94,13 +94,16 @@ class CNV_OT_selected_mesh_vertex_group_blur(bpy.types.Operator):
 
         for v in selection_me.vertices:
             if v.hide:
-                v.hide, v.select = False, False
+                v.hide = False
+                compat.set_select(v, False)
         for e in selection_me.edges:
             if e.hide:
-                e.hide, e.select = False, False
+                e.hide = False
+                compat.set_select(e, False)
         for p in selection_me.polygons:
             if p.hide:
-                p.hide, p.select = False, False
+                p.hide = False
+                compat.set_select(p, False)
 
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='INVERT')
@@ -120,8 +123,8 @@ class CNV_OT_selected_mesh_vertex_group_blur(bpy.types.Operator):
         selection_kd.balance()
         common.remove_data([selection_ob, selection_me])
 
-        ob.select = True
-        context.scene.objects.active = ob
+        compat.set_select(ob, True)
+        compat.set_active(context, ob)
 
         bm = bmesh.new()
         bm.from_mesh(me)
@@ -233,7 +236,7 @@ class CNV_OT_selected_mesh_vertex_group_blur(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode=pre_mode)
         for selected_object in pre_selected_objects:
-            selected_object.select = True
+            compat.set_select(selected_object, True)
         return {'FINISHED'}
 
 
@@ -312,8 +315,8 @@ class CNV_OT_selected_mesh_vertex_group_calculation(bpy.types.Operator):
 
         pre_selected_objects = context.selected_objects[:]
         for selected_object in pre_selected_objects:
-            selected_object.select = False
-        ob.select = True
+            compat.set_select(selected_object, False)
+        compat.set_select(ob, True)
 
         bpy.ops.object.duplicate(linked=False, mode='TRANSLATION')
 
@@ -322,13 +325,16 @@ class CNV_OT_selected_mesh_vertex_group_calculation(bpy.types.Operator):
 
         for v in selection_me.vertices:
             if v.hide:
-                v.hide, v.select = False, False
+                v.hide = False
+                compat.set_select(v, False)
         for e in selection_me.edges:
             if e.hide:
-                e.hide, e.select = False, False
+                e.hide = False
+                compat.set_select(e, False)
         for p in selection_me.polygons:
             if p.hide:
-                p.hide, p.select = False, False
+                p.hide = False
+                compat.set_select(p, False)
 
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='INVERT')
@@ -348,8 +354,8 @@ class CNV_OT_selected_mesh_vertex_group_calculation(bpy.types.Operator):
         selection_kd.balance()
         common.remove_data([selection_ob, selection_me])
 
-        ob.select = True
-        context.scene.objects.active = ob
+        compat.set_select(ob, True)
+        compat.set_active(context, ob)
 
         bm = bmesh.new()
         bm.from_mesh(me)
@@ -417,5 +423,5 @@ class CNV_OT_selected_mesh_vertex_group_calculation(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode=pre_mode)
         for selected_object in pre_selected_objects:
-            selected_object.select = True
+            compat.set_select(selected_object, True)
         return {'FINISHED'}

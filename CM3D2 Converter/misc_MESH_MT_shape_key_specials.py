@@ -68,8 +68,9 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
         source_ob = source_original_ob.copy()
         source_me = source_original_ob.data.copy()
         source_ob.data = source_me
-        context.scene.objects.link(source_ob)
-        context.scene.objects.active = source_ob
+
+        compat.link(context.scene, source_ob)
+        compat.set_active(context, source_ob)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
@@ -140,7 +141,10 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
         target_ob.active_shape_key_index = 0
 
         common.remove_data([source_ob, source_me])
-        context.scene.objects.active = target_ob
+
+        compat.set_select(source_original_ob, True)
+        compat.set_select(target_ob, True)
+        compat.set_active(context, target_ob)
         bpy.ops.object.mode_set(mode=pre_mode)
 
         diff_time = time.time() - start_time
@@ -198,8 +202,11 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
         source_me = source_original_ob.data.copy()
         source_ob.data = source_me
 
-        context.scene.objects.link(source_ob)
-        context.scene.objects.active = source_ob
+        compat.link(context.scene, source_ob)
+        compat.set_active(context, source_ob)
+        compat.set_select(source_original_ob, False)
+        compat.set_select(target_ob, False)
+
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
@@ -305,7 +312,10 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
         target_ob.active_shape_key_index = 0
 
         common.remove_data([source_ob, source_me])
-        context.scene.objects.active = target_ob
+
+        compat.set_select(source_original_ob, True)
+        compat.set_select(target_ob, True)
+        compat.set_active(context, target_ob)
         bpy.ops.object.mode_set(mode=pre_mode)
 
         diff_time = time.time() - start_time

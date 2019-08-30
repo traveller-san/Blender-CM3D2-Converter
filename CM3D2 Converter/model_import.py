@@ -253,9 +253,9 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         if self.is_armature:
             arm = bpy.data.armatures.new(model_name1 + ".armature")
             arm_ob = bpy.data.objects.new(model_name1 + ".armature", arm)
-            bpy.context.scene.objects.link(arm_ob)
-            arm_ob.select = True
-            bpy.context.scene.objects.active = arm_ob
+            compat.link(bpy.context.scene, arm_ob)
+            compat.set_select(arm_ob, True)
+            compat.set_active(context, arm_ob)
             bpy.ops.object.mode_set(mode='EDIT')
 
             # 基幹ボーンのみ作成
@@ -384,9 +384,9 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             me.from_pydata(verts, [], faces)
             # オブジェクト化
             ob = context.blend_data.objects.new(model_name1, me)
-            context.scene.objects.link(ob)
-            ob.select = True
-            context.scene.objects.active = ob
+            compat.link(context.scene, ob)
+            compat.set_select(ob, True)
+            compat.set_active(context, ob)
             bpy.ops.object.shade_smooth()
             context.window_manager.progress_update(2.75)
             # オブジェクト変形
@@ -567,9 +567,9 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             if self.is_armature:
                 mod = ob.modifiers.new("Armature", 'ARMATURE')
                 mod.object = arm_ob
-                context.scene.objects.active = arm_ob
+                compat.set_active(context, arm_ob)
                 bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
-                context.scene.objects.active = ob
+                compat.set_active(context, ob)
         context.window_manager.progress_update(8)
 
         # マテリアル情報のテキスト埋め込み

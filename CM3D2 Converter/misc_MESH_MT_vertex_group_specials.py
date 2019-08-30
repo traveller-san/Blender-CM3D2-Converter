@@ -86,28 +86,28 @@ class CNV_OT_quick_transfer_vertex_group(bpy.types.Operator):
             if ob.name != target_ob.name:
                 original_source_obs.append(ob)
 
-        target_ob.select = False
-        context.scene.objects.active = original_source_obs[0]
+        compat.set_select(target_ob, False)
+        compat.set_active(context, original_source_obs[0])
         bpy.ops.object.duplicate(linked=False, mode='TRANSLATION')
         bpy.ops.object.join()
         join_source_ob = context.selected_objects[0]
         join_source_me = join_source_ob.data
-        target_ob.select = True
-        context.scene.objects.active = target_ob
 
         temp_source_ob = join_source_ob.copy()
         temp_source_me = join_source_me.copy()
         temp_source_ob.data = temp_source_me
-        context.scene.objects.link(temp_source_ob)
-        temp_source_ob.select = True
-        join_source_ob.select = False
-        context.scene.objects.active = temp_source_ob
+        compat.link(context.scene, temp_source_ob)
+        compat.set_select(temp_source_ob, True)
+        compat.set_select(join_source_ob, False)
+        compat.set_active(context, temp_source_ob)
         if self.is_source_select_vert_only:
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.mesh.select_all(action='INVERT')
             bpy.ops.mesh.delete(type='VERT')
             bpy.ops.object.mode_set(mode='OBJECT')
-            context.scene.objects.active = target_ob
+
+        compat.set_select(target_ob, True)
+        compat.set_active(context, target_ob)
 
         if self.vert_mapping == 'POLYINTERP_VNORPROJ' and len(temp_source_me.polygons) == 0:
             self.vert_mapping = 'EDGEINTERP_NEAREST'
@@ -177,13 +177,13 @@ class CNV_OT_quick_transfer_vertex_group(bpy.types.Operator):
                     mvge.vertex_group.add([vert.index], mvge.weight, 'REPLACE')
 
         common.remove_data([temp_source_ob, temp_source_me])
-        join_source_ob.select = True
+        compat.set_select(join_source_ob, True)
 
         common.remove_data([join_source_ob, join_source_me])
         for ob in original_source_obs:
-            ob.select = True
+            compat.set_select(ob, True)
 
-        context.scene.objects.active = target_ob
+        compat.set_active(context, target_ob)
         bpy.ops.object.mode_set(mode=pre_mode)
         return {'FINISHED'}
 
@@ -240,9 +240,9 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
         source_ob = source_original_ob.copy()
         source_me = source_original_ob.data.copy()
         source_ob.data = source_me
-        context.scene.objects.link(source_ob)
-        context.scene.objects.active = source_ob
+        compat.link(context.scene, source_ob)
 
+        compat.set_select(target_ob, False)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
@@ -336,7 +336,9 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
         target_ob.vertex_groups.active_index = 0
 
         common.remove_data([source_ob, source_me])
-        context.scene.objects.active = target_ob
+        compat.set_select(source_original_ob, True)
+        compat.set_select(target_ob, True)
+        compat.set_active(context, target_ob)
         bpy.ops.object.mode_set(mode=pre_mode)
 
         diff_time = time.time() - start_time

@@ -49,9 +49,9 @@ class CNV_OT_hair_bunch_add(bpy.types.Operator):
 
         curve = context.blend_data.curves.new("Hair Bunch", 'CURVE')
         ob = context.blend_data.objects.new("Hair Bunch", curve)
-        context.scene.objects.link(ob)
-        context.scene.objects.active = ob
-        ob.select = True
+        compat.link(context.scene, ob)
+        compat.set_active(context, ob)
+        compat.set_select(ob, True)
 
         curve.dimensions = '3D'
         curve.resolution_u = 5
@@ -73,8 +73,8 @@ class CNV_OT_hair_bunch_add(bpy.types.Operator):
 
         bevel_curve = context.blend_data.curves.new("Hair Bunch Bevel", 'CURVE')
         bevel_ob = context.blend_data.objects.new("Hair Bunch Bevel", bevel_curve)
-        context.scene.objects.link(bevel_ob)
-        bevel_ob.select = True
+        compat.link(context.scene, bevel_ob)
+        compat.set_select(bevel_ob, True)
         curve.bevel_object = bevel_ob
 
         bevel_ob.parent = ob

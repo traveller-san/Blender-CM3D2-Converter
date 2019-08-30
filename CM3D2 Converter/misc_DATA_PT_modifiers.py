@@ -88,7 +88,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 temp_ob = ob.copy()
                 temp_me = me.copy()
                 temp_ob.data = temp_me
-                context.scene.objects.link(temp_ob)
+                compat.link(context.scene, temp_ob)
                 try:
                     for vert in temp_me.vertices:
                         vert.co = deforms[vert.index].copy()
@@ -183,7 +183,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 except:
                     ob.modifiers.remove(mod)
 
-        context.scene.objects.active = ob
+        compat.set_active(context, ob)
 
         if is_shaped:
 
@@ -207,7 +207,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             ob.active_shape_key_index = pre_active_shape_key_index
 
         for temp_ob in pre_selected_objects:
-            temp_ob.select = True
+            compat.set_select(temp_ob, True)
         bpy.ops.object.mode_set(mode=pre_mode)
 
         if arm_ob:

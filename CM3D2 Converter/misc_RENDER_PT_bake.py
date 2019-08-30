@@ -250,7 +250,7 @@ class CNV_OT_quick_dirty_bake_image(bpy.types.Operator):
     def execute(self, context):
         ob = context.active_object
         me = ob.data
-        ob.select = False
+        compat.set_select(ob, False)
         ob.hide_render = False
 
         image_width, image_height = int(self.image_width), int(self.image_height)
@@ -267,12 +267,12 @@ class CNV_OT_quick_dirty_bake_image(bpy.types.Operator):
 
         temp_me = ob.to_mesh(scene=context.scene, apply_modifiers=True, settings='PREVIEW')
         temp_ob = context.blend_data.objects.new("quick_dirty_bake_image_temp", temp_me)
-        context.scene.objects.link(temp_ob)
+        compat.link(context.scene, temp_ob)
         for vc in temp_me.vertex_colors:
             temp_me.vertex_colors.remove(vc)
         temp_vertex_color = temp_me.vertex_colors.new(name="quick_dirty_bake_image_temp")
-        context.scene.objects.active = temp_ob
-        temp_ob.select = True
+        compat.set_active(context, temp_ob)
+        compat.set_select(temp_ob, True)
 
         override = context.copy()
         override['object'] = temp_ob
@@ -284,8 +284,8 @@ class CNV_OT_quick_dirty_bake_image(bpy.types.Operator):
         bpy.ops.object.bake_image(context.copy())
 
         common.remove_data([temp_me, temp_ob])
-        context.scene.objects.active = ob
-        ob.select = True
+        compat.set_active(context, ob)
+        compat.set_select(ob, True)
 
         return {'FINISHED'}
 
@@ -376,9 +376,9 @@ class CNV_OT_quick_hemi_bake_image(bpy.types.Operator):
         temp_mate.diffuse_intensity = 1.0
         temp_mate.diffuse_color = (1, 1, 1)
 
-        temp_lamp = context.blend_data.lamps.new("quick_hemi_bake_image_temp", 'HEMI')
+        temp_lamp = compat.get_lights(context.blend_data).new("quick_hemi_bake_image_temp", 'HEMI')
         temp_ob = context.blend_data.objects.new("quick_hemi_bake_image_temp", temp_lamp)
-        context.scene.objects.link(temp_ob)
+        compat.link(context.scene, temp_ob)
         temp_lamp.energy = self.lamp_energy
 
         context.scene.world.light_settings.use_ambient_occlusion = self.use_ao
@@ -476,10 +476,11 @@ class CNV_OT_quick_shadow_bake_image(bpy.types.Operator):
         temp_mate = context.blend_data.materials.new("quick_shadow_bake_image_temp")
         ob.material_slots[0].material = temp_mate
 
+        lights = compat.get_lights(context.blend_data)
         if self.is_shadow_only:
-            temp_hemi = context.blend_data.lamps.new("quick_hemi_bake_image_lamp_temp", 'HEMI')
+            temp_hemi = lights.new("quick_hemi_bake_image_lamp_temp", 'HEMI')
             temp_hemi_ob = context.blend_data.objects.new("quick_hemi_bake_image_lamp_temp", temp_hemi)
-            context.scene.objects.link(temp_hemi_ob)
+            compat.link(context.scene, temp_hemi_ob)
             temp_hemi.energy = 0.00001
 
         new_lamps = []
@@ -491,10 +492,10 @@ class CNV_OT_quick_shadow_bake_image(bpy.types.Operator):
             for y_index in range(lamp_count):
                 y_angle = angle_interval * (y_index - self.lamp_count + 1)
 
-                temp_lamp = context.blend_data.lamps.new("quick_shadow_bake_image_temp", 'SUN')
+                temp_lamp = lights.new("quick_shadow_bake_image_temp", 'SUN')
                 temp_lamp.shadow_method = 'RAY_SHADOW'
                 temp_lamp_ob = context.blend_data.objects.new("quick_shadow_bake_image_temp", temp_lamp)
-                context.scene.objects.link(temp_lamp_ob)
+                compat.link(context.scene, temp_lamp_ob)
                 temp_lamp_ob.rotation_mode = 'XYZ'
                 temp_lamp_ob.rotation_euler = mathutils.Euler((x_angle, y_angle, 0), 'XYZ')
 
@@ -595,14 +596,14 @@ class CNV_OT_quick_side_shadow_bake_image(bpy.types.Operator):
         temp_mate = data_to.materials[0]
         ob.material_slots[0].material = temp_mate
 
-        temp_lamp = context.blend_data.lamps.new("quick_side_shadow_bake_image_lamp_temp", 'HEMI')
+        temp_lamp = compat.get_lights(context.blend_data).new("quick_side_shadow_bake_image_lamp_temp", 'HEMI')
         temp_lamp_ob = context.blend_data.objects.new("quick_side_shadow_bake_image_lamp_temp", temp_lamp)
-        context.scene.objects.link(temp_lamp_ob)
+        compat.link(context.scene, temp_lamp_ob)
 
         pre_scene_camera = context.scene.camera
         temp_camera = context.blend_data.cameras.new("quick_side_shadow_bake_image_camera_temp")
         temp_camera_ob = context.blend_data.objects.new("quick_side_shadow_bake_image_camera_temp", temp_camera)
-        context.scene.objects.link(temp_camera_ob)
+        compat.link(context.scene, temp_camera_ob)
         temp_camera_ob.rotation_euler[0] = 1.5708
         context.scene.camera = temp_camera_ob
 
@@ -816,15 +817,15 @@ class CNV_OT_quick_metal_bake_image(bpy.types.Operator):
         temp_mate.texture_slots[0].diffuse_color_factor = self.environment_strength
         temp_mate.node_tree.nodes["Mix.001"].inputs[0].default_value = 1.0 - self.highlight_strength
 
-        temp_lamp = context.blend_data.lamps.new("quick_metal_bake_image_lamp_temp", 'HEMI')
+        temp_lamp = compat.getlights(context.blend_data).new("quick_metal_bake_image_lamp_temp", 'HEMI')
         temp_lamp_ob = context.blend_data.objects.new("quick_metal_bake_image_lamp_temp", temp_lamp)
-        context.scene.objects.link(temp_lamp_ob)
+        compat.link(context.scene, temp_lamp_ob)
         #temp_lamp.energy = self.lamp_energy
 
         pre_scene_camera = context.scene.camera
         temp_camera = context.blend_data.cameras.new("quick_metal_bake_image_camera_temp")
         temp_camera_ob = context.blend_data.objects.new("quick_metal_bake_image_camera_temp", temp_camera)
-        context.scene.objects.link(temp_camera_ob)
+        compat.link(context.scene, temp_camera_ob)
         temp_camera_ob.rotation_euler[0] = 1.5708
         context.scene.camera = temp_camera_ob
 
@@ -932,15 +933,15 @@ class CNV_OT_quick_hair_bake_image(bpy.types.Operator):
             hide_render_restore = common.hide_render_restore()
         material_restore = common.material_restore(ob)
 
-        temp_lamp = context.blend_data.lamps.new("quick_hemi_bake_image_lamp_temp", 'HEMI')
+        temp_lamp = compat.get_lights(context.blend_data).new("quick_hemi_bake_image_lamp_temp", 'HEMI')
         temp_lamp_ob = context.blend_data.objects.new("quick_hemi_bake_image_lamp_temp", temp_lamp)
-        context.scene.objects.link(temp_lamp_ob)
+        compat.link(context.scene, temp_lamp_ob)
         temp_lamp.energy = self.lamp_energy
 
         pre_scene_camera = context.scene.camera
         temp_camera = context.blend_data.cameras.new("quick_hemi_bake_image_camera_temp")
         temp_camera_ob = context.blend_data.objects.new("quick_hemi_bake_image_camera_temp", temp_camera)
-        context.scene.objects.link(temp_camera_ob)
+        compat.link(context.scene, temp_camera_ob)
         temp_camera_ob.rotation_euler[0] = 1.5708
         context.scene.camera = temp_camera_ob
 
@@ -1205,7 +1206,7 @@ class CNV_OT_quick_mesh_border_bake_image(bpy.types.Operator):
     def execute(self, context):
         ob = context.active_object
         me = ob.data
-        ob.select = False
+        compat.set_select(ob, False)
         ob.hide_render = False
 
         image_width, image_height = int(self.image_width), int(self.image_height)
@@ -1222,12 +1223,12 @@ class CNV_OT_quick_mesh_border_bake_image(bpy.types.Operator):
 
         temp_me = ob.to_mesh(scene=context.scene, apply_modifiers=True, settings='PREVIEW')
         temp_ob = context.blend_data.objects.new("quick_density_bake_image", temp_me)
-        context.scene.objects.link(temp_ob)
+        compat.link(context.scene, temp_ob)
         for vc in temp_me.vertex_colors:
             temp_me.vertex_colors.remove(vc)
         temp_vertex_color = temp_me.vertex_colors.new(name="quick_density_bake_image")
-        context.scene.objects.active = temp_ob
-        temp_ob.select = True
+        compat.set_active(context, temp_ob)
+        compat.set_select(temp_ob, True)
 
         def paint_selected_vertices(me, color, except_indices=[]):
             paint_vertices = []
@@ -1263,8 +1264,8 @@ class CNV_OT_quick_mesh_border_bake_image(bpy.types.Operator):
         bpy.ops.object.bake_image()
 
         common.remove_data([temp_me, temp_ob])
-        context.scene.objects.active = ob
-        ob.select = True
+        compat.set_active(context, ob)
+        compat.set_select(ob, True)
 
         return {'FINISHED'}
 
@@ -1323,7 +1324,7 @@ class CNV_OT_quick_density_bake_image(bpy.types.Operator):
     def execute(self, context):
         ob = context.active_object
         me = ob.data
-        ob.select = False
+        compat.set_select(ob, False)
         ob.hide_render = False
 
         image_width, image_height = int(self.image_width), int(self.image_height)
@@ -1340,12 +1341,12 @@ class CNV_OT_quick_density_bake_image(bpy.types.Operator):
 
         temp_me = ob.to_mesh(scene=context.scene, apply_modifiers=True, settings='PREVIEW')
         temp_ob = context.blend_data.objects.new("quick_density_bake_image", temp_me)
-        context.scene.objects.link(temp_ob)
+        compat.link(context.scene, temp_ob)
         for vc in temp_me.vertex_colors:
             temp_me.vertex_colors.remove(vc)
         temp_vertex_color = temp_me.vertex_colors.new(name="quick_density_bake_image")
-        context.scene.objects.active = temp_ob
-        temp_ob.select = True
+        compat.set_active(context, temp_ob)
+        compat.set_select(temp_ob, True)
 
         bm = bmesh.new()
         bm.from_mesh(temp_me)
@@ -1412,8 +1413,8 @@ class CNV_OT_quick_density_bake_image(bpy.types.Operator):
         bpy.ops.object.bake_image()
 
         common.remove_data([temp_me, temp_ob])
-        context.scene.objects.active = ob
-        ob.select = True
+        compat.set_active(context, ob)
+        compat.set_select(ob, True)
 
         return {'FINISHED'}
 
@@ -1467,7 +1468,7 @@ class CNV_OT_quick_mesh_distance_bake_image(bpy.types.Operator):
         for ob in context.selected_objects:
             if ob.name != target_ob.name:
                 source_ob = ob
-            ob.select = False
+            compat.set_select(ob, False)
         target_me = target_ob.data
         source_me = source_ob.data
 
@@ -1485,12 +1486,12 @@ class CNV_OT_quick_mesh_distance_bake_image(bpy.types.Operator):
 
         temp_me = target_ob.to_mesh(scene=context.scene, apply_modifiers=True, settings='PREVIEW')
         temp_ob = context.blend_data.objects.new("quick_density_bake_image", temp_me)
-        context.scene.objects.link(temp_ob)
+        compat.link(context.scene, temp_ob)
         for vc in temp_me.vertex_colors:
             temp_me.vertex_colors.remove(vc)
         temp_vertex_color = temp_me.vertex_colors.new(name="quick_density_bake_image")
-        context.scene.objects.active = temp_ob
-        temp_ob.select = True
+        compat.set_active(context, temp_ob)
+        compat.set_select(temp_ob, True)
 
         bvh = mathutils.bvhtree.BVHTree.FromObject(source_ob, context.scene)
 
@@ -1515,9 +1516,9 @@ class CNV_OT_quick_mesh_distance_bake_image(bpy.types.Operator):
         bpy.ops.object.bake_image()
 
         common.remove_data([temp_me, temp_ob])
-        context.scene.objects.active = target_ob
-        target_ob.select = True
-        source_ob.select = True
+        compat.set_active(context, target_ob)
+        compat.set_select(target_ob, True)
+        compat.set_select(source_ob, True)
 
         return {'FINISHED'}
 
@@ -1568,7 +1569,7 @@ class CNV_OT_quick_bulge_bake_image(bpy.types.Operator):
     def execute(self, context):
         ob = context.active_object
         me = ob.data
-        ob.select = False
+        compat.set_select(ob, False)
         ob.hide_render = False
 
         image_width, image_height = int(self.image_width), int(self.image_height)
@@ -1585,12 +1586,12 @@ class CNV_OT_quick_bulge_bake_image(bpy.types.Operator):
 
         temp_me = ob.to_mesh(scene=context.scene, apply_modifiers=True, settings='PREVIEW')
         temp_ob = context.blend_data.objects.new("quick_bulge_bake_image", temp_me)
-        context.scene.objects.link(temp_ob)
+        compat.link(context.scene, temp_ob)
         for vc in temp_me.vertex_colors:
             temp_me.vertex_colors.remove(vc)
         temp_vertex_color = temp_me.vertex_colors.new(name="quick_bulge_bake_image")
-        context.scene.objects.active = temp_ob
-        temp_ob.select = True
+        compat.set_active(context, temp_ob)
+        compat.set_select(temp_ob, True)
 
         bm = bmesh.new()
         bm.from_mesh(temp_me)
@@ -1622,8 +1623,8 @@ class CNV_OT_quick_bulge_bake_image(bpy.types.Operator):
         bpy.ops.object.bake_image()
 
         common.remove_data([temp_me, temp_ob])
-        context.scene.objects.active = ob
-        ob.select = True
+        compat.set_active(context, ob)
+        compat.set_select(ob, True)
 
         return {'FINISHED'}
 

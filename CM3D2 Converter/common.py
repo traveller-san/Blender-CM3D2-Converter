@@ -277,7 +277,7 @@ def decorate_material(mate, enable=True, me=None, mate_index=-1):
         node_tree.links.new(out_node.inputs[1], mate_node.outputs[1])
 
         for node in node_tree.nodes[:]:
-            node.select = False
+            compat.set_select(node, False)
         node_tree.nodes.active = mate_node
         node_tree.nodes.active.select = True
 

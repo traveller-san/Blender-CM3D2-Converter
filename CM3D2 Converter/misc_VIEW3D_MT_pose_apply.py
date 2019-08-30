@@ -44,7 +44,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         pre_mode = ob.mode
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        ob.select = True
+        compat.set_select(ob, True)
 
         if self.is_apply_armature_modifier:
             for o in context.blend_data.objects:
@@ -64,14 +64,14 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         temp_ob = ob.copy()
         temp_arm = arm.copy()
         temp_ob.data = temp_arm
-        context.scene.objects.link(temp_ob)
+        compat.link(context.scene, temp_ob)
 
-        context.scene.objects.active = temp_ob
+        compat.set_active(context, temp_ob)
         bpy.ops.object.mode_set(mode='POSE')
         bpy.ops.pose.select_all(action='SELECT')
         bpy.ops.pose.transforms_clear()
 
-        context.scene.objects.active = ob
+        compat.set_active(context, ob)
         bpy.ops.object.mode_set(mode='POSE')
         bpy.ops.pose.select_all(action='SELECT')
         bpy.ops.pose.armature_apply()
@@ -110,7 +110,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         arm['is T Stance'] = 1
 
         for o in pre_selected_objects:
-            o.select = True
-        context.scene.objects.active = ob
+            compat.set_select(o, True)
+        compat.set_active(context, ob)
         bpy.ops.object.mode_set(mode=pre_mode)
         return {'FINISHED'}

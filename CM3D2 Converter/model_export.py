@@ -185,9 +185,9 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         new_ob = ob.copy()
         new_me = ob.data.copy()
         new_ob.data = new_me
-        context.scene.objects.link(new_ob)
-        context.scene.objects.active = new_ob
-        new_ob.select = True
+        compat.link(context.scene, new_ob)
+        compat.set_active(context, new_ob)
+        compat.set_select(new_ob, True)
         return new_ob
 
     def execute(self, context):
@@ -203,8 +203,8 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             if self.is_batch:
                 # アクティブオブジェクトを１つコピーするだけでjoinしない
                 source_objs.append(ob_source)
-                ob_source.select = False
-                self.copy_and_activate_ob(context, ob_source)
+                compat.set_select(ob_source, False)
+                ob_main = self.copy_and_activate_ob(context, ob_source)
 
                 if self.is_apply_modifiers:
                     bpy.ops.object.forced_modifier_apply(is_applies=[True for i in range(32)])
@@ -214,7 +214,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 for selected in selected_objs:
                     source_objs.append(selected)
 
-                    selected.select = False
+                    compat.set_select(selected, False)
                     if selected.type == 'MESH':
                         ob_created = self.copy_and_activate_ob(context, selected)
                         if selected == ob_source:
@@ -231,7 +231,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
                 if selected_count > 1:
                     if ob_main:
-                        context.scene.objects.active = ob_main
+                        compat.set_active(context, ob_main)
                     bpy.ops.object.join()
                     self.report(type={'INFO'}, message="%d個のオブジェクトをマージしました" % selected_count)
 
@@ -250,10 +250,12 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 context.blend_data.meshes.remove(me_copied, do_unlink=True)
 
             for obj in source_objs:
-                obj.select = True
-                context.scene.objects.active = obj
+                compat.set_select(obj, True)
+
             if ob_source:
-                context.scene.objects.active = ob_source
+                # TODO 元のオブジェクトをアクティブに戻す
+                if ob_name in bpy.data.objects:
+                    compat.set_active(context, ob_source)
 
             if prev_mode:
                 bpy.ops.object.mode_set(mode=prev_mode)
