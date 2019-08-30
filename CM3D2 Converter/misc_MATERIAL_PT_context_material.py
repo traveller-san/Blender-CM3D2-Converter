@@ -21,9 +21,9 @@ def menu_func(self, context):
     if not mate:
         col = self.layout.column(align=True)
         if is_com_mode:
-            col.operator('material.new_com3d2', icon_value=common.preview_collections['main']['KISS'].icon_id)
+            col.operator('material.new_com3d2', icon_value=common.kiss_icon())
         else:
-            col.operator('material.new_cm3d2', icon_value=common.preview_collections['main']['KISS'].icon_id)
+            col.operator('material.new_cm3d2', icon_value=common.kiss_icon())
             col.operator('material.new_com3d2', icon='ERROR')
         row = col.row(align=True)
         row.operator('material.import_cm3d2_mate', icon='FILE_FOLDER', text="mateから")
@@ -33,7 +33,7 @@ def menu_func(self, context):
             box = self.layout.box()
             #row = box.split(percentage=0.3)
             row = box.split(percentage=0.5)
-            row.label(text="CM3D2用", icon_value=common.preview_collections['main']['KISS'].icon_id)
+            row.label(text="CM3D2用", icon_value=common.kiss_icon())
             sub_row = row.row(align=True)
             sub_row.operator('material.export_cm3d2_mate', icon='FILE_FOLDER', text="mateへ")
             sub_row.operator('material.copy_material', icon='COPYDOWN', text="コピー")
@@ -131,7 +131,7 @@ def menu_func(self, context):
                 row.alignment = 'LEFT'
                 op = row.operator('wm.context_set_int', icon='DOWNARROW_HLT', text="", emboss=False)
                 op.data_path, op.value, op.relative = 'material["CM3D2 Texture Expand"]', 0, False
-                row.label(text="簡易テクスチャ情報", icon_value=common.preview_collections['main']['KISS'].icon_id)
+                row.label(text="簡易テクスチャ情報", icon_value=common.kiss_icon())
                 
                 for slot in mate.texture_slots:
                     if not slot: continue
@@ -171,13 +171,13 @@ def menu_func(self, context):
                 row.alignment = 'LEFT'
                 op = row.operator('wm.context_set_int', icon='RIGHTARROW', text="", emboss=False)
                 op.data_path, op.value, op.relative = 'material["CM3D2 Texture Expand"]', 1, False
-                row.label(text="簡易テクスチャ情報", icon_value=common.preview_collections['main']['KISS'].icon_id)
-        
+                row.label(text="簡易テクスチャ情報", icon_value=common.kiss_icon())
+
         else:
             if is_com_mode:
-                self.layout.operator('material.new_com3d2', text="COM3D2用に変更", icon_value=common.preview_collections['main']['KISS'].icon_id)
+                self.layout.operator('material.new_com3d2', text="COM3D2用に変更", icon_value=common.kiss_icon())
             else:
-                self.layout.operator('material.new_cm3d2', text="CM3D2用に変更", icon_value=common.preview_collections['main']['KISS'].icon_id)
+                self.layout.operator('material.new_cm3d2', text="CM3D2用に変更", icon_value=common.kiss_icon())
 
 
 class new_mate_opr():

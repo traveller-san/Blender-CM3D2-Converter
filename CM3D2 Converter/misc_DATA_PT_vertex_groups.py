@@ -20,10 +20,10 @@ def menu_func(self, context):
                 flag = True
         if flag:
             col = self.layout.column(align=True)
-            col.label(text="CM3D2用 頂点グループ名変換", icon_value=common.preview_collections['main']['KISS'].icon_id)
+            col.label(text="CM3D2用 頂点グループ名変換", icon_value=common.kiss_icon())
             row = col.row(align=True)
             row.operator('object.decode_cm3d2_vertex_group_names', icon='BLENDER', text="CM3D2 → Blender")
-            row.operator('object.encode_cm3d2_vertex_group_names', icon_value=common.preview_collections['main']['KISS'].icon_id, text="Blender → CM3D2")
+            row.operator('object.encode_cm3d2_vertex_group_names', icon_value=common.kiss_icon(), text="Blender → CM3D2")
             break
 
 

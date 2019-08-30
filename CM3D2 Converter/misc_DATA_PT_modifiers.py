@@ -19,7 +19,7 @@ def menu_func(self, context):
         if ob.type == 'MESH':
             me = ob.data
             if len(ob.modifiers):
-                self.layout.operator('object.forced_modifier_apply', icon_value=common.preview_collections['main']['KISS'].icon_id)
+                self.layout.operator('object.forced_modifier_apply', icon_value=common.kiss_icon())
 
 
 @compat.BlRegister()

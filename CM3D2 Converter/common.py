@@ -25,11 +25,20 @@ bl_info = {
 
 addon_name = "CM3D2 Converter"
 preview_collections = {}
+KISS_ICON = None
 
 
 # このアドオンの設定値群を呼び出す
 def preferences():
     return bpy.context.user_preferences.addons[__name__.split('.')[0]].preferences
+
+
+def kiss_icon():
+    global KISS_ICON
+    if KISS_ICON is None:
+        KISS_ICON = preview_collections['main']['KISS'].icon_id
+    return KISS_ICON
+
 
 # データ名末尾の「.001」などを削除
 def remove_serial_number(name, enable=True):

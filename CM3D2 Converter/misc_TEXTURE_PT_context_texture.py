@@ -28,7 +28,7 @@ def menu_func(self, context):
     base_name = common.remove_serial_number(tex.name)
 
     box = self.layout.box()
-    box.label(text="CM3D2用", icon_value=common.preview_collections['main']['KISS'].icon_id)
+    box.label(text="CM3D2用", icon_value=common.kiss_icon())
     split = box.split(percentage=0.333333333333333333)
     split.label(text="設定値タイプ:")
     row = split.row()

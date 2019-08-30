@@ -7,7 +7,7 @@ from . import compat
 
 # メニュー等に項目追加
 def menu_func(self, context):
-    self.layout.operator('mesh.vertices_count_checker', icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.operator('mesh.vertices_count_checker', icon_value=common.kiss_icon())
 
 
 @compat.BlRegister()

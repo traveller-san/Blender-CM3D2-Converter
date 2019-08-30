@@ -694,4 +694,4 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
 # メニューを登録する関数
 def menu_func(self, context):
-    self.layout.operator(import_cm3d2_model.bl_idname, icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.operator(CNV_OT_import_cm3d2_model.bl_idname, icon_value=common.kiss_icon())

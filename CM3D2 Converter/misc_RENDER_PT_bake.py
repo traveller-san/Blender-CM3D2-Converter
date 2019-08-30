@@ -11,7 +11,7 @@ from . import compat
 # メニュー等に項目追加
 def menu_func(self, context):
     col = self.layout.column(align=True)
-    col.label(text="CM3D2用ベイク", icon_value=common.preview_collections['main']['KISS'].icon_id)
+    col.label(text="CM3D2用ベイク", icon_value=common.kiss_icon())
     row = col.row(align=True)
     row.operator('object.add_bake_image', icon='IMAGE_COL', text="新規画像")
     row.operator('object.quick_ao_bake_image', icon='BRUSH_TEXFILL', text="AO (重)")

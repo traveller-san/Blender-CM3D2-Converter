@@ -174,7 +174,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         box.prop(self, 'export_tangent', icon='CURVE_BEZCIRCLE')
         sub_box = box.box()
         sub_box.prop(self, 'is_normalize_weight', icon='MOD_VERTEX_WEIGHT')
-        sub_box.prop(self, 'is_convert_bone_weight_names', icon_value=common.preview_collections['main']['KISS'].icon_id)
+        sub_box.prop(self, 'is_convert_bone_weight_names', icon_value=common.kiss_icon())
         sub_box = box.box()
         sub_box.prop(self, 'is_apply_modifiers', icon='MODIFIER')
         row = sub_box.row()
@@ -977,4 +977,4 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
 # メニューを登録する関数
 def menu_func(self, context):
-    self.layout.operator(export_cm3d2_model.bl_idname, icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.operator(CNV_OT_export_cm3d2_model.bl_idname, icon_value=common.kiss_icon())

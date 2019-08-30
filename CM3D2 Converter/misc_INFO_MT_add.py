@@ -8,7 +8,7 @@ from . import compat
 # メニュー等に項目追加
 def menu_func(self, context):
     self.layout.separator()
-    self.layout.menu('misc_INFO_MT_add_cm3d2', icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.menu('MISC_INFO_MT_add_cm3d2', icon_value=common.kiss_icon())
 
 
 # サブメニュー
@@ -18,7 +18,7 @@ class misc_INFO_MT_add_cm3d2(bpy.types.Menu):
     bl_label = "CM3D2"
 
     def draw(self, context):
-        self.layout.operator('wm.append_cm3d2_figure', text="body001", icon_value=common.preview_collections['main']['KISS'].icon_id).object_name = "body001.body"
+        self.layout.operator('wm.append_cm3d2_figure', text="body001", icon_value=common.kiss_icon()).object_name = "body001.body"
         self.layout.separator()
         self.layout.operator('wm.append_cm3d2_figure', text="乳袋防止素体", icon='ROTATECOLLECTION').object_name = "乳袋防止素体"
         self.layout.separator()

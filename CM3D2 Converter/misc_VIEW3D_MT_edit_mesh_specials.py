@@ -7,7 +7,7 @@ from . import compat
 
 # メニュー等に項目追加
 def menu_func(self, context):
-    icon_id = common.preview_collections['main']['KISS'].icon_id
+    icon_id = common.kiss_icon()
     self.layout.separator()
     self.layout.operator('mesh.selected_mesh_vertex_group_blur', icon_value=icon_id)
     self.layout.separator()

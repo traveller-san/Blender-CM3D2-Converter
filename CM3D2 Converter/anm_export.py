@@ -347,4 +347,4 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
 # メニューに登録する関数
 def menu_func(self, context):
-    self.layout.operator(export_cm3d2_anm.bl_idname, icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.operator(CNV_OT_export_cm3d2_anm.bl_idname, icon_value=common.kiss_icon())

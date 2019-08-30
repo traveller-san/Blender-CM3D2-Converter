@@ -34,7 +34,7 @@ def menu_func(self, context):
     if bone_data_count or enabled_clipboard:
         if not is_boxed:
             box = self.layout.box()
-            box.label(text="CM3D2用", icon_value=common.preview_collections['main']['KISS'].icon_id)
+            box.label(text="CM3D2用", icon_value=common.kiss_icon())
             is_boxed = True
 
         col = box.column(align=True)
@@ -61,20 +61,20 @@ def menu_func(self, context):
         if flag:
             if not is_boxed:
                 box = self.layout.box()
-                box.label(text="CM3D2用", icon_value=common.preview_collections['main']['KISS'].icon_id)
+                box.label(text="CM3D2用", icon_value=common.kiss_icon())
                 is_boxed = True
 
             col = box.column(align=True)
             col.label(text="ボーン名変換", icon='SORTALPHA')
             row = col.row(align=True)
             row.operator('armature.decode_cm3d2_bone_names', text="CM3D2 → Blender", icon='BLENDER')
-            row.operator('armature.encode_cm3d2_bone_names', text="Blender → CM3D2", icon_value=common.preview_collections['main']['KISS'].icon_id)
+            row.operator('armature.encode_cm3d2_bone_names', text="Blender → CM3D2", icon_value=common.kiss_icon())
             break
 
     if 'is T Stance' in arm:
         if not is_boxed:
             box = self.layout.box()
-            box.label(text="CM3D2用", icon_value=common.preview_collections['main']['KISS'].icon_id)
+            box.label(text="CM3D2用", icon_value=common.kiss_icon())
             is_boxed = True
 
         col = box.column(align=True)

@@ -8,7 +8,7 @@ from . import compat
 
 # メニュー等に項目追加
 def menu_func(self, context):
-    icon_id = common.preview_collections['main']['KISS'].icon_id
+    icon_id = common.kiss_icon()
     box = self.layout.box()
     column = box.column(align=False)
     column.prop(context.active_object.data, 'use_paint_mask_vertex', icon='VERTEXSEL', text="頂点選択モード")

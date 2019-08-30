@@ -24,7 +24,7 @@ def menu_func(self, context):
     if bone_data_count or enabled_clipboard:
         col = self.layout.column(align=True)
         row = col.row(align=True)
-        row.label(text="CM3D2用ボーン情報", icon_value=common.preview_collections['main']['KISS'].icon_id)
+        row.label(text="CM3D2用ボーン情報", icon_value=common.kiss_icon())
         sub_row = row.row()
         sub_row.alignment = 'RIGHT'
         if 'BoneData:0' in ob and 'LocalBoneData:0' in ob:

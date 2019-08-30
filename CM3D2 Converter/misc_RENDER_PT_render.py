@@ -13,7 +13,7 @@ from . import compat
 
 # メニュー等に項目追加
 def menu_func(self, context):
-    self.layout.operator('render.render_cm3d2_icon', icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.operator(CNV_OT_render_cm3d2_icon.bl_idname, icon_value=common.kiss_icon())
 
 
 @compat.BlRegister()

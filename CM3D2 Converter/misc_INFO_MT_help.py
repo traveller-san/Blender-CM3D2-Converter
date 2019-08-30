@@ -15,7 +15,7 @@ from . import compat
 
 # メニュー等に項目追加
 def menu_func(self, context):
-    icon_id = common.preview_collections['main']['KISS'].icon_id
+    icon_id = common.kiss_icon()
     self.layout.separator()
     self.layout.operator('script.update_cm3d2_converter', icon_value=icon_id)
     self.layout.operator('wm.call_menu', icon_value=icon_id, text="CM3D2 Converterの更新履歴").name = 'INFO_MT_help_CM3D2_Converter_RSS'

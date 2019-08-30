@@ -8,7 +8,7 @@ from . import compat
 def menu_func(self, context):
     texts = bpy.data.texts
     text_keys = texts.keys()
-    self.layout.label(text="CM3D2用:", icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.label(text="CM3D2用:", icon_value=common.kiss_icon())
     row = self.layout.row(align=True)
     if 'BoneData' in text_keys:
         txt = bpy.data.texts['BoneData']

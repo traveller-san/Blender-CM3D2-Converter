@@ -255,4 +255,4 @@ class CNV_OT_export_cm3d2_mate_text(bpy.types.Operator):
 
 # テキストメニューに項目を登録
 def TEXT_MT_text(self, context):
-    self.layout.operator(export_cm3d2_mate_text.bl_idname, icon_value=common.preview_collections['main']['KISS'].icon_id)
+    self.layout.operator(CNV_OT_export_cm3d2_mate_text.bl_idname, icon_value=common.kiss_icon())

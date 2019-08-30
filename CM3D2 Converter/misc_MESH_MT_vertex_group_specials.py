@@ -9,7 +9,7 @@ from . import compat
 
 # メニュー等に項目追加
 def menu_func(self, context):
-    icon_id = common.preview_collections['main']['KISS'].icon_id
+    icon_id = common.kiss_icon()
     self.layout.separator()
     self.layout.operator('object.quick_transfer_vertex_group', icon_value=icon_id)
     self.layout.operator('object.precision_transfer_vertex_group', icon_value=icon_id)

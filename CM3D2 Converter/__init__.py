@@ -166,7 +166,7 @@ class AddonPreferences(bpy.types.AddonPreferences):
 
     def draw(self, context):
         self.layout.label(text="ここの設定は「ユーザー設定の保存」ボタンを押すまで保存されていません", icon='QUESTION')
-        self.layout.prop(self, 'cm3d2_path', icon_value=common.preview_collections['main']['KISS'].icon_id)
+        self.layout.prop(self, 'cm3d2_path', icon_value=common.kiss_icon())
         self.layout.prop(self, 'backup_ext', icon='FILE_BACKUP')
 
         box = self.layout.box()
