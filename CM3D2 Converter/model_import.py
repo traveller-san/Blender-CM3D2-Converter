@@ -270,13 +270,13 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
                     co_mat = mathutils.Matrix.Translation(co)
                     rot_mat = rot.to_matrix().to_4x4()
-                    mat = co_mat * rot_mat
+                    mat = compat.mul(co_mat, rot_mat)
 
                     fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
                     fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
                     fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
-                    bone.matrix = fix_mat_scale * fix_mat_before * mat * fix_mat_after
+                    bone.matrix = compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after)
 
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:
@@ -303,21 +303,21 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
                         local_co_mat = mathutils.Matrix.Translation(local_co)
                         local_rot_mat = local_rot.to_matrix().to_4x4()
-                        parent_mats.append(local_co_mat * local_rot_mat)
+                        parent_mats.append(compat.mul(local_co_mat, local_rot_mat))
 
                         current_bone = current_bone.parent
                     parent_mats.reverse()
 
                     mat = mathutils.Matrix()
                     for local_mat in parent_mats:
-                        mat *= local_mat
+                        mat = compat.mul(mat, local_mat)
                     mat *= self.scale
 
                     fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
                     fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
                     fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
-                    bone.matrix = fix_mat_scale * fix_mat_before * mat * fix_mat_after
+                    bone.matrix = compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after)
 
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:

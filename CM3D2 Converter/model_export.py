@@ -831,7 +831,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
             mat = bone.matrix_local.copy()
             if bone.parent:
-                mat = bone.parent.matrix_local.inverted() * mat
+                mat = compat.mul(bone.parent.matrix_local.inverted(), mat)
 
             co = mat.to_translation() * self.scale
             rot = mat.to_quaternion()
@@ -844,7 +844,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
                 fix_quat = mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
                 fix_quat2 = mathutils.Euler((math.radians(-90), 0, 0), 'XYZ').to_quaternion()
-                rot = rot * fix_quat * fix_quat2
+                rot = compat.mul3(rot, fix_quat, fix_quat2)
 
                 rot.w, rot.x, rot.y, rot.z = -rot.y, -rot.z, -rot.x, rot.w
 
@@ -915,6 +915,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
         local_bone_data = []
         for bone in bones:
+
             mat = bone.matrix_local.copy()
 
             co = mat.to_translation() * self.scale
@@ -924,12 +925,12 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             co.x, co.y, co.z = co.y, co.x, -co.z
 
             fix_quat = mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
-            rot = rot * fix_quat
+            rot = compat.mul(rot, fix_quat)
             rot.w, rot.x, rot.y, rot.z = -rot.z, -rot.y, -rot.x, rot.w
 
             co_mat = mathutils.Matrix.Translation(co)
             rot_mat = rot.to_matrix().to_4x4()
-            mat = co_mat * rot_mat
+            mat = compat.mul(co_mat, rot_mat)
 
             copy_mat = mat.copy()
             mat[0][0], mat[0][1], mat[0][2], mat[0][3] = copy_mat[0][0], copy_mat[1][0], copy_mat[2][0], copy_mat[3][0]

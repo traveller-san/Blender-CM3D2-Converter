@@ -698,7 +698,7 @@ class CNV_OT_quick_gradation_bake_image(bpy.types.Operator):
             elem.image = img
 
         temp_me = ob.to_mesh(scene=context.scene, apply_modifiers=True, settings='PREVIEW')
-        zs = [(ob.matrix_world * v.co).z for v in temp_me.vertices]
+        zs = [compat.mul(ob.matrix_world, v.co).z for v in temp_me.vertices]
         zs.sort()
         me_conter = (zs[0] + zs[-1]) / 2
         me_height = zs[-1] - zs[0]
@@ -1496,7 +1496,7 @@ class CNV_OT_quick_mesh_distance_bake_image(bpy.types.Operator):
 
         vert_dists = []
         for vert in temp_me.vertices:
-            co = target_ob.matrix_world * vert.co
+            co = compat.mul(target_ob.matrix_world, vert.co)
             location, normal, index, dist = bvh.find(co)
             vert_dists.append(dist)
 

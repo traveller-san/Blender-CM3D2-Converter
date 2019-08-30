@@ -222,7 +222,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                 pose_mat = ob.convert_space(pose_bone, pose_bone.matrix, 'POSE', 'WORLD')
                 if bone_parents[bone.name]:
                     parent_mat = ob.convert_space(pose.bones[bone_parents[bone.name].name], pose.bones[bone_parents[bone.name].name].matrix, 'POSE', 'WORLD')
-                    pose_mat = parent_mat.inverted() * pose_mat
+                    pose_mat = compat.mul(parent_mat.inverted(), pose_mat)
 
                 loc = pose_mat.to_translation() * self.scale
                 rot = pose_mat.to_quaternion()
@@ -240,7 +240,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
                     fix_quat = mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
                     fix_quat2 = mathutils.Euler((math.radians(-90), 0, 0), 'XYZ').to_quaternion()
-                    rot = rot * fix_quat * fix_quat2
+                    rot = compat.mul3(rot, fix_quat, fix_quat2)
 
                     rot.w, rot.x, rot.y, rot.z = -rot.y, -rot.z, -rot.x, rot.w
 

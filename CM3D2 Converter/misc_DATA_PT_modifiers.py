@@ -147,7 +147,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
 
                 bone_quat = bone.matrix_local.to_quaternion()
                 pose_quat = pose_bone.matrix.to_quaternion()
-                result_quat = pose_quat * bone_quat.inverted()
+                result_quat = compat.mul(pose_quat, bone_quat.inverted())
 
                 pose_quats[bone.name] = result_quat.copy()
 

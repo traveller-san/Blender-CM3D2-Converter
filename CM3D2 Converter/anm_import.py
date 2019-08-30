@@ -203,9 +203,9 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
 
                         fix_quat = mathutils.Euler((math.radians(90), math.radians(90), 0.0), 'XYZ').to_quaternion()
                         fix_quat2 = mathutils.Euler((0.0, math.radians(-90), 0.0), 'XYZ').to_quaternion()
-                        quat = fix_quat * quat
+                        quat = compat.mul(fix_quat, quat)
 
-                    result_quat = bone_quat.inverted() * quat
+                    result_quat = compat.mul(bone_quat.inverted(), quat)
                     pose_bone.rotation_quaternion = result_quat.copy()
 
                     pose_bone.keyframe_insert('rotation_quaternion', frame=frame * fps)

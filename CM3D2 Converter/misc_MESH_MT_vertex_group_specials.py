@@ -256,7 +256,7 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
 
         kd = mathutils.kdtree.KDTree(len(source_me.vertices))
         for vert in source_me.vertices:
-            co = source_ob.matrix_world * vert.co
+            co = compat.mul(source_ob.matrix_world, vert.co)
             kd.insert(co, vert.index)
         kd.balance()
 
@@ -269,8 +269,8 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
             near_vert_data.append([])
             near_vert_data_append = near_vert_data[-1].append
 
-            target_co = target_ob.matrix_world * vert.co
 
+            target_co = compat.mul(target_ob.matrix_world, vert.co)
             mini_co, mini_index, mini_dist = kd.find(target_co)
             radius = mini_dist * self.extend_range
             diff_radius = radius - mini_dist

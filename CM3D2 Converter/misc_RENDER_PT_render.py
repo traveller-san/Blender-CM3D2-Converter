@@ -144,15 +144,30 @@ class CNV_OT_render_cm3d2_icon(bpy.types.Operator):
                     mate.use_shadeless = True
 
         xs, ys, zs = [], [], []
-        for ob in obs:
-            if ob.type == 'MESH':
-                temp_me = ob.to_mesh(context.scene, apply_modifiers=True, settings='PREVIEW')
-                for vert in temp_me.vertices:
-                    co = ob.matrix_world * vert.co
-                    xs.append(co.x)
-                    ys.append(co.y)
-                    zs.append(co.z)
-                common.remove_data(temp_me)
+        if compat.IS_LEGACY:
+            for ob in obs:
+                if ob.type == 'MESH':
+                    temp_me = ob.to_mesh(context.scene, apply_modifiers=True, settings='PREVIEW')
+                    for vert in temp_me.vertices:
+                        co = ob.matrix_world * vert.co
+                        xs.append(co.x)
+                        ys.append(co.y)
+                        zs.append(co.z)
+                    common.remove_data(temp_me)
+        else:
+            depsgraph = context.evaluated_depsgraph_get()
+            for ob in obs:
+                if ob.type == 'MESH':
+                    # depsgraphから取得されたob_eval: すべてのmodifierを考慮
+                    ob_eval = ob.evaluated_get(depsgraph)
+                    temp_me = ob_eval.to_mesh()
+                    for vert in temp_me.vertices:
+                        co = ob.matrix_world @ vert.co
+                        xs.append(co.x)
+                        ys.append(co.y)
+                        zs.append(co.z)
+                    ob_eval.to_mesh_clear()
+
         center_co = mathutils.Vector((0, 0, 0))
         center_co.x = (min(xs) + max(xs)) / 2.0
         center_co.y = (min(ys) + max(ys)) / 2.0

@@ -86,11 +86,11 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
 
         kd = mathutils.kdtree.KDTree(len(source_me.vertices))
         for vert in source_me.vertices:
-            co = source_ob.matrix_world * vert.co
+            co = compat.mul(source_ob.matrix_world, vert.co)
             kd.insert(co, vert.index)
         kd.balance()
 
-        near_vert_indexs = [kd.find(target_ob.matrix_world * v.co)[1] for v in target_me.vertices]
+        near_vert_indexs = [kd.find(compat.mul(target_ob.matrix_world, v.co))[1] for v in target_me.vertices]
 
         is_shapeds = {}
         relative_keys = []
@@ -117,7 +117,7 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
                 pass
 
             mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
-            source_shape_keys = [(mat1 * source_shape_key.data[v.index].co * mat2) - (mat1 * source_me.vertices[v.index].co * mat2) for v in source_me.vertices]
+            source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
 
             for target_vert in target_me.vertices:
 
@@ -216,7 +216,7 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
 
         kd = mathutils.kdtree.KDTree(len(source_me.vertices))
         for vert in source_me.vertices:
-            co = source_ob.matrix_world * vert.co
+            co = compat.mul(source_ob.matrix_world, vert.co)
             kd.insert(co, vert.index)
         kd.balance()
 
@@ -229,7 +229,7 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
             near_vert_data.append([])
             near_vert_data_append = near_vert_data[-1].append
 
-            target_co = target_ob.matrix_world * vert.co
+            target_co = compat.mul(target_ob.matrix_world, vert.co)
             mini_co, mini_index, mini_dist = kd.find(target_co)
             radius = mini_dist * self.extend_range
             diff_radius = radius - mini_dist
@@ -273,7 +273,7 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
                 pass
 
             mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
-            source_shape_keys = [(mat1 * source_shape_key.data[v.index].co * mat2) - (mat1 * source_me.vertices[v.index].co * mat2) for v in source_me.vertices]
+            source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
 
             for target_vert in target_me.vertices:
 
