@@ -135,8 +135,10 @@ class AddonPreferences(bpy.types.AddonPreferences):
 
     custom_normal_blend = bpy.props.FloatProperty(name="CM3D2用法線のブレンド率", default=0.5, min=0, max=1, soft_min=0, soft_max=1, step=3, precision=0)
     skip_shapekey = bpy.props.BoolProperty(name="無変更シェイプキーをスキップ", default=True, description="ベースと同じシェイプキーを出力しない")
+    is_apply_modifiers = bpy.props.BoolProperty(name="モディファイアを適用", default=False)
 
-    new_mate_tex_color = bpy.props.FloatVectorProperty(name="テクスチャ設定値の色", default=(0, 0, 1, 1), min=0, max=1, soft_min=0, soft_max=1, step=10, precision=2, subtype='COLOR', size=4)
+    new_mate_tex_offset = bpy.props.FloatVectorProperty(name="テクスチャのオフセット", default=(0, 0), min=-1, max=1, soft_min=-1, soft_max=1, step=10, precision=3, size=2)
+    new_mate_tex_scale = bpy.props.FloatVectorProperty(name="テクスチャのスケール", default=(1, 1), min=0, max=1, soft_min=0, soft_max=1, step=10, precision=3, size=2)
 
     new_mate_toonramp_name = bpy.props.StringProperty(name="_ToonRamp 名前", default="toonGrayA1")
     new_mate_toonramp_path = bpy.props.StringProperty(name="_ToonRamp パス", default=common.BASE_PATH_TEX + "toon/toonGrayA1.png")
@@ -165,7 +167,10 @@ class AddonPreferences(bpy.types.AddonPreferences):
     new_mate_ztest2alpha = bpy.props.FloatProperty(name="_ZTest2Alpha", default=0.8, min=0, max=1, soft_min=0, soft_max=1, step=1, precision=2)
 
     def draw(self, context):
-        self.layout.label(text="ここの設定は「ユーザー設定の保存」ボタンを押すまで保存されていません", icon='QUESTION')
+        if compat.IS_LEGACY:
+            self.layout.label(text="ここの設定は「ユーザー設定の保存」ボタンを押すまで保存されていません", icon='QUESTION')
+        else:
+            self.layout.label(text="設定値を変更した場合、「プリファレンスを保存」ボタンを押下するか、「プリファレンスを自動保存」を有効にして保存してください", icon='QUESTION')
         self.layout.prop(self, 'cm3d2_path', icon_value=common.kiss_icon())
         self.layout.prop(self, 'backup_ext', icon='FILE_BACKUP')
 
@@ -200,7 +205,9 @@ class AddonPreferences(bpy.types.AddonPreferences):
 
         box = self.layout.box()
         box.label(text="CM3D2用マテリアル新規作成時の初期値", icon='MATERIAL')
-        box.prop(self, 'new_mate_tex_color', icon='COLOR')
+        row = box.row()
+        row.prop(self, 'new_mate_tex_offset', icon='MOD_MULTIRES')
+        row.prop(self, 'new_mate_tex_scale', icon='ARROW_LEFTRIGHT')
         row = box.row()
         row.prop(self, 'new_mate_toonramp_name', icon='BRUSH_TEXFILL')
         row.prop(self, 'new_mate_toonramp_path', icon='ANIM')
@@ -220,13 +227,26 @@ class AddonPreferences(bpy.types.AddonPreferences):
         row.prop(self, 'new_mate_hirate')
         row.prop(self, 'new_mate_hipow')
 
-        row = self.layout.row()
-        row.operator('script.update_cm3d2_converter', icon='FILE_REFRESH')
-        row.menu('INFO_MT_help_CM3D2_Converter_RSS', icon='INFO')
+        box = self.layout.box()
+        box.label(text="各操作の初期パラメータ", icon='MATERIAL')
+        row = box.row()  # export
+        row.prop(self, 'custom_normal_blend', icon='SNAP_NORMAL')
+        row.prop(self, 'skip_shapekey', icon='SHAPEKEY_DATA')
+        row.prop(self, 'is_apply_modifiers', icon='MODIFIER')
+        # row = box.row()
+        # row = self.layout.row()
+        # row.operator('script.update_cm3d2_converter', icon='FILE_REFRESH')
+        # row.menu('INFO_MT_help_CM3D2_Converter_RSS', icon='INFO')
 
 
 # プラグインをインストールしたときの処理
 def register():
+    pcoll = bpy.utils.previews.new()
+    dir = os.path.dirname(__file__)
+    pcoll.load('KISS', os.path.join(dir, "kiss.png"), 'IMAGE')
+    common.preview_collections['main'] = pcoll
+    common.bl_info = bl_info
+
     compat.BlRegister.register()
     if compat.IS_LEGACY:
         bpy.types.INFO_MT_file_import.append(model_import.menu_func)
@@ -251,7 +271,7 @@ def register():
     else:
         bpy.types.TOPBAR_MT_file_import.append(model_import.menu_func)
         bpy.types.TOPBAR_MT_file_export.append(model_export.menu_func)
-        # TODO anm 修正＆動作確認後にコメント解除
+        # TODO 修正＆動作確認後にコメント解除 (anm)
         # bpy.types.TOPBAR_MT_file_import.append(anm_import.menu_func)
         # bpy.types.TOPBAR_MT_file_export.append(anm_export.menu_func)
 
@@ -292,11 +312,6 @@ def register():
     bpy.types.OBJECT_PT_transform.append(misc_OBJECT_PT_transform.menu_func)
     bpy.types.TEXT_HT_header.append(misc_TEXT_HT_header.menu_func)
     bpy.types.VIEW3D_MT_pose_apply.append(misc_VIEW3D_MT_pose_apply.menu_func)
-
-    pcoll = bpy.utils.previews.new()
-    dir = os.path.dirname(__file__)
-    pcoll.load('KISS', os.path.join(dir, "kiss.png"), 'IMAGE')
-    common.preview_collections['main'] = pcoll
 
     system = compat.get_system(bpy.context)
     if not system.use_international_fonts:

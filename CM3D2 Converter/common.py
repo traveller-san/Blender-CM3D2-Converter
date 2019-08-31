@@ -3,6 +3,7 @@ import re
 import math
 import struct
 import shutil
+import winreg
 import bpy
 import bmesh
 import mathutils
@@ -10,33 +11,21 @@ from . import fileutil
 from . import compat
 
 # アドオン情報
-bl_info = {
-    "name": "CM3D2 Converter",
-    "author": "@saidenka_cm3d2",
-    "version": (2019, 6, 15, 18, 46, 00),
-    "blender": (2, 78, 0),
-    "location": "ファイル > インポート/エクスポート > CM3D2 Model (.model)",
-    "description": "カスタムメイド3D2の専用ファイルのインポート/エクスポートを行います",
-    "warning": "",
-    "wiki_url": "https://github.com/CM3Duser/Blender-CM3D2-Converter",
-    "tracker_url": "https://twitter.com/saidenka_cm3d2",
-    "category": "Import-Export"
-}
-
-re_png = re.compile(r"\.[Pp][Nn][Gg](\.\d{3})?$")
-re_serial = re.compile(r"(\.\d{3})?$")
-re_prefix = re.compile(r'^[\/\.]*')
-re_path_prefix = re.compile(r'^assets/', re.I)
-re_ext_png = re.compile(r'\.png$', re.I)
-re_bone1 = re.compile(r'([_ ])\*([_ ].*)\.([rRlL])$')
-re_bone2 = re.compile(r'([_ ])([rRlL])([_ ].*)$')
-
+bl_info = {}
 addon_name = "CM3D2 Converter"
-BASE_PATH_TEX = 'Assets/texture/texture/'
+BASE_PATH_TEX = "Assets/texture/texture/"
 preview_collections = {}
 KISS_ICON = None
 PREFS = None
 texpath_dict = {}
+
+re_png = re.compile(r"\.[Pp][Nn][Gg](\.\d{3})?$")
+re_serial = re.compile(r"(\.\d{3})?$")
+re_prefix = re.compile(r"^[\/\.]*")
+re_path_prefix = re.compile(r"^assets/", re.I)
+re_ext_png = re.compile(r"\.png$", re.I)
+re_bone1 = re.compile(r"([_ ])\*([_ ].*)\.([rRlL])$")
+re_bone2 = re.compile(r"([_ ])([rRlL])([_ ].*)$")
 
 
 # このアドオンの設定値群を呼び出す
