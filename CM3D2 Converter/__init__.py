@@ -209,12 +209,12 @@ class AddonPreferences(bpy.types.AddonPreferences):
         row = box.row()
         row.prop(self, 'new_mate_color', icon='COLOR')
         row.prop(self, 'new_mate_shadowcolor', icon='IMAGE_ALPHA')
-        row.prop(self, 'new_mate_rimcolor', icon='MATCAP_07')
-        row.prop(self, 'new_mate_outlinecolor', icon='SOLID')
+        row.prop(self, 'new_mate_rimcolor', icon=compat.icon('SHADING_RENDERED'))
+        row.prop(self, 'new_mate_outlinecolor', icon=compat.icon('SHADING_SOLID'))
         row = box.row()
-        row.prop(self, 'new_mate_shininess', icon='MATCAP_05')
-        row.prop(self, 'new_mate_outlinewidth', icon='SOLID')
-        row.prop(self, 'new_mate_rimpower', icon='MATCAP_14')
+        row.prop(self, 'new_mate_shininess', icon=compat.icon('NODE_MATERIAL'))
+        row.prop(self, 'new_mate_outlinewidth', icon=compat.icon('SHADING_SOLID'))
+        row.prop(self, 'new_mate_rimpower', icon=compat.icon('SHADING_RENDERED'))
         row.prop(self, 'new_mate_rimshift', icon='ARROW_LEFTRIGHT')
         row.prop(self, 'new_mate_hirate')
         row.prop(self, 'new_mate_hipow')
@@ -223,15 +223,56 @@ class AddonPreferences(bpy.types.AddonPreferences):
         row.operator('script.update_cm3d2_converter', icon='FILE_REFRESH')
         row.menu('INFO_MT_help_CM3D2_Converter_RSS', icon='INFO')
 
+
 # プラグインをインストールしたときの処理
 def register():
-    bpy.utils.register_module(__name__)
+    compat.BlRegister.register()
+    if compat.IS_LEGACY:
+        bpy.types.INFO_MT_file_import.append(model_import.menu_func)
+        bpy.types.INFO_MT_file_import.append(anm_import.menu_func)
+        bpy.types.INFO_MT_file_export.append(model_export.menu_func)
+        bpy.types.INFO_MT_file_export.append(anm_export.menu_func)
 
-    bpy.types.INFO_MT_file_import.append(model_import.menu_func)
-    bpy.types.INFO_MT_file_export.append(model_export.menu_func)
+        bpy.types.INFO_MT_add.append(misc_INFO_MT_add.menu_func)
+        bpy.types.INFO_MT_curve_add.append(misc_INFO_MT_curve_add.menu_func)
+        bpy.types.INFO_MT_help.append(misc_INFO_MT_help.menu_func)
 
-    bpy.types.INFO_MT_file_import.append(anm_import.menu_func)
-    bpy.types.INFO_MT_file_export.append(anm_export.menu_func)
+        bpy.types.MATERIAL_PT_context_material.append(misc_MATERIAL_PT_context_material.menu_func)
+        bpy.types.RENDER_PT_bake.append(misc_RENDER_PT_bake.menu_func)
+        bpy.types.RENDER_PT_render.append(misc_RENDER_PT_render.menu_func)
+        bpy.types.TEXTURE_PT_context_texture.append(misc_TEXTURE_PT_context_texture.menu_func)
+        bpy.types.VIEW3D_PT_tools_weightpaint.append(misc_VIEW3D_PT_tools_weightpaint.menu_func)
+
+        # menu
+        bpy.types.MESH_MT_shape_key_specials.append(misc_MESH_MT_shape_key_specials.menu_func)
+        bpy.types.MESH_MT_vertex_group_specials.append(misc_MESH_MT_vertex_group_specials.menu_func)
+        bpy.types.VIEW3D_MT_edit_mesh_specials.append(misc_VIEW3D_MT_edit_mesh_specials.menu_func)
+    else:
+        bpy.types.TOPBAR_MT_file_import.append(model_import.menu_func)
+        bpy.types.TOPBAR_MT_file_export.append(model_export.menu_func)
+        # TODO anm 修正＆動作確認後にコメント解除
+        # bpy.types.TOPBAR_MT_file_import.append(anm_import.menu_func)
+        # bpy.types.TOPBAR_MT_file_export.append(anm_export.menu_func)
+
+        bpy.types.VIEW3D_MT_add.append(misc_INFO_MT_add.menu_func)
+        bpy.types.VIEW3D_MT_curve_add.append(misc_INFO_MT_curve_add.menu_func)
+        # (更新機能)
+        # bpy.types.TOPBAR_MT_help.append(misc_INFO_MT_help.menu_func)
+
+        # マテリアルパネルの追加先がないため、別途Panelを追加
+        # bpy.types.MATERIAL_PT_context_xxx.append(misc_MATERIAL_PT_context_material.menu_func)
+
+        # TODO 修正＆動作確認後にコメント解除  (ベイク)
+        # レンダーエンジンがCycles指定時のみになる
+        # bpy.types.CYCLES_RENDER_PT_bake.append(misc_RENDER_PT_bake.menu_func)
+        # TODO 配置先変更 (アイコン作成)
+        # bpy.types.PARTICLE_PT_render.append(misc_RENDER_PT_render.menu_func)
+        bpy.types.VIEW3D_PT_tools_weightpaint_options.append(misc_VIEW3D_PT_tools_weightpaint.menu_func)
+
+        # context menu
+        bpy.types.MESH_MT_shape_key_context_menu.append(misc_MESH_MT_shape_key_specials.menu_func)
+        bpy.types.MESH_MT_vertex_group_context_menu.append(misc_MESH_MT_vertex_group_specials.menu_func)
+        bpy.types.VIEW3D_MT_edit_mesh_context_menu.append(misc_VIEW3D_MT_edit_mesh_specials.menu_func)
 
     bpy.types.IMAGE_MT_image.append(tex_import.menu_func)
     bpy.types.IMAGE_MT_image.append(tex_export.menu_func)
@@ -245,28 +286,18 @@ def register():
     bpy.types.IMAGE_HT_header.append(misc_IMAGE_HT_header.menu_func)
     bpy.types.IMAGE_PT_image_properties.append(misc_IMAGE_PT_image_properties.menu_func)
     bpy.types.INFO_HT_header.append(misc_INFO_HT_header.menu_func)
-    bpy.types.INFO_MT_add.append(misc_INFO_MT_add.menu_func)
-    bpy.types.INFO_MT_curve_add.append(misc_INFO_MT_curve_add.menu_func)
-    bpy.types.INFO_MT_help.append(misc_INFO_MT_help.menu_func)
-    bpy.types.MATERIAL_PT_context_material.append(misc_MATERIAL_PT_context_material.menu_func)
-    bpy.types.MESH_MT_shape_key_specials.append(misc_MESH_MT_shape_key_specials.menu_func)
-    bpy.types.MESH_MT_vertex_group_specials.append(misc_MESH_MT_vertex_group_specials.menu_func)
+
     bpy.types.OBJECT_PT_context_object.append(misc_OBJECT_PT_context_object.menu_func)
     bpy.types.OBJECT_PT_transform.append(misc_OBJECT_PT_transform.menu_func)
-    bpy.types.RENDER_PT_bake.append(misc_RENDER_PT_bake.menu_func)
-    bpy.types.RENDER_PT_render.append(misc_RENDER_PT_render.menu_func)
-    bpy.types.TEXTURE_PT_context_texture.append(misc_TEXTURE_PT_context_texture.menu_func)
     bpy.types.TEXT_HT_header.append(misc_TEXT_HT_header.menu_func)
-    bpy.types.VIEW3D_MT_edit_mesh_specials.append(misc_VIEW3D_MT_edit_mesh_specials.menu_func)
     bpy.types.VIEW3D_MT_pose_apply.append(misc_VIEW3D_MT_pose_apply.menu_func)
-    bpy.types.VIEW3D_PT_tools_weightpaint.append(misc_VIEW3D_PT_tools_weightpaint.menu_func)
 
     pcoll = bpy.utils.previews.new()
     dir = os.path.dirname(__file__)
     pcoll.load('KISS', os.path.join(dir, "kiss.png"), 'IMAGE')
     common.preview_collections['main'] = pcoll
 
-    system = bpy.context.user_preferences.system
+    system = compat.get_system(bpy.context)
     if not system.use_international_fonts:
         system.use_international_fonts = True
     if not system.use_translate_interface:
@@ -288,13 +319,45 @@ def register():
 
 # プラグインをアンインストールしたときの処理
 def unregister():
-    bpy.utils.unregister_module(__name__)
+    if compat.IS_LEGACY:
+        bpy.types.INFO_MT_file_import.remove(model_import.menu_func)
+        bpy.types.INFO_MT_file_import.remove(anm_import.menu_func)
+        bpy.types.INFO_MT_file_export.remove(model_export.menu_func)
+        bpy.types.INFO_MT_file_export.remove(anm_export.menu_func)
 
-    bpy.types.INFO_MT_file_import.remove(model_import.menu_func)
-    bpy.types.INFO_MT_file_export.remove(model_export.menu_func)
+        bpy.types.INFO_MT_add.remove(misc_INFO_MT_add.menu_func)
+        bpy.types.INFO_MT_curve_add.remove(misc_INFO_MT_curve_add.menu_func)
+        bpy.types.INFO_MT_help.remove(misc_INFO_MT_help.menu_func)
 
-    bpy.types.INFO_MT_file_import.remove(anm_import.menu_func)
-    bpy.types.INFO_MT_file_export.remove(anm_export.menu_func)
+        bpy.types.MATERIAL_PT_context_material.remove(misc_MATERIAL_PT_context_material.menu_func)
+        bpy.types.RENDER_PT_bake.remove(misc_RENDER_PT_bake.menu_func)
+        bpy.types.RENDER_PT_render.remove(misc_RENDER_PT_render.menu_func)
+        bpy.types.TEXTURE_PT_context_texture.remove(misc_TEXTURE_PT_context_texture.menu_func)
+        bpy.types.VIEW3D_PT_tools_weightpaint.remove(misc_VIEW3D_PT_tools_weightpaint.menu_func)
+
+        # menu
+        bpy.types.MESH_MT_shape_key_specials.remove(misc_MESH_MT_shape_key_specials.menu_func)
+        bpy.types.MESH_MT_vertex_group_specials.remove(misc_MESH_MT_vertex_group_specials.menu_func)
+        bpy.types.VIEW3D_MT_edit_mesh_specials.remove(misc_VIEW3D_MT_edit_mesh_specials.menu_func)
+    else:
+        bpy.types.TOPBAR_MT_file_import.remove(model_import.menu_func)
+        bpy.types.TOPBAR_MT_file_export.remove(model_export.menu_func)
+        # bpy.types.TOPBAR_MT_file_import.remove(anm_import.menu_func)
+        # bpy.types.TOPBAR_MT_file_export.remove(anm_export.menu_func)
+
+        bpy.types.VIEW3D_MT_add.remove(misc_INFO_MT_add.menu_func)
+        bpy.types.VIEW3D_MT_curve_add.remove(misc_INFO_MT_curve_add.menu_func)
+        # bpy.types.TOPBAR_MT_help.remove(misc_INFO_MT_help.menu_func)
+
+        # bpy.types.MATERIAL_MT_context_menu.remove(misc_MATERIAL_PT_context_material.menu_func)
+        # bpy.types.CYCLES_RENDER_PT_bake.remove(misc_RENDER_PT_bake.menu_func)
+        # bpy.types.PARTICLE_PT_render.remove(misc_RENDER_PT_render.menu_func)
+
+        bpy.types.VIEW3D_PT_tools_weightpaint_options.remove(misc_VIEW3D_PT_tools_weightpaint.menu_func)
+        # menu
+        bpy.types.MESH_MT_shape_key_context_menu.remove(misc_MESH_MT_shape_key_specials.menu_func)
+        bpy.types.MESH_MT_vertex_group_context_menu.remove(misc_MESH_MT_vertex_group_specials.menu_func)
+        bpy.types.VIEW3D_MT_edit_mesh_context_menu.remove(misc_VIEW3D_MT_edit_mesh_specials.menu_func)
 
     bpy.types.IMAGE_MT_image.remove(tex_import.menu_func)
     bpy.types.IMAGE_MT_image.remove(tex_export.menu_func)
@@ -308,25 +371,16 @@ def unregister():
     bpy.types.IMAGE_HT_header.remove(misc_IMAGE_HT_header.menu_func)
     bpy.types.IMAGE_PT_image_properties.remove(misc_IMAGE_PT_image_properties.menu_func)
     bpy.types.INFO_HT_header.remove(misc_INFO_HT_header.menu_func)
-    bpy.types.INFO_MT_add.remove(misc_INFO_MT_add.menu_func)
-    bpy.types.INFO_MT_curve_add.remove(misc_INFO_MT_curve_add.menu_func)
-    bpy.types.INFO_MT_help.remove(misc_INFO_MT_help.menu_func)
-    bpy.types.MATERIAL_PT_context_material.remove(misc_MATERIAL_PT_context_material.menu_func)
-    bpy.types.MESH_MT_shape_key_specials.remove(misc_MESH_MT_shape_key_specials.menu_func)
-    bpy.types.MESH_MT_vertex_group_specials.remove(misc_MESH_MT_vertex_group_specials.menu_func)
     bpy.types.OBJECT_PT_context_object.remove(misc_OBJECT_PT_context_object.menu_func)
     bpy.types.OBJECT_PT_transform.remove(misc_OBJECT_PT_transform.menu_func)
-    bpy.types.RENDER_PT_bake.remove(misc_RENDER_PT_bake.menu_func)
-    bpy.types.RENDER_PT_render.remove(misc_RENDER_PT_render.menu_func)
-    bpy.types.TEXTURE_PT_context_texture.remove(misc_TEXTURE_PT_context_texture.menu_func)
     bpy.types.TEXT_HT_header.remove(misc_TEXT_HT_header.menu_func)
-    bpy.types.VIEW3D_MT_edit_mesh_specials.remove(misc_VIEW3D_MT_edit_mesh_specials.menu_func)
     bpy.types.VIEW3D_MT_pose_apply.remove(misc_VIEW3D_MT_pose_apply.menu_func)
-    bpy.types.VIEW3D_PT_tools_weightpaint.remove(misc_VIEW3D_PT_tools_weightpaint.menu_func)
 
     for pcoll in common.preview_collections.values():
         bpy.utils.previews.remove(pcoll)
     common.preview_collections.clear()
+
+    compat.BlRegister.unregister()
 
     bpy.app.translations.unregister(__name__)
 
