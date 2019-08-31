@@ -387,6 +387,7 @@ def unregister():
     bpy.types.IMAGE_HT_header.remove(misc_IMAGE_HT_header.menu_func)
     bpy.types.IMAGE_PT_image_properties.remove(misc_IMAGE_PT_image_properties.menu_func)
     bpy.types.INFO_HT_header.remove(misc_INFO_HT_header.menu_func)
+
     bpy.types.OBJECT_PT_context_object.remove(misc_OBJECT_PT_context_object.menu_func)
     bpy.types.OBJECT_PT_transform.remove(misc_OBJECT_PT_transform.menu_func)
     bpy.types.TEXT_HT_header.remove(misc_TEXT_HT_header.menu_func)

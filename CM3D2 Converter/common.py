@@ -58,10 +58,10 @@ def write_str(file, raw_str):
     b_str = format(len(raw_str.encode('utf-8')), 'b')
     for i in range(9):
         if 7 < len(b_str):
-            file.write( struct.pack('<B', int("1" + b_str[-7:], 2)) )
+            file.write(struct.pack('<B', int("1" + b_str[-7:], 2)))
             b_str = b_str[:-7]
         else:
-            file.write( struct.pack('<B', int(b_str, 2)) )
+            file.write(struct.pack('<B', int(b_str, 2)))
             break
     file.write(raw_str.encode('utf-8'))
 
@@ -78,7 +78,7 @@ def read_str(file, total_b=""):
 
 # ボーン/ウェイト名を Blender → CM3D2
 def encode_bone_name(name, enable=True):
-    return re.sub(r'([_ ])\*([_ ].*)\.([rRlL])$', r'\1\3\2', name) if name.count('*') == 1 and enable else name
+    return re.sub(r'([_ ])\*([_ ].*)\.([rRlL])$', r'\1\3\2', name) if enable and name.count('*') == 1 else name
 
 
 # ボーン/ウェイト名を CM3D2 → Blender
@@ -196,9 +196,9 @@ def decorate_material(mate, enable=True, me=None, mate_index=-1):
         for i in range(32):
             pos = i / (32 - 1)
             toon_node.color_ramp.elements[i].position = pos
-            x = int( (toon_w / (32 - 1)) * i )
+            x = int((toon_w / (32 - 1)) * i)
             pixel_index = x * toon_img.channels
-            toon_node.color_ramp.elements[i].color = toon_img.pixels[pixel_index:pixel_index+4]
+            toon_node.color_ramp.elements[i].color = toon_img.pixels[pixel_index: pixel_index + 4]
         toon_node.color_ramp.interpolation = 'EASE'
 
         shadow_rate_node = node_tree.nodes.new('ShaderNodeValToRGB')
@@ -210,9 +210,9 @@ def decorate_material(mate, enable=True, me=None, mate_index=-1):
         for i in range(32):
             pos = i / (32 - 1)
             shadow_rate_node.color_ramp.elements[i].position = pos
-            x = int( (shadow_rate_w / (32)) * i )
+            x = int((shadow_rate_w / (32)) * i)
             pixel_index = x * shadow_rate_img.channels
-            shadow_rate_node.color_ramp.elements[i].color = shadow_rate_img.pixels[pixel_index:pixel_index+4]
+            shadow_rate_node.color_ramp.elements[i].color = shadow_rate_img.pixels[pixel_index: pixel_index + 4]
         shadow_rate_node.color_ramp.interpolation = 'EASE'
 
         geometry_node = node_tree.nodes.new('ShaderNodeGeometry')
@@ -250,7 +250,7 @@ def decorate_material(mate, enable=True, me=None, mate_index=-1):
 
         rim_power_node = node_tree.nodes.new('ShaderNodeHueSaturation')
         rim_power_node.location = (1426.6332, -575.6142)
-        #rim_power_node.inputs[2].default_value = rimpower * 0.1
+        # rim_power_node.inputs[2].default_value = rimpower * 0.1
 
         rim_mix_node = node_tree.nodes.new('ShaderNodeMixRGB')
         rim_mix_node.location = (1724.7024, -451.9624)
@@ -340,9 +340,11 @@ def get_image_average_color_uv(img, me=None, mate_index=-1, sample_count=10):
         x, y = uvs[uv_index]
 
         x = math.modf(x)[0]
-        if x < 0.0: x += 1.0
+        if x < 0.0:
+            x += 1.0
         y = math.modf(y)[0]
-        if y < 0.0: y += 1.0
+        if y < 0.0:
+            y += 1.0
 
         x, y = int(x * img_width), int(y * img_height)
 
@@ -359,20 +361,33 @@ def get_image_average_color_uv(img, me=None, mate_index=-1, sample_count=10):
     return output_color
 
 
+def get_cm3d2_dir():
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\KISS\カスタムメイド3D2') as key:
+            return winreg.QueryValueEx(key, 'InstallPath')[0]
+    except:
+        return None
+
+
+def get_com3d2_dir():
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\KISS\カスタムオーダーメイド3D2') as key:
+            return winreg.QueryValueEx(key, 'InstallPath')[0]
+    except:
+        return None
+
+
 # CM3D2のインストールフォルダを取得＋α
 def default_cm3d2_dir(base_dir, file_name, new_ext):
     if not base_dir:
         if preferences().cm3d2_path:
             base_dir = os.path.join(preferences().cm3d2_path, "GameData", "*." + new_ext)
         else:
-            try:
-                import winreg
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\KISS\カスタムメイド3D2') as key:
-                    base_dir = winreg.QueryValueEx(key, 'InstallPath')[0]
-                    preferences().cm3d2_path = base_dir
-                    base_dir = os.path.join(base_dir, "GameData", "*." + new_ext)
-            except:
-                pass
+            base_dir = get_cm3d2_dir()
+            if base_dir:
+                preferences().cm3d2_path = base_dir
+                base_dir = os.path.join(base_dir, "GameData", "*." + new_ext)
     if file_name:
         base_dir = os.path.join(os.path.split(base_dir)[0], file_name)
     base_dir = os.path.splitext(base_dir)[0] + "." + new_ext
@@ -413,17 +428,21 @@ def get_default_tex_paths():
         target_dirs = []
         cm3d2_dir = prefs.cm3d2_path
         if not cm3d2_dir:
-            try:
-                import winreg
-                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\KISS\カスタムメイド3D2') as key:
-                    cm3d2_dir = winreg.QueryValueEx(key, 'InstallPath')[0]
-            except:
-                pass
+            cm3d2_dir = get_cm3d2_dir()
+
         if cm3d2_dir:
             target_dirs.append(os.path.join(cm3d2_dir, "GameData", "texture"))
             target_dirs.append(os.path.join(cm3d2_dir, "GameData", "texture2"))
             target_dirs.append(os.path.join(cm3d2_dir, "Sybaris", "GameData"))
             target_dirs.append(os.path.join(cm3d2_dir, "Mod"))
+
+        # com3d2_dir = prefs.com3d2_path
+        # if not com3d2_dir:
+        #     com3d2_dir = get_cm3d2_dir()
+        # if com3d2_dir:
+        #     target_dirs.append(os.path.join(com3d2_dir, "GameData", "parts"))
+        #     target_dirs.append(os.path.join(com3d2_dir, "GameData", "parts2"))
+        #     target_dirs.append(os.path.join(com3d2_dir, "MOD"))
 
         tex_dirs = [path for path in target_dirs if os.path.isdir(path)]
 

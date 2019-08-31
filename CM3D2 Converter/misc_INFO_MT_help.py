@@ -67,7 +67,7 @@ class INFO_MT_help_CM3D2_Converter_RSS(bpy.types.Menu):
 
                 text = "(" + date_str + ") " + title
 
-                update_diff = abs( (version_datetime - rss_datetime).total_seconds() )
+                update_diff = abs((version_datetime - rss_datetime).total_seconds())
 
                 output_data.append((text, icon, link, update_diff))
                 update_diffs.append(update_diff)
@@ -76,7 +76,8 @@ class INFO_MT_help_CM3D2_Converter_RSS(bpy.types.Menu):
             for text, icon, link, update_diff in output_data:
 
                 if update_diff == min_update_diff:
-                    text = "Now! " + text
+                    if update_diff == 0:
+                        text = "Now! " + text
                     icon = 'QUESTION'
 
                 self.layout.operator('wm.url_open', text=text, icon=icon).url = link
@@ -116,7 +117,7 @@ class CNV_OT_update_cm3d2_converter(bpy.types.Operator):
         for path in zip_file.namelist():
             if not os.path.basename(path):
                 continue
-            sub_dir = os.path.split( os.path.split(path)[0] )[1]
+            sub_dir = os.path.split(os.path.split(path)[0])[1]
             if sub_dir == "CM3D2 Converter":
                 file = open(os.path.join(addon_path, os.path.basename(path)), 'wb')
                 file.write(zip_file.read(path))

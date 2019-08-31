@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import bpy
 import re
 import struct

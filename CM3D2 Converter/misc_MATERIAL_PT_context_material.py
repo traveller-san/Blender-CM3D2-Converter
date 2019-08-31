@@ -226,24 +226,24 @@ class Material_PT_properries(bpy.types.Panel):
 
                             expand = node.get('CM3D2 Prop Expand', False)
                             if expand:
-                                row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_DOWN', text='', emboss=False).node_name = node.name
+                                row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_DOWN', text="", emboss=False).node_name = node.name
                                 menu_mateprop_tex(context, box, node)
                             else:
-                                row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_LEFT', text='', emboss=False).node_name = node.name
+                                row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_LEFT', text="", emboss=False).node_name = node.name
 
                     for node in col_list:
                         row = box.row(align=True)
                         sub_row = compat.layout_split(row, factor=1 / 3, align=True)
                         sub_row.label(text=node.label, icon='COLOR')
                         col = node.outputs[0]
-                        sub_row.prop(col, 'default_value', text='')
+                        sub_row.prop(col, 'default_value', text="")
 
                         expand = node.get('CM3D2 Prop Expand', False)
                         if expand:
-                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_DOWN', text='', emboss=False).node_name = node.name
+                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_DOWN', text="", emboss=False).node_name = node.name
                             menu_mateprop_col(context, box, node)
                         else:
-                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_LEFT', text='', emboss=False).node_name = node.name
+                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_LEFT', text="", emboss=False).node_name = node.name
 
                     for node in f_list:
                         row = box.row(align=True)
@@ -252,21 +252,24 @@ class Material_PT_properries(bpy.types.Panel):
                         sub_row.label(text=node.label, icon='ARROW_LEFTRIGHT')
 
                         f = node.outputs[0]
-                        sub_row.prop(f, 'default_value', icon='ARROW_LEFTRIGHT', text='値')
+                        sub_row.prop(f, 'default_value', icon='ARROW_LEFTRIGHT', text="値")
 
                         expand = node.get('CM3D2 Prop Expand', False)
                         if expand:
-                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_DOWN', text='', emboss=False).node_name = node.name
+                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_DOWN', text="", emboss=False).node_name = node.name
                             menu_mateprop_f(context, box, node)
                         else:
-                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_LEFT', text='', emboss=False).node_name = node.name
+                            row.operator(CNV_OT_material_prop_expand.bl_idname, icon='TRIA_LEFT', text="", emboss=False).node_name = node.name
 
+                    # if compat.IS_LEGACY:
+                    # 	box.operator('texture.sync_tex_color_ramps', icon='LINKED')
                 else:
                     row = box.row()
                     row.alignment = 'LEFT'
                     op = row.operator('wm.context_set_int', icon='RIGHTARROW', text="", emboss=False)
                     op.data_path, op.value, op.relative = 'material["CM3D2 Texture Expand"]', 1, False
                     row.label(text="マテリアルプロパティ", icon_value=common.kiss_icon())
+                    # op = row.operator('wm.context_set_int', icon='RIGHTARROW', text="", emboss=False)
 
             else:
                 if is_com_mode:
@@ -643,7 +646,7 @@ class CNV_OT_paste_material(bpy.types.Operator):
     bl_description = "クリップボード内のテキストからマテリアル情報を上書きします"
     bl_options = {'REGISTER', 'UNDO'}
 
-    is_decorate = bpy.props.BoolProperty(name="種類に合わせてマテリアルを装飾", default=True)
+    is_decorate = bpy.props.BoolProperty(name="種類に合わせてマテリアルを装飾", default=False)
     is_replace_cm3d2_tex = bpy.props.BoolProperty(name="テクスチャを探す", default=False, description="CM3D2本体のインストールフォルダからtexファイルを探して開きます")
     is_create = bpy.props.BoolProperty(name="マテリアルの新規作成", default=False)
     override_name = bpy.props.BoolProperty(name="マテリアル名を上書きする", default=False)
@@ -863,13 +866,13 @@ def menu_mateprop_tex(context, layout, node):
     split = compat.layout_split(box, factor=LAYOUT_FACTOR)
     split.label(text="プロパティ タイプ:")
     row = split.row()
-    row.label(text='テクスチャ', icon='TEXTURE')
+    row.label(text="テクスチャ", icon='TEXTURE')
 
     # check_row = row.row(align=True)
     # sub_row = check_row.row()
     # split = compat.layout_split(box, factor=LAYOUT_FACTOR)
     # split.label(text="設定値名:")
-    # split.prop(node, 'name', icon='SORTALPHA', text='')
+    # split.prop(node, 'name', icon='SORTALPHA', text="")
 
     img = node.image
     if img and img.source == 'FILE':
@@ -904,15 +907,15 @@ def menu_mateprop_tex(context, layout, node):
         split = compat.layout_split(sub_box, factor=LAYOUT_FACTOR, align=True)
         split.label(text="オフセット:")
         row = split.row(align=True)
-        row.prop(tex_map, 'translation', index=0, text='x')
-        row.prop(tex_map, 'translation', index=1, text='y')
+        row.prop(tex_map, 'translation', index=0, text="x")
+        row.prop(tex_map, 'translation', index=1, text="y")
         row.operator('texture.reset_offset', text="", icon='CANCEL').node_name = node.name
 
         split = compat.layout_split(sub_box, factor=LAYOUT_FACTOR, align=True)
         split.label(text="スケール:")
         row = split.row(align=True)
-        row.prop(tex_map, 'scale', index=0, text='x')
-        row.prop(tex_map, 'scale', index=1, text='y')
+        row.prop(tex_map, 'scale', index=0, text="x")
+        row.prop(tex_map, 'scale', index=1, text="y")
         row.operator('texture.reset_scale', text="", icon='CANCEL').node_name = node.name
 
         row = sub_box.row()
@@ -956,7 +959,7 @@ def menu_mateprop_col(context, layout, node):
     # sub_row = check_row.row()
     # split = compat.layout_split(box, factor=LAYOUT_FACTOR)
     # split.label(text="設定値名:")
-    # split.prop(node, 'name', icon='SORTALPHA', text='')
+    # split.prop(node, 'name', icon='SORTALPHA', text="")
 
     # sub_box = box.box()
     row = box.row(align=True)
@@ -1008,19 +1011,19 @@ def menu_mateprop_f(context, layout, node):
     # sub_row = check_row.row()
     # split = compat.layout_split(box, factor=LAYOUT_FACTOR)
     # split.label(text="設定値名:")
-    # split.prop(node, 'name', icon='SORTALPHA', text='')
+    # split.prop(node, 'name', icon='SORTALPHA', text="")
 
     # sub_box = layout.box()
     # row = sub_box.row(align=True)
     # disable_slider = prop_info.get('disableSlider')
     # output = node.outputs[0]
     # if disable_slider:
-    # 	row.label(output, 'default_value', icon='ARROW_LEFTRIGHT', text='値')
+    # 	row.label(output, 'default_value', icon='ARROW_LEFTRIGHT', text="値")
     # else:
-    # 	row.prop(output, 'default_value', icon='ARROW_LEFTRIGHT', text='値')
+    # 	row.prop(output, 'default_value', icon='ARROW_LEFTRIGHT', text="値")
 
     # コンボメニュー
-    # row.menu('TEXTURE_MT_context_texture_values_normal', icon='DOWNARROW_HLT', text='')
+    # row.menu('TEXTURE_MT_context_texture_values_normal', icon='DOWNARROW_HLT', text="")
 
     presets = prop_info.get('presets')
     if presets:

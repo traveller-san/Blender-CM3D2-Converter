@@ -12,12 +12,13 @@ LAYOUT_FACTOR = 0.3
 
 # メニュー等に項目追加
 def menu_func(self, context):
-
-
+    ob = context.active_object
+    if ob is None or compat.IS_LEGACY is False:
+        return
     try:
         tex_slot = context.texture_slot
         tex = context.texture
-        mate = context.active_object.active_material
+        mate = ob.active_material
         mate['shader1']
         mate['shader2']
     except:
@@ -26,9 +27,10 @@ def menu_func(self, context):
         return
 
     if tex_slot.use:
-        type = 'tex'
+        slot_type = 'tex'
     else:
-        type = 'col' if tex_slot.use_rgb_to_intensity else 'f'
+        slot_type = 'col' if tex_slot.use_rgb_to_intensity else 'f'
+
     base_name = common.remove_serial_number(tex.name)
 
     box = self.layout.box()
@@ -37,22 +39,24 @@ def menu_func(self, context):
     split.label(text="設定値タイプ:")
     row = split.row()
 
-    if type == 'tex':
-        row.label(text='テクスチャ', icon='TEXTURE')
-    elif type == 'col':
-        row.label(text='色', icon='COLOR')
-    elif type == 'f':
-        row.label(text='値', icon='ARROW_LEFTRIGHT')
+    if slot_type == 'tex':
+        row.label(text="テクスチャ", icon='TEXTURE')
+    elif slot_type == 'col':
+        row.label(text="色", icon='COLOR')
+    elif slot_type == 'f':
+        row.label(text="値", icon='ARROW_LEFTRIGHT')
 
     check_row = row.row(align=True)
+
     check_row.prop(tex_slot, 'use', text="")
     sub_row = check_row.row()
     sub_row.prop(tex_slot, 'use_rgb_to_intensity', text="")
     if tex_slot.use:
         sub_row.enabled = False
+
     box.prop(tex, 'name', icon='SORTALPHA', text="設定値名")
 
-    if type == "tex":
+    if slot_type == "tex":
         if tex.type == 'IMAGE':
             img = tex.image
             if img:
@@ -68,11 +72,11 @@ def menu_func(self, context):
                     sub_box.prop(img, '["cm3d2_path"]', text="テクスチャパス")
 
                     if base_name == "_ToonRamp":
-                        sub_box.menu('TEXTURE_PT_context_texture_ToonRamp', icon='NLA')
+                        sub_box.menu('TEXTURE_MT_context_texture_ToonRamp', icon='NLA')
                     elif base_name == "_ShadowRateToon":
-                        sub_box.menu('TEXTURE_PT_context_texture_ShadowRateToon', icon='NLA')
+                        sub_box.menu('TEXTURE_MT_context_texture_ShadowRateToon', icon='NLA')
                     elif base_name == "_OutlineToonRamp":
-                        sub_box.menu('TEXTURE_PT_context_texture_OutlineToonRamp', icon='NLA')
+                        sub_box.menu('TEXTURE_MT_context_texture_OutlineToonRamp', icon='NLA')
 
                     split = compat.layout_split(sub_box, factor=1 / 3, align=True)
                     split.label(text="オフセット:")
@@ -93,7 +97,7 @@ def menu_func(self, context):
                     else:
                         row.operator('image.replace_cm3d2_tex', icon='BORDERMOVE')
 
-    elif type == "col":
+    elif slot_type == "col":
         sub_box = box.box()
 
         # row = compat.layout_split(sub_box, factor=0.7, align=True)
@@ -104,127 +108,88 @@ def menu_func(self, context):
         row.operator('texture.set_color_value_old', text="", icon=compat.icon('MESH_CIRCLE')).color = [1, 1, 1] + [tex_slot.diffuse_color_factor]
 
         row = sub_box.row(align=True)
-        row.operator('texture.set_color_value', text="", icon='TRIA_LEFT').color = list(tex_slot.color) + [0]
+        row.operator('texture.set_color_value_old', text="", icon='TRIA_LEFT').color = list(tex_slot.color) + [0]
         row.prop(tex_slot, 'diffuse_color_factor', icon='IMAGE_RGB_ALPHA', text="色の透明度", slider=True)
-        row.operator('texture.set_color_value', text="", icon='TRIA_RIGHT').color = list(tex_slot.color) + [1]
+        row.operator('texture.set_color_value_old', text="", icon='TRIA_RIGHT').color = list(tex_slot.color) + [1]
 
-    elif type == "f":
+    elif slot_type == "f":
         sub_box = box.box()
         row = sub_box.row(align=True)
         row.prop(tex_slot, 'diffuse_color_factor', icon='ARROW_LEFTRIGHT', text="値")
 
         data_path = 'texture_slot.diffuse_color_factor'
         if base_name == '_Shininess':
-            row.menu('TEXTURE_PT_context_texture_values_normal', icon='DOWNARROW_HLT', text="")
+            row.menu('TEXTURE_MT_context_texture_values_normal', icon='DOWNARROW_HLT', text="")
 
             row = sub_box.row(align=True)
-            row.operator('texture.set_color_value', text="0.0", icon='MATCAP_10').color = list(tex_slot.color) + [0.0]
-            row.operator('texture.set_color_value', text="0.25").color = list(tex_slot.color) + [0.25]
-            row.operator('texture.set_color_value', text="0.5").color = list(tex_slot.color) + [0.5]
-            row.operator('texture.set_color_value', text="0.75").color = list(tex_slot.color) + [0.75]
-            row.operator('texture.set_color_value', text="1.0", icon='MATCAP_09').color = list(tex_slot.color) + [1.0]
+            row.operator('texture.set_color_value_old', text="0.0", icon='MESH_CIRCLE').color = list(tex_slot.color) + [0.0]
+            row.operator('texture.set_color_value_old', text="0.25").color = list(tex_slot.color) + [0.25]
+            row.operator('texture.set_color_value_old', text="0.5").color = list(tex_slot.color) + [0.5]
+            row.operator('texture.set_color_value_old', text="0.75").color = list(tex_slot.color) + [0.75]
+            row.operator('texture.set_color_value_old', text="1.0", icon=compat.icon('NODE_MATERIAL')).color = list(tex_slot.color) + [1.0]
 
         elif base_name == '_OutlineWidth':
-            row.menu('TEXTURE_PT_context_texture_values_OutlineWidth', icon='DOWNARROW_HLT', text="")
+            row.menu('TEXTURE_MT_context_texture_values_OutlineWidth', icon='DOWNARROW_HLT', text="")
 
             row = sub_box.row(align=True)
-            row.operator('texture.set_color_value', text="0.001", icon='MATSPHERE').color = list(tex_slot.color) + [0.001]
-            row.operator('texture.set_color_value', text="0.0015").color = list(tex_slot.color) + [0.0015]
-            row.operator('texture.set_color_value', text="0.002", icon='ANTIALIASED').color = list(tex_slot.color) + [0.002]
+            row.operator('texture.set_color_value_old', text="0.001", icon='MATSPHERE').color = list(tex_slot.color) + [0.001]
+            row.operator('texture.set_color_value_old', text="0.0015").color = list(tex_slot.color) + [0.0015]
+            row.operator('texture.set_color_value_old', text="0.002", icon='ANTIALIASED').color = list(tex_slot.color) + [0.002]
 
-            split = sub_box.split(percentage=0.3)
+            split = compat.layout_split(sub_box, factor=0.3)
             split.label(text="正確な値: ")
             split.label(text=str(tex_slot.diffuse_color_factor))
 
         elif base_name == '_RimPower':
-            row.menu('TEXTURE_PT_context_texture_values_RimPower', icon='DOWNARROW_HLT', text="")
+            row.menu('TEXTURE_MT_context_texture_values_RimPower', icon='DOWNARROW_HLT', text="")
 
             row = sub_box.row(align=True)
-            row.operator('texture.set_color_value', text="1", icon='BRUSH_TEXFILL').color = list(tex_slot.color) + [1]
-            row.operator('texture.set_color_value', text="10").color = list(tex_slot.color) + [10]
-            row.operator('texture.set_color_value', text="20").color = list(tex_slot.color) + [20]
-            row.operator('texture.set_color_value', text="30", icon='MATCAP_07').color = list(tex_slot.color) + [30]
+            row.operator('texture.set_color_value_old', text="1", icon='BRUSH_TEXFILL').color = list(tex_slot.color) + [1]
+            row.operator('texture.set_color_value_old', text="10").color = list(tex_slot.color) + [10]
+            row.operator('texture.set_color_value_old', text="20").color = list(tex_slot.color) + [20]
+            row.operator('texture.set_color_value_old', text="30", icon=compat.icon('SHADING_RENDERED')).color = list(tex_slot.color) + [30]
 
         elif base_name == '_RimShift':
-            row.menu('TEXTURE_PT_context_texture_values_normal', icon='DOWNARROW_HLT', text="")
+            row.menu('TEXTURE_MT_context_texture_values_normal', icon='DOWNARROW_HLT', text="")
 
             row = sub_box.row(align=True)
-            row.operator('texture.set_color_value', text="0.0", icon='FULLSCREEN_EXIT').color = list(tex_slot.color) + [0.0]
-            row.operator('texture.set_color_value', text="0.25").color = list(tex_slot.color) + [0.25]
-            row.operator('texture.set_color_value', text="0.5").color = list(tex_slot.color) + [0.5]
-            row.operator('texture.set_color_value', text="0.75").color = list(tex_slot.color) + [0.75]
-            row.operator('texture.set_color_value', text="1.0", icon='FULLSCREEN_ENTER').color = list(tex_slot.color) + [1.0]
+            row.operator('texture.set_color_value_old', text="0.0", icon='FULLSCREEN_EXIT').color = list(tex_slot.color) + [0.0]
+            row.operator('texture.set_color_value_old', text="0.25").color = list(tex_slot.color) + [0.25]
+            row.operator('texture.set_color_value_old', text="0.5").color = list(tex_slot.color) + [0.5]
+            row.operator('texture.set_color_value_old', text="0.75").color = list(tex_slot.color) + [0.75]
+            row.operator('texture.set_color_value_old', text="1.0", icon='FULLSCREEN_ENTER').color = list(tex_slot.color) + [1.0]
 
         elif base_name == '_ZTest':
-            row.menu('TEXTURE_PT_context_texture_values_ZTest', icon='DOWNARROW_HLT', text="")
+            row.menu('TEXTURE_MT_context_texture_values_ZTest', icon='DOWNARROW_HLT', text="")
             col = sub_box.column(align=True)
             row = col.row(align=True)
-            row.operator('texture.set_color_value', text="Disabled").color = list(tex_slot.color) + [0]
-            row.operator('texture.set_color_value', text="Never").color = list(tex_slot.color) + [1]
-            row.operator('texture.set_color_value', text="Less ").color = list(tex_slot.color) + [2]
-            row.operator('texture.set_color_value', text="Equal").color = list(tex_slot.color) + [3]
-            row.operator('texture.set_color_value', text="LessEqual").color = list(tex_slot.color) + [4]
+            row.operator('texture.set_color_value_old', text="Disabled").color = list(tex_slot.color) + [0]
+            row.operator('texture.set_color_value_old', text="Never").color = list(tex_slot.color) + [1]
+            row.operator('texture.set_color_value_old', text="Less ").color = list(tex_slot.color) + [2]
+            row.operator('texture.set_color_value_old', text="Equal").color = list(tex_slot.color) + [3]
+            row.operator('texture.set_color_value_old', text="LessEqual").color = list(tex_slot.color) + [4]
             row = col.row(align=True)
-            row.operator('texture.set_color_value', text="Greater").color = list(tex_slot.color) + [5]
-            row.operator('texture.set_color_value', text="NotEqual").color = list(tex_slot.color) + [6]
-            row.operator('texture.set_color_value', text="GreaterEqual").color = list(tex_slot.color) + [7]
-            row.operator('texture.set_color_value', text="Always").color = list(tex_slot.color) + [8]
+            row.operator('texture.set_color_value_old', text="Greater").color = list(tex_slot.color) + [5]
+            row.operator('texture.set_color_value_old', text="NotEqual").color = list(tex_slot.color) + [6]
+            row.operator('texture.set_color_value_old', text="GreaterEqual").color = list(tex_slot.color) + [7]
+            row.operator('texture.set_color_value_old', text="Always").color = list(tex_slot.color) + [8]
 
         elif base_name == '_ZTest2':
             row = sub_box.row(align=True)
-            row.operator('texture.set_color_value', text="0").color = list(tex_slot.color) + [0]
-            row.operator('texture.set_color_value', text="1").color = list(tex_slot.color) + [1]
+            row.operator('texture.set_color_value_old', text="0").color = list(tex_slot.color) + [0]
+            row.operator('texture.set_color_value_old', text="1").color = list(tex_slot.color) + [1]
 
         elif base_name == '_ZTest2Alpha':
-            row.menu('TEXTURE_PT_context_texture_values_ZTest2Alpha', icon='DOWNARROW_HLT', text="")
+            row.menu('TEXTURE_MT_context_texture_values_ZTest2Alpha', icon='DOWNARROW_HLT', text="")
             row = sub_box.row(align=True)
-            row.operator('texture.set_color_value', text="0").color = list(tex_slot.color) + [0]
-            row.operator('texture.set_color_value', text="0.8").color = list(tex_slot.color) + [0.8]
-            row.operator('texture.set_color_value', text="1").color = list(tex_slot.color) + [1]
+            row.operator('texture.set_color_value_old', text="0").color = list(tex_slot.color) + [0]
+            row.operator('texture.set_color_value_old', text="0.8").color = list(tex_slot.color) + [0.8]
+            row.operator('texture.set_color_value_old', text="1").color = list(tex_slot.color) + [1]
 
     box.operator('texture.sync_tex_color_ramps', icon='LINKED')
 
-    description = ""
-    if base_name == '_MainTex':
-        description = ["面の色を決定するテクスチャを指定。", "普段テスクチャと呼んでいるものは基本コレです。", "テクスチャパスは適当でも動きます。", "しかし、テクスチャ名はきちんと決めましょう。"]
-    elif base_name == '_ToonRamp':
-        description = ["暗い部分に乗算するグラデーション画像を指定します。"]
-    elif base_name == '_ShadowTex':
-        description = ["陰部分の面の色を決定するテクスチャを指定。", "「_ShadowRateToon」で範囲を指定します。"]
-    elif base_name == '_ShadowRateToon':
-        description = ["「_ShadowTex」を有効にする部分を指定します。", "黒色で有効、白色で無効。"]
-    elif base_name == '_OutlineTex':
-        description = ["アウトラインを表現するためのテクスチャを指定。(未確認)"]
-    elif base_name == '_OutlineToonRamp':
-        description = ["_OutlineTexの暗い部分に乗算するグラデーション画像を指定します。(未確認)"]
-    elif base_name == '_Color':
-        description = ["面の色を指定。", "白色で無効。基本的に白色で良いでしょう。"]
-    elif base_name == '_ShadowColor':
-        description = ["影の色を指定。白色で無効。", "別の物体に遮られてできた「影」の色です。"]
-    elif base_name == '_RimColor':
-        description = ["リムライトの色を指定。", "リムライトとは縁にできる光の反射のことです。"]
-    elif base_name == '_OutlineColor':
-        description = ["輪郭線の色を指定。", "黒にするか、テクスチャの明度を", "落としたものを指定するとより良いでしょう。"]
-    elif base_name == '_Shininess':
-        description = ["スペキュラーの強さを指定。0.0～1.0で指定。", "スペキュラーとは面の角度と光源の角度によって", "できるハイライトのことです。", "金属、皮、ガラスなどに使うと良いでしょう。"]
-    elif base_name == '_OutlineWidth':
-        description = ["輪郭線の太さを指定。", "0.002は太め、0.001は細め。"]
-    elif base_name == '_RimPower':
-        description = ["リムライトの強さを指定。", "この値は10以上なことも多いです。", "0に近い値だと正常に表示されません。"]
-    elif base_name == '_RimShift':
-        description = ["リムライトの幅を指定。", "0.0～1.0で指定。0.5でもかなり強い。"]
-    elif base_name == '_RenderTex':
-        description = ["モザイクシェーダーにある設定値。", "特に設定の必要なし。"]
-    elif base_name == '_FloatValue1':
-        description = ["モザイクの粗さ"]
-    elif base_name == '_Cutoff':
-        description = ["アルファのカットオフ値。", "アルファ値がこの値より大きい部分だけがレンダリングされる"]
-    elif base_name == '_Cutout':
-        description = ["アルファのカットオフ値。", "アルファ値がこの値より大きい部分だけがレンダリングされる"]
-    elif base_name == '_ZTest':
-        description = ["デプステストの実行方法を指定する。"]
-
-    if description != "":
+    description = cm3d2_data.PROP_DESC.get(base_name, '')
+    if description != '':
         sub_box = box.box()
         col = sub_box.column(align=True)
         col.label(text="解説", icon='TEXT')
@@ -596,10 +561,12 @@ class CNV_OT_auto_set_color_value_old(bpy.types.Operator):
         ob = context.active_object
         if not ob or ob.type != 'MESH':
             return False
-        me = ob.data
+
         mate = ob.active_material
         if not mate:
             return False
+
+        me = ob.data
         for slot in mate.texture_slots:
             if not slot:
                 continue
