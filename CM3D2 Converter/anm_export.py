@@ -206,8 +206,12 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                 frame = 0.0
             else:
                 frame = (self.frame_end - self.frame_start) / (self.key_frame_count - 1) * key_frame_index + self.frame_start
-            context.scene.frame_set(int(frame), frame - int(frame))
-            context.scene.update()
+            context.scene.frame_set(frame=int(frame), subframe=frame - int(frame))
+            if compat.IS_LEGACY:
+                context.scene.update()
+            else:
+                layer = context.view_layer
+                layer.update()
 
             time = frame / fps * (1.0 / self.time_scale)
 
@@ -219,9 +223,9 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
                 pose_bone = pose.bones[bone.name]
 
-                pose_mat = ob.convert_space(pose_bone, pose_bone.matrix, 'POSE', 'WORLD')
+                pose_mat = ob.convert_space(pose_bone=pose_bone, matrix=pose_bone.matrix, from_space='POSE', to_space='WORLD')
                 if bone_parents[bone.name]:
-                    parent_mat = ob.convert_space(pose.bones[bone_parents[bone.name].name], pose.bones[bone_parents[bone.name].name].matrix, 'POSE', 'WORLD')
+                    parent_mat = ob.convert_space(pose_bone=pose.bones[bone_parents[bone.name].name], matrix=pose.bones[bone_parents[bone.name].name].matrix, from_space='POSE', to_space='WORLD')
                     pose_mat = compat.mul(parent_mat.inverted(), pose_mat)
 
                 loc = pose_mat.to_translation() * self.scale

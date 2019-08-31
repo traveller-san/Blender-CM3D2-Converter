@@ -271,9 +271,9 @@ def register():
     else:
         bpy.types.TOPBAR_MT_file_import.append(model_import.menu_func)
         bpy.types.TOPBAR_MT_file_export.append(model_export.menu_func)
-        # TODO 修正＆動作確認後にコメント解除 (anm)
-        # bpy.types.TOPBAR_MT_file_import.append(anm_import.menu_func)
-        # bpy.types.TOPBAR_MT_file_export.append(anm_export.menu_func)
+        # anm
+        bpy.types.TOPBAR_MT_file_import.append(anm_import.menu_func)
+        bpy.types.TOPBAR_MT_file_export.append(anm_export.menu_func)
 
         bpy.types.VIEW3D_MT_add.append(misc_INFO_MT_add.menu_func)
         bpy.types.VIEW3D_MT_curve_add.append(misc_INFO_MT_curve_add.menu_func)
@@ -358,8 +358,8 @@ def unregister():
     else:
         bpy.types.TOPBAR_MT_file_import.remove(model_import.menu_func)
         bpy.types.TOPBAR_MT_file_export.remove(model_export.menu_func)
-        # bpy.types.TOPBAR_MT_file_import.remove(anm_import.menu_func)
-        # bpy.types.TOPBAR_MT_file_export.remove(anm_export.menu_func)
+        bpy.types.TOPBAR_MT_file_import.remove(anm_import.menu_func)
+        bpy.types.TOPBAR_MT_file_export.remove(anm_export.menu_func)
 
         bpy.types.VIEW3D_MT_add.remove(misc_INFO_MT_add.menu_func)
         bpy.types.VIEW3D_MT_curve_add.remove(misc_INFO_MT_curve_add.menu_func)

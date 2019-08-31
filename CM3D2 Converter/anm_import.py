@@ -59,10 +59,10 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
         box = self.layout.box()
         box.label(text="読み込むアニメーション情報")
         column = box.column(align=True)
-        column.prop(self, 'is_location', icon='MAN_TRANS')
-        column.prop(self, 'is_rotation', icon='MAN_ROT')
+        column.prop(self, 'is_location', icon=compat.icon('CON_LOCLIKE'))
+        column.prop(self, 'is_rotation', icon=compat.icon('CON_ROTLIKE'))
         row = column.row()
-        row.prop(self, 'is_scale', icon='MAN_SCALE')
+        row.prop(self, 'is_scale', icon=compat.icon('CON_SIZELIKE'))
         row.enabled = False
 
     def execute(self, context):
