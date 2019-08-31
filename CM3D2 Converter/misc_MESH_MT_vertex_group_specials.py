@@ -246,103 +246,104 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
         compat.set_select(target_ob, False)
         compat.set_select(source_original_ob, False)
         compat.set_active(context, source_ob)
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.reveal()
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
-        bpy.ops.object.mode_set(mode='OBJECT')
+        try:
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.reveal()
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
+            bpy.ops.object.mode_set(mode='OBJECT')
 
-        if self.is_first_remove_all:
-            for vg in target_ob.vertex_groups[:]:
-                if not vg.lock_weight:
-                    target_ob.vertex_groups.remove(vg)
+            if self.is_first_remove_all:
+                for vg in target_ob.vertex_groups[:]:
+                    if not vg.lock_weight:
+                        target_ob.vertex_groups.remove(vg)
 
-        kd = mathutils.kdtree.KDTree(len(source_me.vertices))
-        for vert in source_me.vertices:
-            co = compat.mul(source_ob.matrix_world, vert.co)
-            kd.insert(co, vert.index)
-        kd.balance()
+            kd = mathutils.kdtree.KDTree(len(source_me.vertices))
+            for vert in source_me.vertices:
+                co = compat.mul(source_ob.matrix_world, vert.co)
+                kd.insert(co, vert.index)
+            kd.balance()
 
-        context.window_manager.progress_begin(0, len(target_me.vertices))
-        progress_reduce = len(target_me.vertices) // 200 + 1
-        near_vert_data = []
-        near_vert_multi_total = []
-        near_vert_multi_total_append = near_vert_multi_total.append
-        for vert in target_me.vertices:
-            near_vert_data.append([])
-            near_vert_data_append = near_vert_data[-1].append
+            context.window_manager.progress_begin(0, len(target_me.vertices))
+            progress_reduce = len(target_me.vertices) // 200 + 1
+            near_vert_data = []
+            near_vert_multi_total = []
+            near_vert_multi_total_append = near_vert_multi_total.append
+            for vert in target_me.vertices:
+                near_vert_data.append([])
+                near_vert_data_append = near_vert_data[-1].append
 
-            target_co = compat.mul(target_ob.matrix_world, vert.co)
+                target_co = compat.mul(target_ob.matrix_world, vert.co)
 
-            mini_co, mini_index, mini_dist = kd.find(target_co)
-            radius = mini_dist * self.extend_range
-            diff_radius = radius - mini_dist
+                mini_co, mini_index, mini_dist = kd.find(target_co)
+                radius = mini_dist * self.extend_range
+                diff_radius = radius - mini_dist
 
-            multi_total = 0.0
-            for co, index, dist in kd.find_range(target_co, radius):
-                if 0 < diff_radius:
-                    multi = (diff_radius - (dist - mini_dist)) / diff_radius
+                multi_total = 0.0
+                for co, index, dist in kd.find_range(target_co, radius):
+                    if 0 < diff_radius:
+                        multi = (diff_radius - (dist - mini_dist)) / diff_radius
+                    else:
+                        multi = 1.0
+                    near_vert_data_append((index, multi))
+                    multi_total += multi
+                near_vert_multi_total_append(multi_total)
+
+                if vert.index % progress_reduce == 0:
+                    context.window_manager.progress_update(vert.index)
+            context.window_manager.progress_end()
+
+            context.window_manager.progress_begin(0, len(source_ob.vertex_groups))
+            for source_vertex_group in source_ob.vertex_groups:
+
+                if source_vertex_group.name in target_ob.vertex_groups:
+                    target_vertex_group = target_ob.vertex_groups[source_vertex_group.name]
                 else:
-                    multi = 1.0
-                near_vert_data_append((index, multi))
-                multi_total += multi
-            near_vert_multi_total_append(multi_total)
+                    target_vertex_group = target_ob.vertex_groups.new(name=source_vertex_group.name)
 
-            if vert.index % progress_reduce == 0:
-                context.window_manager.progress_update(vert.index)
-        context.window_manager.progress_end()
+                is_waighted = False
 
-        context.window_manager.progress_begin(0, len(source_ob.vertex_groups))
-        for source_vertex_group in source_ob.vertex_groups:
+                source_weights = []
+                source_weights_append = source_weights.append
+                for source_vert in source_me.vertices:
+                    for elem in source_vert.groups:
+                        if elem.group == source_vertex_group.index:
+                            source_weights_append(elem.weight)
+                            break
+                    else:
+                        source_weights_append(0.0)
 
-            if source_vertex_group.name in target_ob.vertex_groups:
-                target_vertex_group = target_ob.vertex_groups[source_vertex_group.name]
-            else:
-                target_vertex_group = target_ob.vertex_groups.new(name=source_vertex_group.name)
+                for target_vert in target_me.vertices:
 
-            is_waighted = False
+                    if 0 < near_vert_multi_total[target_vert.index]:
 
-            source_weights = []
-            source_weights_append = source_weights.append
-            for source_vert in source_me.vertices:
-                for elem in source_vert.groups:
-                    if elem.group == source_vertex_group.index:
-                        source_weights_append(elem.weight)
-                        break
-                else:
-                    source_weights_append(0.0)
+                        total_weight = [source_weights[i] * m for i, m in near_vert_data[target_vert.index]]
+                        total_weight = sum(total_weight)
 
-            for target_vert in target_me.vertices:
+                        average_weight = total_weight / near_vert_multi_total[target_vert.index]
+                    else:
+                        average_weight = 0.0
 
-                if 0 < near_vert_multi_total[target_vert.index]:
+                    if 0.000001 < average_weight:
+                        target_vertex_group.add([target_vert.index], average_weight, 'REPLACE')
+                        is_waighted = True
+                    else:
+                        if not self.is_first_remove_all:
+                            target_vertex_group.remove([target_vert.index])
 
-                    total_weight = [source_weights[i] * m for i, m in near_vert_data[target_vert.index]]
-                    total_weight = sum(total_weight)
+                context.window_manager.progress_update(source_vertex_group.index)
 
-                    average_weight = total_weight / near_vert_multi_total[target_vert.index]
-                else:
-                    average_weight = 0.0
+                if not is_waighted and self.is_remove_empty:
+                    target_ob.vertex_groups.remove(target_vertex_group)
+            context.window_manager.progress_end()
 
-                if 0.000001 < average_weight:
-                    target_vertex_group.add([target_vert.index], average_weight, 'REPLACE')
-                    is_waighted = True
-                else:
-                    if not self.is_first_remove_all:
-                        target_vertex_group.remove([target_vert.index])
-
-            context.window_manager.progress_update(source_vertex_group.index)
-
-            if not is_waighted and self.is_remove_empty:
-                target_ob.vertex_groups.remove(target_vertex_group)
-        context.window_manager.progress_end()
-
-        target_ob.vertex_groups.active_index = 0
-
-        common.remove_data([source_ob, source_me])
-        compat.set_select(source_original_ob, True)
-        compat.set_select(target_ob, True)
-        compat.set_active(context, target_ob)
-        bpy.ops.object.mode_set(mode=pre_mode)
+            target_ob.vertex_groups.active_index = 0
+        finally:
+            common.remove_data([source_ob, source_me])
+            compat.set_select(source_original_ob, True)
+            compat.set_select(target_ob, True)
+            compat.set_active(context, target_ob)
+            bpy.ops.object.mode_set(mode=pre_mode)
 
         diff_time = time.time() - start_time
         self.report(type={'INFO'}, message="%.2f Seconds" % diff_time)

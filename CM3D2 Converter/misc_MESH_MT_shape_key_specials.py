@@ -68,84 +68,85 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
         source_ob = source_original_ob.copy()
         source_me = source_original_ob.data.copy()
         source_ob.data = source_me
+        try:
+            compat.link(context.scene, source_ob)
+            compat.set_active(context, source_ob)
+            compat.set_select(source_original_ob, False)
+            compat.set_select(target_ob, False)
 
-        compat.link(context.scene, source_ob)
-        compat.set_active(context, source_ob)
-        compat.set_select(source_original_ob, False)
-        compat.set_select(target_ob, False)
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.reveal()
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
+            source_ob.active_shape_key_index = 0
+            bpy.ops.object.mode_set(mode='OBJECT')
 
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.reveal()
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
-        source_ob.active_shape_key_index = 0
-        bpy.ops.object.mode_set(mode='OBJECT')
+            if self.is_first_remove_all:
+                try:
+                    target_ob.active_shape_key_index = 1
+                    bpy.ops.object.shape_key_remove(all=True)
+                except:
+                    pass
 
-        if self.is_first_remove_all:
-            try:
-                target_ob.active_shape_key_index = 1
-                bpy.ops.object.shape_key_remove(all=True)
-            except:
-                pass
+            kd = mathutils.kdtree.KDTree(len(source_me.vertices))
+            for vert in source_me.vertices:
+                co = compat.mul(source_ob.matrix_world, vert.co)
+                kd.insert(co, vert.index)
+            kd.balance()
 
-        kd = mathutils.kdtree.KDTree(len(source_me.vertices))
-        for vert in source_me.vertices:
-            co = compat.mul(source_ob.matrix_world, vert.co)
-            kd.insert(co, vert.index)
-        kd.balance()
+            near_vert_indexs = [kd.find(compat.mul(target_ob.matrix_world, v.co))[1] for v in target_me.vertices]
 
-        near_vert_indexs = [kd.find(compat.mul(target_ob.matrix_world, v.co))[1] for v in target_me.vertices]
+            is_shapeds = {}
+            relative_keys = set()
+            context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
+            context.window_manager.progress_update(0)
+            for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
 
-        is_shapeds = {}
-        relative_keys = set()
-        context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
-        context.window_manager.progress_update(0)
-        for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
-
-            if target_me.shape_keys:
-                target_shape_key = target_me.shape_keys.key_blocks.get(source_shape_key.name)
-                if target_shape_key is None:
+                if target_me.shape_keys:
+                    target_shape_key = target_me.shape_keys.key_blocks.get(source_shape_key.name)
+                    if target_shape_key is None:
+                        target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
+                else:
                     target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
-            else:
-                target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
 
-            relative_key_name = source_shape_key.relative_key.name
-            relative_keys.add(relative_key_name)
-            is_shapeds[source_shape_key.name] = False
+                relative_key_name = source_shape_key.relative_key.name
+                relative_keys.add(relative_key_name)
+                is_shapeds[source_shape_key.name] = False
 
-            rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
-            if rel_key:
-                target_shape_key.relative_key = rel_key
+                rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
+                if rel_key:
+                    target_shape_key.relative_key = rel_key
 
-            mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
-            source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
+                mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
+                source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
 
-            for target_vert in target_me.vertices:
+                for target_vert in target_me.vertices:
 
-                near_vert_index = near_vert_indexs[target_vert.index]
-                near_shape_co = source_shape_keys[near_vert_index]
+                    near_vert_index = near_vert_indexs[target_vert.index]
+                    near_shape_co = source_shape_keys[near_vert_index]
 
-                target_shape_key.data[target_vert.index].co = target_me.vertices[target_vert.index].co + near_shape_co
-                if 0.01 < near_shape_co.length:
-                    is_shapeds[source_shape_key.name] = True
+                    target_shape_key.data[target_vert.index].co = target_me.vertices[target_vert.index].co + near_shape_co
+                    if 0.01 < near_shape_co.length:
+                        is_shapeds[source_shape_key.name] = True
 
-            context.window_manager.progress_update(source_shape_key_index)
-        context.window_manager.progress_end()
+                context.window_manager.progress_update(source_shape_key_index)
+            context.window_manager.progress_end()
 
-        if self.is_remove_empty:
-            for source_shape_key_name, is_shaped in is_shapeds.items():
-                if source_shape_key_name not in relative_keys and not is_shaped:
-                    target_shape_key = target_me.shape_keys.key_blocks[source_shape_key_name]
-                    target_ob.shape_key_remove(target_shape_key)
+            if self.is_remove_empty:
+                for source_shape_key_name, is_shaped in is_shapeds.items():
+                    if source_shape_key_name not in relative_keys and not is_shaped:
+                        target_shape_key = target_me.shape_keys.key_blocks[source_shape_key_name]
+                        target_ob.shape_key_remove(target_shape_key)
 
-        target_ob.active_shape_key_index = 0
+            target_ob.active_shape_key_index = 0
 
-        common.remove_data([source_ob, source_me])
+        finally:
+            common.remove_data([source_ob, source_me])
 
-        compat.set_select(source_original_ob, True)
-        compat.set_select(target_ob, True)
-        compat.set_active(context, target_ob)
-        bpy.ops.object.mode_set(mode=pre_mode)
+            compat.set_select(source_original_ob, True)
+            compat.set_select(target_ob, True)
+            compat.set_active(context, target_ob)
+            bpy.ops.object.mode_set(mode=pre_mode)
 
         diff_time = time.time() - start_time
         self.report(type={'INFO'}, message="%.2f Seconds" % diff_time)
@@ -202,120 +203,122 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
         source_me = source_original_ob.data.copy()
         source_ob.data = source_me
 
-        compat.link(context.scene, source_ob)
-        compat.set_active(context, source_ob)
-        compat.set_select(source_original_ob, False)
-        compat.set_select(target_ob, False)
+        try:
+            compat.link(context.scene, source_ob)
+            compat.set_active(context, source_ob)
+            compat.set_select(source_original_ob, False)
+            compat.set_select(target_ob, False)
 
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.reveal()
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
-        source_ob.active_shape_key_index = 0
-        bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.reveal()
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
+            source_ob.active_shape_key_index = 0
+            bpy.ops.object.mode_set(mode='OBJECT')
 
-        if self.is_first_remove_all:
-            try:
-                target_ob.active_shape_key_index = 1
-                bpy.ops.object.shape_key_remove(all=True)
-            except:
-                pass
+            if self.is_first_remove_all:
+                try:
+                    target_ob.active_shape_key_index = 1
+                    bpy.ops.object.shape_key_remove(all=True)
+                except:
+                    pass
 
-        kd = mathutils.kdtree.KDTree(len(source_me.vertices))
-        for vert in source_me.vertices:
-            co = compat.mul(source_ob.matrix_world, vert.co)
-            kd.insert(co, vert.index)
-        kd.balance()
+            kd = mathutils.kdtree.KDTree(len(source_me.vertices))
+            for vert in source_me.vertices:
+                co = compat.mul(source_ob.matrix_world, vert.co)
+                kd.insert(co, vert.index)
+            kd.balance()
 
-        context.window_manager.progress_begin(0, len(target_me.vertices))
-        progress_reduce = len(target_me.vertices) // 200 + 1
-        near_vert_data = []
-        near_vert_multi_total = []
-        near_vert_multi_total_append = near_vert_multi_total.append
-        for vert in target_me.vertices:
-            new_vert_data = []
-            near_vert_data.append(new_vert_data)
-            near_vert_data_append = new_vert_data.append
+            context.window_manager.progress_begin(0, len(target_me.vertices))
+            progress_reduce = len(target_me.vertices) // 200 + 1
+            near_vert_data = []
+            near_vert_multi_total = []
+            near_vert_multi_total_append = near_vert_multi_total.append
+            for vert in target_me.vertices:
+                new_vert_data = []
+                near_vert_data.append(new_vert_data)
+                near_vert_data_append = new_vert_data.append
 
-            target_co = compat.mul(target_ob.matrix_world, vert.co)
-            mini_co, mini_index, mini_dist = kd.find(target_co)
-            radius = mini_dist * self.extend_range
-            diff_radius = radius - mini_dist
+                target_co = compat.mul(target_ob.matrix_world, vert.co)
+                mini_co, mini_index, mini_dist = kd.find(target_co)
+                radius = mini_dist * self.extend_range
+                diff_radius = radius - mini_dist
 
-            multi_total = 0.0
-            for co, index, dist in kd.find_range(target_co, radius):
-                if 0 < diff_radius:
-                    multi = (diff_radius - (dist - mini_dist)) / diff_radius
-                else:
-                    multi = 1.0
-                near_vert_data_append((index, multi))
-                multi_total += multi
-            near_vert_multi_total_append(multi_total)
+                multi_total = 0.0
+                for co, index, dist in kd.find_range(target_co, radius):
+                    if 0 < diff_radius:
+                        multi = (diff_radius - (dist - mini_dist)) / diff_radius
+                    else:
+                        multi = 1.0
+                    near_vert_data_append((index, multi))
+                    multi_total += multi
+                near_vert_multi_total_append(multi_total)
 
-            if vert.index % progress_reduce == 0:
-                context.window_manager.progress_update(vert.index)
-        context.window_manager.progress_end()
+                if vert.index % progress_reduce == 0:
+                    context.window_manager.progress_update(vert.index)
+            context.window_manager.progress_end()
 
-        is_shapeds = {}
-        relative_keys = set()
-        context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
-        context.window_manager.progress_update(0)
-        for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
+            is_shapeds = {}
+            relative_keys = set()
+            context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
+            context.window_manager.progress_update(0)
+            for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
 
-            if target_me.shape_keys:
-                if source_shape_key.name in target_me.shape_keys.key_blocks:
-                    target_shape_key = target_me.shape_keys.key_blocks[source_shape_key.name]
+                if target_me.shape_keys:
+                    if source_shape_key.name in target_me.shape_keys.key_blocks:
+                        target_shape_key = target_me.shape_keys.key_blocks[source_shape_key.name]
+                    else:
+                        target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
                 else:
                     target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
-            else:
-                target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
 
-            relative_key_name = source_shape_key.relative_key.name
-            relative_keys.add(relative_key_name)
-            is_shapeds[source_shape_key.name] = False
+                relative_key_name = source_shape_key.relative_key.name
+                relative_keys.add(relative_key_name)
+                is_shapeds[source_shape_key.name] = False
 
-            rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
-            if rel_key:
-                target_shape_key.relative_key = rel_key
+                rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
+                if rel_key:
+                    target_shape_key.relative_key = rel_key
 
-            mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
-            source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
+                mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
+                source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
 
-            for target_vert in target_me.vertices:
+                for target_vert in target_me.vertices:
 
-                if 0 < near_vert_multi_total[target_vert.index]:
+                    if 0 < near_vert_multi_total[target_vert.index]:
 
-                    total_diff_co = mathutils.Vector((0, 0, 0))
+                        total_diff_co = mathutils.Vector((0, 0, 0))
 
-                    for near_index, near_multi in near_vert_data[target_vert.index]:
-                        total_diff_co += source_shape_keys[near_index] * near_multi
+                        for near_index, near_multi in near_vert_data[target_vert.index]:
+                            total_diff_co += source_shape_keys[near_index] * near_multi
 
-                    average_diff_co = total_diff_co / near_vert_multi_total[target_vert.index]
+                        average_diff_co = total_diff_co / near_vert_multi_total[target_vert.index]
 
-                else:
-                    average_diff_co = mathutils.Vector((0, 0, 0))
+                    else:
+                        average_diff_co = mathutils.Vector((0, 0, 0))
 
-                target_shape_key.data[target_vert.index].co = target_me.vertices[target_vert.index].co + average_diff_co
-                if 0.01 < average_diff_co.length:
-                    is_shapeds[source_shape_key.name] = True
+                    target_shape_key.data[target_vert.index].co = target_me.vertices[target_vert.index].co + average_diff_co
+                    if 0.01 < average_diff_co.length:
+                        is_shapeds[source_shape_key.name] = True
 
-            context.window_manager.progress_update(source_shape_key_index)
-        context.window_manager.progress_end()
+                context.window_manager.progress_update(source_shape_key_index)
+            context.window_manager.progress_end()
 
-        if self.is_remove_empty:
-            for source_shape_key_name, is_shaped in is_shapeds.items():
-                if source_shape_key_name not in relative_keys and not is_shaped:
-                    target_shape_key = target_me.shape_keys.key_blocks[source_shape_key_name]
-                    target_ob.shape_key_remove(target_shape_key)
+            if self.is_remove_empty:
+                for source_shape_key_name, is_shaped in is_shapeds.items():
+                    if source_shape_key_name not in relative_keys and not is_shaped:
+                        target_shape_key = target_me.shape_keys.key_blocks[source_shape_key_name]
+                        target_ob.shape_key_remove(target_shape_key)
 
-        target_ob.active_shape_key_index = 0
+            target_ob.active_shape_key_index = 0
 
-        common.remove_data([source_ob, source_me])
+        finally:
+            common.remove_data([source_ob, source_me])
 
-        compat.set_select(source_original_ob, True)
-        compat.set_select(target_ob, True)
-        compat.set_active(context, target_ob)
-        bpy.ops.object.mode_set(mode=pre_mode)
+            compat.set_select(source_original_ob, True)
+            compat.set_select(target_ob, True)
+            compat.set_active(context, target_ob)
+            bpy.ops.object.mode_set(mode=pre_mode)
 
         diff_time = time.time() - start_time
         self.report(type={'INFO'}, message="%.2f Seconds" % diff_time)
