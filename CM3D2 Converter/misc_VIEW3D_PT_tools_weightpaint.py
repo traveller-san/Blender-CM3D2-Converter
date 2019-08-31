@@ -123,7 +123,8 @@ class CNV_OT_selected_mesh_vertex_group_blur(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='OBJECT')
 
         selection_kd = mathutils.kdtree.KDTree(len(selection_me.vertices))
-        [selection_kd.insert(v.co, v.index) for v in selection_me.vertices]
+        for v in selection_me.vertices:
+            selection_kd.insert(v.co, v.index)
         selection_kd.balance()
         common.remove_data([selection_ob, selection_me])
 

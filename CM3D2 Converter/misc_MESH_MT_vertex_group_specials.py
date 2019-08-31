@@ -89,7 +89,8 @@ class CNV_OT_quick_transfer_vertex_group(bpy.types.Operator):
         compat.set_select(target_ob, False)
         compat.set_active(context, original_source_obs[0])
         bpy.ops.object.duplicate(linked=False, mode='TRANSLATION')
-        bpy.ops.object.join()
+        if len(context.selected_object) > 1:
+            bpy.ops.object.join()
         join_source_ob = context.selected_objects[0]
         join_source_me = join_source_ob.data
 
@@ -243,6 +244,8 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
         compat.link(context.scene, source_ob)
 
         compat.set_select(target_ob, False)
+        compat.set_select(source_original_ob, False)
+        compat.set_active(context, source_ob)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
@@ -269,8 +272,8 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
             near_vert_data.append([])
             near_vert_data_append = near_vert_data[-1].append
 
-
             target_co = compat.mul(target_ob.matrix_world, vert.co)
+
             mini_co, mini_index, mini_dist = kd.find(target_co)
             radius = mini_dist * self.extend_range
             diff_radius = radius - mini_dist

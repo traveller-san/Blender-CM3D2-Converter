@@ -409,9 +409,9 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 'weights': list(map(itemgetter(1), vgs)),
             })
         if 1 <= is_over_one:
-            self.report(type={'INFO'}, message="ウェイトの合計が1.0を超えている頂点が見つかりました" % is_over_one)
+            self.report(type={'INFO'}, message="ウェイトの合計が1.0を超えている頂点が見つかりました。超過している頂点の数:%d" % is_over_one)
         if 1 <= is_under_one:
-            self.report(type={'INFO'}, message="ウェイトの合計が1.0未満の頂点が見つかりました" % is_under_one)
+            self.report(type={'INFO'}, message="ウェイトの合計が1.0未満の頂点が見つかりました。不足している頂点の数:%d" % is_under_one)
         context.window_manager.progress_update(4)
 
         try:

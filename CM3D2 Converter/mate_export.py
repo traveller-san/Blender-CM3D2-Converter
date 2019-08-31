@@ -105,11 +105,9 @@ class CNV_OT_export_cm3d2_mate_text(bpy.types.Operator):
             data = edit_text.as_string()
             if len(data) < 32:
                 return False
+            if "\ntex\n" in data or "\ncol\n" in data or "\nf\n" in data:
+                return True
 
-            match_strs = ['\ntex\n', '\ncol\n', '\nf\n', '\n\t_MainTex\n', '\n\t_Color\n', '\n\t_Shininess\n']
-            for s in match_strs:
-                if s in data:
-                    return True
         return False
 
     def invoke(self, context, event):

@@ -61,8 +61,7 @@ def menu_func(self, context):
             if 'CM3D2 Texture Expand' not in mate:
                 mate['CM3D2 Texture Expand'] = True
             box = self.layout.box()
-            if mate['CM3D2 Texture Expand']:
-                
+            if mate.get('CM3D2 Texture Expand', False):
                 row = box.row()
                 row.alignment = 'LEFT'
                 op = row.operator('wm.context_set_int', icon='DOWNARROW_HLT', text="", emboss=False)

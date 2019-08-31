@@ -71,6 +71,9 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
 
         compat.link(context.scene, source_ob)
         compat.set_active(context, source_ob)
+        compat.set_select(source_original_ob, False)
+        compat.set_select(target_ob, False)
+
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
@@ -94,28 +97,25 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
         near_vert_indexs = [kd.find(compat.mul(target_ob.matrix_world, v.co))[1] for v in target_me.vertices]
 
         is_shapeds = {}
-        relative_keys = []
+        relative_keys = set()
         context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
         context.window_manager.progress_update(0)
         for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
 
             if target_me.shape_keys:
-                if source_shape_key.name in target_me.shape_keys.key_blocks:
-                    target_shape_key = target_me.shape_keys.key_blocks[source_shape_key.name]
-                else:
+                target_shape_key = target_me.shape_keys.key_blocks.get(source_shape_key.name)
+                if target_shape_key is None:
                     target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
             else:
                 target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
 
             relative_key_name = source_shape_key.relative_key.name
-            if relative_key_name not in relative_keys:
-                relative_keys.append(relative_key_name)
+            relative_keys.add(relative_key_name)
             is_shapeds[source_shape_key.name] = False
 
-            try:
-                target_shape_key.relative_key = target_me.shape_keys.key_blocks[relative_key_name]
-            except:
-                pass
+            rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
+            if rel_key:
+                target_shape_key.relative_key = rel_key
 
             mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
             source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
@@ -233,8 +233,9 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
         near_vert_multi_total = []
         near_vert_multi_total_append = near_vert_multi_total.append
         for vert in target_me.vertices:
-            near_vert_data.append([])
-            near_vert_data_append = near_vert_data[-1].append
+            new_vert_data = []
+            near_vert_data.append(new_vert_data)
+            near_vert_data_append = new_vert_data.append
 
             target_co = compat.mul(target_ob.matrix_world, vert.co)
             mini_co, mini_index, mini_dist = kd.find(target_co)
@@ -256,7 +257,7 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
         context.window_manager.progress_end()
 
         is_shapeds = {}
-        relative_keys = []
+        relative_keys = set()
         context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
         context.window_manager.progress_update(0)
         for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
@@ -270,14 +271,12 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
                 target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
 
             relative_key_name = source_shape_key.relative_key.name
-            if relative_key_name not in relative_keys:
-                relative_keys.append(relative_key_name)
+            relative_keys.add(relative_key_name)
             is_shapeds[source_shape_key.name] = False
 
-            try:
-                target_shape_key.relative_key = target_me.shape_keys.key_blocks[relative_key_name]
-            except:
-                pass
+            rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
+            if rel_key:
+                target_shape_key.relative_key = rel_key
 
             mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
             source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]

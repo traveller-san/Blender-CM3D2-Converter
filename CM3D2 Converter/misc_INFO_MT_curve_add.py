@@ -27,7 +27,7 @@ class CNV_OT_hair_bunch_add(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return True
+        return context.mode == 'OBJECT'
 
     def invoke(self, context, event):
 
@@ -40,10 +40,10 @@ class CNV_OT_hair_bunch_add(bpy.types.Operator):
             row.label(text="ZXキー:高さ変更")
         bpy.types.VIEW3D_HT_header.draw = header_draw
 
-        if context.active_object:
-            if context.active_object.mode != 'OBJECT':
-                self.report(type={'ERROR'}, message="オブジェクトモードで実行してください")
-                return {'CANCELLED'}
+        # if context.active_object:
+        # 	if context.active_object.mode != 'OBJECT':
+        # 		self.report(type={'ERROR'}, message="オブジェクトモードで実行してください")
+        # 		return {'CANCELLED'}
 
         cursor_loc = compat.get_cursor_loc(context)
         self.end_location = bpy_extras.view3d_utils.region_2d_to_location_3d(context.region, context.region_data, (event.mouse_region_x, event.mouse_region_y), cursor_loc)

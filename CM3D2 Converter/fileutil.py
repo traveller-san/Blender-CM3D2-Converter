@@ -3,9 +3,9 @@ import os
 import shutil
 import tempfile
 
+
 class TemporaryFileWriter(io.BufferedWriter):
     """ファイルをアトミックに更新します。"""
-
     backup_filepath = None
     __filepath = None
     __temppath = None
