@@ -88,7 +88,7 @@ class CNV_OT_render_cm3d2_icon(bpy.types.Operator):
         row.prop(self, 'mode', icon=compat.icon('SHADING_TEXTURE'), expand=True)
         self.layout.separator()
 
-        row = self.layout.split(percentage=1/3, align=True)
+        row = compat.layout_split(self.layout, factor=1 / 3, align=True)
         row.prop(self, 'use_freestyle', icon='LINE_DATA', text="輪郭線")
         row.prop(self, 'line_thickness', icon='ARROW_LEFTRIGHT', slider=True, text="")
         row.prop(self, 'line_color', icon='COLOR', text="")
@@ -101,7 +101,7 @@ class CNV_OT_render_cm3d2_icon(bpy.types.Operator):
         self.layout.prop(self, 'zoom_multi', icon='VIEWZOOM', slider=True)
         self.layout.separator()
 
-        row = self.layout.split(percentage=0.333333333, align=True)
+        row = compat.layout_split(self.layout, factor=0.333333333, align=True)
         row.prop(self, 'use_background_color', icon='WORLD')
         row.prop(self, 'background_color', icon='COLOR', text="")
         row.prop(self, 'is_round_background', icon=compat.icon('CLIPUV_DEHLT'))
@@ -115,7 +115,6 @@ class CNV_OT_render_cm3d2_icon(bpy.types.Operator):
         context.scene['render_cm3d2_icon_background_color_layer_image'] = self.layer_image
 
         override = context.copy()
-
         obs = context.selected_objects
 
         material_restores, pre_mate_settings = None, None

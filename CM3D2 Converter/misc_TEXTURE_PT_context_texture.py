@@ -7,6 +7,8 @@ from . import common
 from . import compat
 from . import cm3d2_data
 
+LAYOUT_FACTOR = 0.3
+
 
 # メニュー等に項目追加
 def menu_func(self, context):
@@ -31,7 +33,7 @@ def menu_func(self, context):
 
     box = self.layout.box()
     box.label(text="CM3D2用", icon_value=common.kiss_icon())
-    split = box.split(percentage=0.333333333333333333)
+    split = compat.layout_split(box, factor=1 / 3)
     split.label(text="設定値タイプ:")
     row = split.row()
 
@@ -58,7 +60,7 @@ def menu_func(self, context):
                     common.setup_image_name(img)
 
                     sub_box = box.box()
-                    row = sub_box.split(percentage=0.333333333333, align=True)
+                    row = compat.layout_split(sub_box, factor=1 / 3, align=True)
                     row.label(text="テクスチャ名:")
                     row.template_ID(tex, 'image', open='image.open')
                     if 'cm3d2_path' not in img:
@@ -72,13 +74,13 @@ def menu_func(self, context):
                     elif base_name == "_OutlineToonRamp":
                         sub_box.menu('TEXTURE_PT_context_texture_OutlineToonRamp', icon='NLA')
 
-                    split = sub_box.split(percentage=0.333333333333, align=True)
+                    split = compat.layout_split(sub_box, factor=1 / 3, align=True)
                     split.label(text="オフセット:")
                     row = split.row(align=True)
                     row.prop(tex_slot, 'color', index=0, text="")
                     row.prop(tex_slot, 'color', index=1, text="")
 
-                    split = sub_box.split(percentage=0.333333333333, align=True)
+                    split = compat.layout_split(sub_box, factor=1 / 3, align=True)
                     split.label(text="拡大/縮小:")
                     row = split.row(align=True)
                     row.prop(tex_slot, 'color', index=2, text="")
@@ -94,7 +96,7 @@ def menu_func(self, context):
     elif type == "col":
         sub_box = box.box()
 
-        #row = sub_box.split(percentage=0.7, align=True)
+        # row = compat.layout_split(sub_box, factor=0.7, align=True)
         row = sub_box.row(align=True)
         row.prop(tex_slot, 'color', text="")
         row.operator('texture.auto_set_color_value', icon='AUTO', text="自動設定")

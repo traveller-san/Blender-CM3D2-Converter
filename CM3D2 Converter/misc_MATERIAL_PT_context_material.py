@@ -11,8 +11,11 @@ from . import compat
 from . import cm3d2_data
 
 
-# メニュー等に項目追加
+# メニュー等に項目追加 (旧版用)
 def menu_func(self, context):
+    if compat.IS_LEGACY is False:
+        return
+
     # ModelVersionでCOM3D2のmodelか判断
     model_ver = bpy.context.active_object.get("ModelVersion")
     is_com_mode = model_ver and model_ver >= 2000
@@ -32,15 +35,14 @@ def menu_func(self, context):
     else:
         if 'shader1' in mate and 'shader2' in mate:
             box = self.layout.box()
-            #row = box.split(percentage=0.3)
-            row = box.split(percentage=0.5)
+            # row = box.split(percentage=0.3)
+            row = compat.layout_split(box, factor=0.5)
             row.label(text="CM3D2用", icon_value=common.kiss_icon())
             sub_row = row.row(align=True)
             sub_row.operator('material.export_cm3d2_mate', icon='FILE_FOLDER', text="mateへ")
             sub_row.operator('material.copy_material', icon='COPYDOWN', text="コピー")
-            sub_row.operator('material.paste_material2', icon='PASTEDOWN', text="貼り付け")
-            
-            type_name = "不明"
+            sub_row.operator('material.paste_material', icon='PASTEDOWN', text="貼付け")
+
             icon = 'ERROR'
             shader1 = mate['shader1']
             shader_prop = cm3d2_data.Handler.get_shader_prop(shader1)
@@ -174,6 +176,7 @@ class Material_PT_properries(bpy.types.Panel):
                 box.prop(mate, 'name', icon='SORTALPHA', text="マテリアル名")
                 box.prop(mate, '["shader1"]', icon='MATERIAL', text="シェーダー1")
                 box.prop(mate, '["shader2"]', icon=compat.icon('SHADING_RENDERED'), text="シェーダー2")
+
                 # For LEGACY
                 # box.operator('material.decorate_material', icon=compat.icon('SHADING_TEXTURE'))
                 if 'CM3D2 Texture Expand' not in mate:
