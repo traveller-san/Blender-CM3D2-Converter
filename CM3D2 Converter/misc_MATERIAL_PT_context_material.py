@@ -292,7 +292,8 @@ class new_mate_opr():
     def draw(self, context):
         self.layout.separator()
         self.layout.prop(self, 'shader_type', icon='MATERIAL')
-        self.layout.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
+        if compat.IS_LEGACY:
+            self.layout.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
         self.layout.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
 
     def execute(self, context):
@@ -610,10 +611,12 @@ class new_mate_opr():
                 pass
                 # val.type = 'VALUE'
                 # mate.node_tree.links.new(bsdf.inputs['xxx'], val.outputs['Value'])
-        if compat.IS_LEGACY is False:
+
+        if compat.IS_LEGACY:
+            common.decorate_material(mate, self.is_decorate, me, ob.active_material_index)
+        else:
             cm3d2_data.align_nodes(mate)
 
-        common.decorate_material(mate, self.is_decorate, me, ob.active_material_index)
         return {'FINISHED'}
 
 
@@ -675,7 +678,8 @@ class CNV_OT_paste_material(bpy.types.Operator):
 
     def draw(self, context):
         self.layout.prop(self, 'override_name')
-        self.layout.prop(self, 'is_decorate')
+        if compat.IS_LEGACY:
+            self.layout.prop(self, 'is_decorate')
         self.layout.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
 
     def execute(self, context):
