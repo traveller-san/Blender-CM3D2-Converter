@@ -3,14 +3,14 @@
 # アドオン情報
 bl_info = {
     "name": "CM3D2 Converter",
-    "author": "@saidenka_cm3d2",
-    "version": (2019, 6, 15, 18, 46, 00),
+    "author": "@saidenka_cm3d2, @trzrz",
+    "version": (2019, 8, 31, 15, 00, 00),
     "blender": (2, 80, 0),
     "location": "ファイル > インポート/エクスポート > CM3D2 Model (.model)",
-    "description": "カスタムメイド3D2の専用ファイルのインポート/エクスポートを行います",
+    "description": "カスタムメイド3D2/カスタムオーダーメイド3D2専用ファイルのインポート/エクスポートを行います",
     "warning": "",
-    "wiki_url": "https://github.com/CM3Duser/Blender-CM3D2-Converter",
-    "tracker_url": "https://twitter.com/saidenka_cm3d2",
+    "wiki_url": "",
+    "tracker_url": "https://github.com/trzr/Blender-CM3D2-Converter",
     "category": "Import-Export"
 }
 
