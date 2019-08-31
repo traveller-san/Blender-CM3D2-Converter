@@ -43,9 +43,9 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
     def invoke(self, context, event):
         prefs = common.preferences()
         if prefs.anm_default_path:
-            self.filepath = common.default_cm3d2_dir(prefs.anm_default_path, "", "anm")
+            self.filepath = common.default_cm3d2_dir(prefs.anm_default_path, None, "anm")
         else:
-            self.filepath = common.default_cm3d2_dir(prefs.anm_import_path, "", "anm")
+            self.filepath = common.default_cm3d2_dir(prefs.anm_import_path, None, "anm")
         self.scale = prefs.scale
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}

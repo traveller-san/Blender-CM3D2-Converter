@@ -22,10 +22,11 @@ class CNV_OT_import_cm3d2_tex(bpy.types.Operator):
     mode = bpy.props.EnumProperty(items=items, name="展開方法", default='PNG')
 
     def invoke(self, context, event):
-        if common.preferences().tex_default_path:
-            self.filepath = common.default_cm3d2_dir(common.preferences().tex_default_path, "", "tex")
+        prefs = common.preferences()
+        if prefs.tex_default_path:
+            self.filepath = common.default_cm3d2_dir(prefs.tex_default_path, None, "tex")
         else:
-            self.filepath = common.default_cm3d2_dir(common.preferences().tex_import_path, "", "tex")
+            self.filepath = common.default_cm3d2_dir(prefs.tex_import_path, None, "tex")
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 

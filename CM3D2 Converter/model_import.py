@@ -52,9 +52,9 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
     def invoke(self, context, event):
         prefs = common.preferences()
         if prefs.model_default_path:
-            self.filepath = common.default_cm3d2_dir(prefs.model_default_path, "", "model")
+            self.filepath = common.default_cm3d2_dir(prefs.model_default_path, None, "model")
         else:
-            self.filepath = common.default_cm3d2_dir(prefs.model_import_path, "", "model")
+            self.filepath = common.default_cm3d2_dir(prefs.model_import_path, None, "model")
         self.scale = prefs.scale
         self.is_replace_cm3d2_tex = prefs.is_replace_cm3d2_tex
         self.is_convert_bone_weight_names = prefs.is_convert_bone_weight_names

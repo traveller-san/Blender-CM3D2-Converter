@@ -54,9 +54,9 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
     def invoke(self, context, event):
         prefs = common.preferences()
         if prefs.anm_default_path:
-            self.filepath = common.default_cm3d2_dir(prefs.anm_default_path, "", "anm")
+            self.filepath = common.default_cm3d2_dir(prefs.anm_default_path, None, "anm")
         else:
-            self.filepath = common.default_cm3d2_dir(prefs.anm_export_path, "", "anm")
+            self.filepath = common.default_cm3d2_dir(prefs.anm_export_path, None, "anm")
         self.frame_start = context.scene.frame_start
         self.frame_end = context.scene.frame_end
         self.scale = 1.0 / prefs.scale

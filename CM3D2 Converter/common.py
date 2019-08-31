@@ -386,13 +386,21 @@ def get_com3d2_dir():
 # CM3D2のインストールフォルダを取得＋α
 def default_cm3d2_dir(base_dir, file_name, new_ext):
     if not base_dir:
-        if preferences().cm3d2_path:
-            base_dir = os.path.join(preferences().cm3d2_path, "GameData", "*." + new_ext)
+        prefs = preferences()
+        if prefs.cm3d2_path:
+            base_dir = os.path.join(prefs.cm3d2_path, "GameData", "*." + new_ext)
         else:
             base_dir = get_cm3d2_dir()
+            if base_dir is None:
+                base_dir = get_com3d2_dir()
+
             if base_dir:
-                preferences().cm3d2_path = base_dir
+                prefs.cm3d2_path = base_dir
                 base_dir = os.path.join(base_dir, "GameData", "*." + new_ext)
+
+        if base_dir is None:
+            base_dir = "."
+
     if file_name:
         base_dir = os.path.join(os.path.split(base_dir)[0], file_name)
     base_dir = os.path.splitext(base_dir)[0] + "." + new_ext

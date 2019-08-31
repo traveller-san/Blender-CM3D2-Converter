@@ -32,9 +32,9 @@ class CNV_OT_import_cm3d2_mate(bpy.types.Operator):
     def invoke(self, context, event):
         prefs = common.preferences()
         if prefs.mate_default_path:
-            self.filepath = common.default_cm3d2_dir(prefs.mate_default_path, "", "mate")
+            self.filepath = common.default_cm3d2_dir(prefs.mate_default_path, None, "mate")
         else:
-            self.filepath = common.default_cm3d2_dir(prefs.mate_import_path, "", "mate")
+            self.filepath = common.default_cm3d2_dir(prefs.mate_import_path, None, "mate")
         self.is_replace_cm3d2_tex = prefs.is_replace_cm3d2_tex
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
@@ -97,9 +97,9 @@ class CNV_OT_import_cm3d2_mate_text(bpy.types.Operator):
     def invoke(self, context, event):
         prefs = common.preferences()
         if prefs.mate_default_path:
-            self.filepath = common.default_cm3d2_dir(prefs.mate_default_path, "", "mate")
+            self.filepath = common.default_cm3d2_dir(prefs.mate_default_path, None, "mate")
         else:
-            self.filepath = common.default_cm3d2_dir(prefs.mate_import_path, "", "mate")
+            self.filepath = common.default_cm3d2_dir(prefs.mate_import_path, None, "mate")
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
