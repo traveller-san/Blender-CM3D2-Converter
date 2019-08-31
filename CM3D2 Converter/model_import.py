@@ -420,7 +420,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
             # 頂点グループ作成
             for data in local_bone_data:
-                ob.vertex_groups.new(common.decode_bone_name(data['name'], self.is_convert_bone_weight_names))
+                ob.vertex_groups.new(name=common.decode_bone_name(data['name'], self.is_convert_bone_weight_names))
             context.window_manager.progress_update(3.333)
             for vert_index, data in enumerate(vertex_data):
                 for weight in data['weights']:

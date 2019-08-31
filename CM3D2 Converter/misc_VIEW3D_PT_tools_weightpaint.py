@@ -115,7 +115,11 @@ class CNV_OT_selected_mesh_vertex_group_blur(bpy.types.Operator):
             bpy.ops.mesh.delete(type='FACE')
         bpy.ops.mesh.select_all(action='SELECT')
         if 1 <= self.selection_blur_accuracy:
-            bpy.ops.mesh.subdivide(number_cuts=self.selection_blur_accuracy, smoothness=0, quadtri=False, quadcorner='INNERVERT', fractal=0, fractal_along_normal=0, seed=0)
+            # quadtriはデフォルトでFalseのため、省略(2.8では代わりにngon=Trueが追加)
+            bpy.ops.mesh.subdivide(
+                number_cuts=self.selection_blur_accuracy,
+                smoothness=0, quadcorner='INNERVERT',
+                fractal=0, fractal_along_normal=0, seed=0)
         bpy.ops.object.mode_set(mode='OBJECT')
 
         selection_kd = mathutils.kdtree.KDTree(len(selection_me.vertices))
@@ -346,7 +350,7 @@ class CNV_OT_selected_mesh_vertex_group_calculation(bpy.types.Operator):
             bpy.ops.mesh.delete(type='FACE')
         bpy.ops.mesh.select_all(action='SELECT')
         if 1 <= self.selection_blur_accuracy:
-            bpy.ops.mesh.subdivide(number_cuts=self.selection_blur_accuracy, smoothness=0, quadtri=False, quadcorner='INNERVERT', fractal=0, fractal_along_normal=0, seed=0)
+            bpy.ops.mesh.subdivide(number_cuts=self.selection_blur_accuracy, smoothness=0, quadcorner='INNERVERT', fractal=0, fractal_along_normal=0, seed=0)
         bpy.ops.object.mode_set(mode='OBJECT')
 
         selection_kd = mathutils.kdtree.KDTree(len(selection_me.vertices))

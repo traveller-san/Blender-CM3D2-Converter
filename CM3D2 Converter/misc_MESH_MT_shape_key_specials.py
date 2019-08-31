@@ -74,7 +74,7 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadtri=False, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
+        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
         source_ob.active_shape_key_index = 0
         bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -210,7 +210,7 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadtri=False, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
+        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
         source_ob.active_shape_key_index = 0
         bpy.ops.object.mode_set(mode='OBJECT')
 

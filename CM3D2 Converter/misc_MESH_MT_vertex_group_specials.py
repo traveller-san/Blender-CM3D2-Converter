@@ -246,7 +246,7 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadtri=False, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
+        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
         bpy.ops.object.mode_set(mode='OBJECT')
 
         if self.is_first_remove_all:
@@ -295,7 +295,7 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
             if source_vertex_group.name in target_ob.vertex_groups:
                 target_vertex_group = target_ob.vertex_groups[source_vertex_group.name]
             else:
-                target_vertex_group = target_ob.vertex_groups.new(source_vertex_group.name)
+                target_vertex_group = target_ob.vertex_groups.new(name=source_vertex_group.name)
 
             is_waighted = False
 
@@ -389,7 +389,8 @@ class CNV_OT_quick_blur_vertex_group(bpy.types.Operator):
         target_me.use_paint_mask_vertex = True
 
         bpy.ops.paint.vert_select_all(action='SELECT')
-        bpy.ops.object.vertex_group_smooth(group_select_mode=self.target, factor=self.strength, repeat=self.count, expand=self.size, source='ALL')
+        # source='ALL'は2.8で削除された
+        bpy.ops.object.vertex_group_smooth(group_select_mode=self.target, factor=self.strength, repeat=self.count, expand=self.size)
 
         target_me.use_paint_mask_vertex = pre_use_paint_mask_vertex
 
