@@ -877,14 +877,25 @@ class hide_render_restore:
                 ob.hide_render = False
 
         self.hide_rendered_objects = []
-        for ob in bpy.data.objects:
-            for layer_index, is_used in enumerate(bpy.context.scene.layers):
-                if not is_used:
-                    continue
-                if ob.layers[layer_index] and is_used and ob.name not in self.render_object_names and not ob.hide_render:
-                    self.hide_rendered_objects.append(ob)
-                    ob.hide_render = True
-                    break
+        if compat.IS_LEGACY:
+            for ob in bpy.data.objects:
+                for layer_index, is_used in enumerate(bpy.context.scene.layers):
+                    if not is_used:
+                        continue
+                    if ob.layers[layer_index] and is_used and ob.name not in self.render_object_names and not ob.hide_render:
+                        self.hide_rendered_objects.append(ob)
+                        ob.hide_render = True
+                        break
+        else:
+            clct_children = bpy.context.scene.collection.children
+            for ob in bpy.data.objects:
+                if ob.name not in self.render_object_names and not ob.hide_render:
+                    # ble-2.8ではlayerではなく、collectionからのリンクで判断
+                    for clct in bpy.context.window.view_layer.layer_collection.children:
+                        if clct.exclude is False and ob.name in clct_children[clct.name].objects.keys():
+                            self.hide_rendered_objects.append(ob)
+                            ob.hide_render = True
+                            break
 
     def restore(self):
         for ob in self.rendered_objects:
