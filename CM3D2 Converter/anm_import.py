@@ -33,21 +33,20 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
     is_rotation = bpy.props.BoolProperty(name="回転", default=True)
     is_scale = bpy.props.BoolProperty(name="拡縮", default=False)
 
-
     @classmethod
     def poll(cls, context):
         ob = context.active_object
-        if ob:
-            if ob.type == 'ARMATURE':
-                return True
+        if ob and ob.type == 'ARMATURE':
+            return True
         return False
 
     def invoke(self, context, event):
-        if common.preferences().anm_default_path:
-            self.filepath = common.default_cm3d2_dir(common.preferences().anm_default_path, "", "anm")
+        prefs = common.preferences()
+        if prefs.anm_default_path:
+            self.filepath = common.default_cm3d2_dir(prefs.anm_default_path, "", "anm")
         else:
-            self.filepath = common.default_cm3d2_dir(common.preferences().anm_import_path, "", "anm")
-        self.scale = common.preferences().scale
+            self.filepath = common.default_cm3d2_dir(prefs.anm_import_path, "", "anm")
+        self.scale = prefs.scale
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
@@ -91,7 +90,7 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
 
             base_bone_name = path.split('/')[-1]
             if base_bone_name not in anm_data:
-                anm_data[base_bone_name] = {'path':path}
+                anm_data[base_bone_name] = {'path': path}
                 anm_data[base_bone_name]['channels'] = {}
 
             for channel_index in range(9**9):
@@ -103,9 +102,9 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
                 channel_data_count = struct.unpack('<i', file.read(4))[0]
                 for channel_data_index in range(channel_data_count):
                     frame = struct.unpack('<f', file.read(4))[0]
-                    data = struct.unpack('<3f', file.read(4*3))
+                    data = struct.unpack('<3f', file.read(4 * 3))
 
-                    anm_data[base_bone_name]['channels'][channel_id_str].append({'frame':frame, 'f0':data[0], 'f1':data[1], 'f2':data[2]})
+                    anm_data[base_bone_name]['channels'][channel_id_str].append({'frame': frame, 'f0': data[0], 'f1': data[1], 'f2': data[2]})
 
             if channel_id == 0:
                 break
@@ -128,9 +127,12 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
         for bone_name, bone_data in anm_data.items():
 
             if self.ignore_automatic_bone:
-                if re.match(r"Kata_[RL]", bone_name): continue
-                if re.match(r"Uppertwist1_[RL]", bone_name): continue
-                if re.match(r"momoniku_[RL]", bone_name): continue
+                if re.match(r"Kata_[RL]", bone_name):
+                    continue
+                if re.match(r"Uppertwist1_[RL]", bone_name):
+                    continue
+                if re.match(r"momoniku_[RL]", bone_name):
+                    continue
 
             if bone_name not in pose.bones:
                 bone_name = common.decode_bone_name(bone_name)

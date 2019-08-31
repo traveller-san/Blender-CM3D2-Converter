@@ -148,9 +148,7 @@ class Material_PT_properries(bpy.types.Panel):
             row = col.row(align=True)
             row.operator('material.import_cm3d2_mate', icon='FILE_FOLDER', text="mateから")
             opr = row.operator('material.paste_material', icon='PASTEDOWN', text="クリップボードから")
-            opr.is_decorate = True
-            opr.is_create = True
-            opr.use_dialog = False
+            opr.is_decorate, opr.is_create, opr.use_dialog = True, True, False
 
         else:
             if 'shader1' in mate and 'shader2' in mate:
