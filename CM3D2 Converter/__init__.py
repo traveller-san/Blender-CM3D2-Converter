@@ -172,22 +172,23 @@ class AddonPreferences(bpy.types.AddonPreferences):
         box = self.layout.box()
         box.label(text="modelファイル", icon='MESH_ICOSPHERE')
         row = box.row()
-        row.prop(self, 'scale', icon='MAN_SCALE')
+        row.prop(self, 'scale', icon=compat.icon('ARROW_LEFTRIGHT'))
         row.prop(self, 'is_convert_bone_weight_names', icon='BLENDER')
-        box.prop(self, 'model_default_path', icon='FILESEL', text="ファイル選択時の初期フォルダ")
+        brws_icon = compat.icon('FILEBROWSER')
+        box.prop(self, 'model_default_path', icon=brws_icon, text="ファイル選択時の初期フォルダ")
 
         box = self.layout.box()
         box.label(text="anmファイル", icon='POSE_HLT')
-        box.prop(self, 'anm_default_path', icon='FILESEL', text="ファイル選択時の初期フォルダ")
+        box.prop(self, 'anm_default_path', icon=brws_icon, text="ファイル選択時の初期フォルダ")
 
         box = self.layout.box()
         box.label(text="texファイル", icon='FILE_IMAGE')
-        box.prop(self, 'tex_default_path', icon='FILESEL', text="ファイル選択時の初期フォルダ")
+        box.prop(self, 'tex_default_path', icon=brws_icon, text="ファイル選択時の初期フォルダ")
 
         box = self.layout.box()
         box.label(text="mateファイル", icon='MATERIAL')
         box.prop(self, 'mate_unread_same_value', icon='DISCLOSURE_TRI_DOWN')
-        box.prop(self, 'mate_default_path', icon='FILESEL', text="ファイル選択時の初期フォルダ")
+        box.prop(self, 'mate_default_path', icon=brws_icon, text="ファイル選択時の初期フォルダ")
 
         box = self.layout.box()
         box.label(text="texファイル検索", icon='BORDERMOVE')

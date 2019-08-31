@@ -221,7 +221,7 @@ class CNV_OT_precision_transfer_vertex_group(bpy.types.Operator):
     def draw(self, context):
         self.layout.prop(self, 'is_first_remove_all', icon='ERROR')
         self.layout.prop(self, 'subdivide_number', icon='LATTICE_DATA')
-        self.layout.prop(self, 'extend_range', icon='META_EMPTY')
+        self.layout.prop(self, 'extend_range', icon='PROP_ON')
         self.layout.prop(self, 'is_remove_empty', icon='X')
 
     def execute(self, context):
@@ -433,10 +433,10 @@ class CNV_OT_blur_vertex_group(bpy.types.Operator):
 
     def draw(self, context):
         self.layout.prop(self, 'target', icon='VIEWZOOM')
-        self.layout.prop(self, 'radius', icon='META_EMPTY')
+        self.layout.prop(self, 'radius', icon='PROP_ON')
         self.layout.prop(self, 'strength', icon='ARROW_LEFTRIGHT')
         self.layout.prop(self, 'effect', icon='BRUSH_BLUR')
-        self.layout.prop(self, 'is_normalize', icon='ALIGN')
+        self.layout.prop(self, 'is_normalize', icon='GROUP')
 
     def execute(self, context):
         ob = context.active_object
@@ -593,7 +593,7 @@ class CNV_OT_multiply_vertex_group(bpy.types.Operator):
     def draw(self, context):
         self.layout.prop(self, 'target', icon='VIEWZOOM')
         self.layout.prop(self, 'value', icon='ARROW_LEFTRIGHT')
-        self.layout.prop(self, 'is_normalize', icon='ALIGN')
+        self.layout.prop(self, 'is_normalize', icon='GROUP')
 
     def execute(self, context):
         ob = context.active_object

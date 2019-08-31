@@ -99,8 +99,8 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         column = sub_box.column(align=True)
         column.prop(self, 'is_remove_alone_bone', icon='UNLINKED')
         column.prop(self, 'is_remove_ik_bone', icon='CONSTRAINT_BONE')
-        column.prop(self, 'is_remove_serial_number_bone', icon='DOTSDOWN')
-        column.prop(self, 'is_remove_japanese_bone', icon='MATCAP_13')
+        column.prop(self, 'is_remove_serial_number_bone', icon='SEQUENCE')
+        column.prop(self, 'is_remove_japanese_bone', icon=compat.icon('HOLDOUT_ON'))
 
     def execute(self, context):
         common.preferences().anm_export_path = self.filepath

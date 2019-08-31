@@ -149,7 +149,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         row.prop(self, 'is_backup', icon='FILE_BACKUP')
         if not common.preferences().backup_ext:
             row.enabled = False
-        self.layout.prop(self, 'is_arrange_name', icon='SAVE_AS')
+        self.layout.prop(self, 'is_arrange_name', icon='FILE_TICK')
         box = self.layout.box()
         box.prop(self, 'version', icon='LINENUMBERS_ON')
         box.prop(self, 'model_name', icon='SORTALPHA')

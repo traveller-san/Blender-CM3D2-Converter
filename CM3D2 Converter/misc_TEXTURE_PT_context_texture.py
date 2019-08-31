@@ -628,7 +628,7 @@ class CNV_OT_auto_set_color_value_old(bpy.types.Operator):
     def draw(self, context):
         self.layout.prop(self, 'is_all', icon='ACTION')
         row = self.layout.row()
-        row.label(text="", icon='SMOOTH')
+        row.label(text="", icon=compat.icon('SHADING_RENDERED'))
         row.prop(self, 'saturation_multi')
         row = self.layout.row()
         row.label(text="", icon='SOLID')

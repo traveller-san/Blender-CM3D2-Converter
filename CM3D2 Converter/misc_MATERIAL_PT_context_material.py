@@ -52,11 +52,10 @@ def menu_func(self, context):
             row.label(text=type_name, icon=icon)
             box.prop(mate, 'name', icon='SORTALPHA', text="マテリアル名")
             box.prop(mate, '["shader1"]', icon='MATERIAL', text="シェーダー1")
-            box.prop(mate, '["shader2"]', icon='SMOOTH', text="シェーダー2")
-            
-            box.operator('material.decorate_material', icon='TEXTURE_SHADED')
-            
-            
+            box.prop(mate, '["shader2"]', icon=compat.icon('SHADING_RENDERED'), text="シェーダー2")
+
+            box.operator('material.decorate_material', icon=compat.icon('SHADING_TEXTURE'))
+
             if 'CM3D2 Texture Expand' not in mate:
                 mate['CM3D2 Texture Expand'] = True
             box = self.layout.box()
@@ -288,8 +287,8 @@ class new_mate_opr():
 
     def draw(self, context):
         self.layout.separator()
-        self.layout.prop(self, 'type', icon='MATERIAL')
-        self.layout.prop(self, 'is_decorate', icon='TEXTURE_SHADED')
+        self.layout.prop(self, 'shader_type', icon='MATERIAL')
+        self.layout.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
         self.layout.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
 
     def execute(self, context):

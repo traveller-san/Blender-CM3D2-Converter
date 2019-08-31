@@ -182,7 +182,7 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
     def draw(self, context):
         self.layout.prop(self, 'is_first_remove_all', icon='ERROR')
         self.layout.prop(self, 'subdivide_number', icon='LATTICE_DATA')
-        self.layout.prop(self, 'extend_range', icon='META_EMPTY')
+        self.layout.prop(self, 'extend_range', icon='PROP_ON')
         self.layout.prop(self, 'is_remove_empty', icon='X')
 
     def execute(self, context):
@@ -428,7 +428,7 @@ class CNV_OT_blur_shape_key(bpy.types.Operator):
 
     def draw(self, context):
         self.layout.prop(self, 'target', icon='VIEWZOOM')
-        self.layout.prop(self, 'radius', icon='META_EMPTY')
+        self.layout.prop(self, 'radius', icon='RADIOBUT_OFF')
         self.layout.prop(self, 'strength', icon='ARROW_LEFTRIGHT')
         self.layout.prop(self, 'effect', icon='BRUSH_BLUR')
         self.layout.prop(self, 'blend', icon='IPO_SINE')

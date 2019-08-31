@@ -20,14 +20,14 @@ class misc_INFO_MT_add_cm3d2(bpy.types.Menu):
     def draw(self, context):
         self.layout.operator('wm.append_cm3d2_figure', text="body001", icon_value=common.kiss_icon()).object_name = "body001.body"
         self.layout.separator()
-        self.layout.operator('wm.append_cm3d2_figure', text="乳袋防止素体", icon='ROTATECOLLECTION').object_name = "乳袋防止素体"
+        self.layout.operator('wm.append_cm3d2_figure', text="乳袋防止素体", icon=compat.icon('PIVOT_INDIVIDUAL')).object_name = "乳袋防止素体"
         self.layout.separator()
-        self.layout.operator('wm.append_cm3d2_figure', text="Tスタンス素体", icon='ARMATURE_DATA').object_name = "Tスタンス素体"
+        self.layout.operator('wm.append_cm3d2_figure', text="Tスタンス素体", icon='MOD_ARMATURE').object_name = "Tスタンス素体"
         self.layout.operator('wm.append_cm3d2_figure', text="Tスタンス素体 足のみ", icon='SOUND').object_name = "Tスタンス素体 足のみ"
         self.layout.operator('wm.append_cm3d2_figure', text="Tスタンス素体 手のみ", icon='OUTLINER_DATA_ARMATURE').object_name = "Tスタンス素体 手のみ"
         self.layout.separator()
         self.layout.operator('wm.append_cm3d2_figure', text="anm出力用リグ", icon='OUTLINER_OB_ARMATURE').object_name = "anm出力用リグ・身体メッシュ"
-        self.layout.operator('wm.append_cm3d2_figure', text="anm出力用リグ(男)", icon='MOD_ARMATURE').object_name = "anm出力用リグ(男)・身体メッシュ"
+        self.layout.operator('wm.append_cm3d2_figure', text="anm出力用リグ(男)", icon='ARMATURE_DATA').object_name = "anm出力用リグ(男)・身体メッシュ"
 
 
 @compat.BlRegister()

@@ -77,7 +77,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         sub_box = box.box()
         sub_box.label(text="マテリアル")
         sub_box.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
-        sub_box.prop(self, 'is_decorate', icon='TEXTURE_SHADED')
+        sub_box.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
         sub_box.prop(self, 'is_mate_data_text', icon='TEXT')
         box = self.layout.box()
         box.prop(self, 'is_armature', icon='ARMATURE_DATA')
