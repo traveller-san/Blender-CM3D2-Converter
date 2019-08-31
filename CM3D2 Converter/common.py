@@ -935,3 +935,23 @@ def trigonometric_smooth(x):
 # エクスポート例外クラス
 class CM3D2ExportException(Exception):
     pass
+
+
+# ノード取得クラス
+class NodeHandler():
+    node_name = bpy.props.StringProperty(name='NodeName')
+
+    def get_node(self, context):
+        mate = context.material
+        if mate and mate.use_nodes:
+            return mate.node_tree.nodes.get(self.node_name)
+
+            # if node is None:
+            # # 見つからない場合は、シリアル番号付きのノードを探す
+            # prefix = self.node_name + '.'
+            # for n in nodes:
+            # 	if n.name.startwith(prefix):
+            # 		node = n
+            # 		break
+
+        return None
