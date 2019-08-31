@@ -28,19 +28,33 @@ class CNV_OT_sync_object_transform(bpy.types.Operator):
                 source_ob = ob
                 break
 
-        for area in context.screen.areas:
-            if area.type == 'VIEW_3D':
-                for space in area.spaces:
-                    if space.type == 'VIEW_3D':
-                        target_space = space
-                        break
+        if compat.IS_LEGACY:
+            for area in context.screen.areas:
+                if area.type == 'VIEW_3D':
+                    for space in area.spaces:
+                        if space.type == 'VIEW_3D':
+                            target_space = space
+                            break
 
-        pre_cursor_location = target_space.cursor_location[:]
-        target_space.cursor_location = source_ob.location[:]
+            pre_cursor_location = target_space.cursor_location[:]
+            try:
+                target_space.cursor_location = source_ob.location[:]
 
-        source_ob.select = False
-        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
-        source_ob.select = True
+                compat.set_select(source_ob, False)
+                bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+                compat.set_select(source_ob, True)
 
-        target_space.cursor_location = pre_cursor_location[:]
+            finally:
+                target_space.cursor_location = pre_cursor_location[:]
+        else:
+            pre_cursor_loc = context.scene.cursor.location[:]
+            try:
+                context.scene.cursor.location = source_ob.location[:]
+
+                compat.set_select(source_ob, False)
+                bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
+                compat.set_select(source_ob, True)
+
+            finally:
+                context.scene.cursor.location = pre_cursor_loc[:]
         return {'FINISHED'}

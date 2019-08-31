@@ -45,7 +45,8 @@ class CNV_OT_hair_bunch_add(bpy.types.Operator):
                 self.report(type={'ERROR'}, message="オブジェクトモードで実行してください")
                 return {'CANCELLED'}
 
-        self.end_location = bpy_extras.view3d_utils.region_2d_to_location_3d(context.region, context.region_data, (event.mouse_region_x, event.mouse_region_y), context.space_data.cursor_location)
+        cursor_loc = compat.get_cursor_loc(context)
+        self.end_location = bpy_extras.view3d_utils.region_2d_to_location_3d(context.region, context.region_data, (event.mouse_region_x, event.mouse_region_y), cursor_loc)
 
         curve = context.blend_data.curves.new("Hair Bunch", 'CURVE')
         ob = context.blend_data.objects.new("Hair Bunch", curve)
@@ -103,7 +104,8 @@ class CNV_OT_hair_bunch_add(bpy.types.Operator):
     def modal(self, context, event):
 
         if event.type == 'MOUSEMOVE':
-            self.end_location = bpy_extras.view3d_utils.region_2d_to_location_3d(context.region, context.region_data, (event.mouse_region_x, event.mouse_region_y), context.space_data.cursor_location)
+            cursor_loc = compat.get_cursor_loc(context)
+            self.end_location = bpy_extras.view3d_utils.region_2d_to_location_3d(context.region, context.region_data, (event.mouse_region_x, event.mouse_region_y), cursor_loc)
             self.execute(context)
 
         elif event.type == 'WHEELUPMOUSE' and event.value == 'PRESS':
@@ -162,20 +164,21 @@ class CNV_OT_hair_bunch_add(bpy.types.Operator):
             point.co = list(now_vec[:]) + [1]
 
     def set_spline(self, spline, context):
-        diff_co = self.end_location - context.space_data.cursor_location
+        cursor_loc = compat.get_cursor_loc(context)
+        diff_co = self.end_location - cursor_loc
 
         plus_co = diff_co * 0.333333
         plus_co.z = -plus_co.z + self.z_plus
 
         point1 = diff_co * 0.333333
         point1 += plus_co * 1
-        point1 += context.space_data.cursor_location
+        point1 += cursor_loc
 
         point2 = diff_co * 0.666666
         point2 += plus_co * 1
-        point2 += context.space_data.cursor_location
+        point2 += cursor_loc
 
-        spline.points[0].co = list(context.space_data.cursor_location[:]) + [1]
+        spline.points[0].co = list(cursor_loc[:]) + [1]
         spline.points[1].co = list(point1[:]) + [1]
         spline.points[2].co = list(point2[:]) + [1]
         spline.points[-1].co = list(self.end_location[:]) + [1]
