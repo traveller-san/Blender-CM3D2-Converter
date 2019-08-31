@@ -115,6 +115,7 @@ def menu_func(self, context):
             if is_com_mode:
                 self.layout.operator('material.new_com3d2', text="COM3D2用に変更", icon_value=common.kiss_icon())
             else:
+                self.layout.operator('material.new_com3d2', text="COM3D2用に変更", icon_value=common.kiss_icon())
                 self.layout.operator('material.new_cm3d2', text="CM3D2用に変更", icon_value=common.kiss_icon())
 
 
