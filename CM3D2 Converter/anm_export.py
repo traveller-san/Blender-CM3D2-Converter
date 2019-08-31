@@ -166,7 +166,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
             if not bone_parents[bone.name]:
                 already_bone_names.append(bone.name)
                 if self.is_remove_serial_number_bone:
-                    if re.search(r"\.\d{3,}$", bone.name):
+                    if common.has_serial_number(bone.name):
                         continue
                 if self.is_remove_japanese_bone:
                     if is_japanese(bone.name):
@@ -178,7 +178,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
             elif bone_parents[bone.name].name in already_bone_names:
                 already_bone_names.append(bone.name)
                 if self.is_remove_serial_number_bone:
-                    if re.search(r"\.\d{3,}$", bone.name):
+                    if common.has_serial_number(bone.name):
                         continue
                 if self.is_remove_japanese_bone:
                     if is_japanese(bone.name):

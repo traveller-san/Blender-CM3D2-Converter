@@ -20,7 +20,7 @@ PREFS = None
 texpath_dict = {}
 
 re_png = re.compile(r"\.[Pp][Nn][Gg](\.\d{3})?$")
-re_serial = re.compile(r"(\.\d{3})?$")
+re_serial = re.compile(r"(\.\d{3})$")
 re_prefix = re.compile(r"^[\/\.]*")
 re_path_prefix = re.compile(r"^assets/", re.I)
 re_ext_png = re.compile(r"\.png$", re.I)
@@ -46,6 +46,11 @@ def kiss_icon():
 # データ名末尾の「.001」などを削除
 def remove_serial_number(name, enable=True):
     return re_serial.sub('', name) if enable else name
+
+
+# データ名末尾の「.001」などが含まれるか判定
+def has_serial_number(name):
+    return re_serial.search(name) is not None
 
 
 # 文字列の左右端から空白を削除
