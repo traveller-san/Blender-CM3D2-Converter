@@ -55,9 +55,9 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
     is_convert_tris = bpy.props.BoolProperty(name="四角面を三角面に", default=True, description="四角ポリゴンを三角ポリゴンに変換してから出力します、元のメッシュには影響ありません")
     is_normalize_weight = bpy.props.BoolProperty(name="ウェイトの合計を1.0に", default=True, description="4つのウェイトの合計値が1.0になるように正規化します")
     is_convert_bone_weight_names = bpy.props.BoolProperty(name="頂点グループ名をCM3D2用に変換", default=True, description="全ての頂点グループ名をCM3D2で使える名前にしてからエクスポートします")
-    is_apply_modifiers = bpy.props.BoolProperty(name="モディファイアを適用", default=False)
 
     is_batch = bpy.props.BoolProperty(name="バッチモード", default=False, description="モードの切替やエラー個所の選択を行いません")
+
     export_tangent = bpy.props.BoolProperty(name="接空間情報出力", default=False, description="接空間情報(binormals, tangents)を出力する")
 
     @classmethod
@@ -172,14 +172,15 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         box.prop(self, 'is_convert_tris', icon='MESH_DATA')
         box.prop(prefs, 'skip_shapekey', icon='SHAPEKEY_DATA')
         box.prop(self, 'export_tangent', icon='CURVE_BEZCIRCLE')
+
         sub_box = box.box()
         sub_box.prop(self, 'is_normalize_weight', icon='MOD_VERTEX_WEIGHT')
         sub_box.prop(self, 'is_convert_bone_weight_names', icon_value=common.kiss_icon())
         sub_box = box.box()
-        sub_box.prop(self, 'is_apply_modifiers', icon='MODIFIER')
+        sub_box.prop(prefs, 'is_apply_modifiers', icon='MODIFIER')
         row = sub_box.row()
         row.prop(prefs, 'custom_normal_blend', icon='SNAP_NORMAL', slider=True)
-        row.enabled = self.is_apply_modifiers
+        row.enabled = prefs.is_apply_modifiers
 
     def copy_and_activate_ob(self, context, ob):
         new_ob = ob.copy()
@@ -192,13 +193,14 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
     def execute(self, context):
         start_time = time.time()
+        prefs = common.preferences()
 
         selected_objs = context.selected_objects
         source_objs = []
-        selected_count = 0
         prev_mode = None
         try:
             ob_source = context.active_object
+            ob_name = ob_source.name
             ob_main = None
             if self.is_batch:
                 # アクティブオブジェクトを１つコピーするだけでjoinしない
@@ -206,20 +208,22 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 compat.set_select(ob_source, False)
                 ob_main = self.copy_and_activate_ob(context, ob_source)
 
-                if self.is_apply_modifiers:
+                if prefs.is_apply_modifiers:
                     bpy.ops.object.forced_modifier_apply(is_applies=[True for i in range(32)])
             else:
+                selected_count = 0
                 # 選択されたMESHオブジェクトをコピーしてjoin
                 # 必要に応じて、モディファイアの強制適用を行う
                 for selected in selected_objs:
                     source_objs.append(selected)
 
                     compat.set_select(selected, False)
+
                     if selected.type == 'MESH':
                         ob_created = self.copy_and_activate_ob(context, selected)
                         if selected == ob_source:
                             ob_main = ob_created
-                        if self.is_apply_modifiers:
+                        if prefs.is_apply_modifiers:
                             bpy.ops.object.forced_modifier_apply(is_applies=[True for i in range(32)])
 
                         selected_count += 1
@@ -235,8 +239,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                     bpy.ops.object.join()
                     self.report(type={'INFO'}, message="%d個のオブジェクトをマージしました" % selected_count)
 
-            ob_copied = context.active_object
-            ret = self.export(context, ob_copied)
+            ret = self.export(context, ob_main)
 
             context.window_manager.progress_update(10)
             diff_time = time.time() - start_time
@@ -244,10 +247,11 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             return ret
         finally:
             # 作業データの破棄（コピーデータを削除、選択状態の復元、アクティブオブジェクト、モードの復元）
-            if ob_copied:
-                me_copied = ob_copied.data
-                context.blend_data.objects.remove(ob_copied, do_unlink=True)
-                context.blend_data.meshes.remove(me_copied, do_unlink=True)
+            if ob_main:
+                common.remove_data(ob_main)
+                # me_copied = ob_main.data
+                # context.blend_data.objects.remove(ob_main, do_unlink=True)
+                # context.blend_data.meshes.remove(me_copied, do_unlink=True)
 
             for obj in source_objs:
                 compat.set_select(obj, True)
@@ -411,7 +415,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         context.window_manager.progress_update(4)
 
         try:
-            file = common.open_temporary(self.filepath, 'wb', is_backup=self.is_backup)
+            writer = common.open_temporary(self.filepath, 'wb', is_backup=self.is_backup)
         except:
             self.report(type={'ERROR'}, message="ファイルを開くのに失敗しました、アクセス不可の可能性があります")
             return {'CANCELLED'}
@@ -422,46 +426,46 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             'vertices': vertices,
         }
         try:
-            with file:
-                self.write_model(context, file, **model_datas)
+            with writer:
+                self.write_model(context, writer, **model_datas)
         except common.CM3D2ExportException as e:
             self.report(type={'ERROR'}, message=str(e))
             return {'CANCELLED'}
 
         return {'FINISHED'}
 
-    def write_model(self, context, file, bone_data=[], local_bone_data=[], vertices=[]):
+    def write_model(self, context, writer, bone_data=[], local_bone_data=[], vertices=[]):
         """モデルデータをファイルオブジェクトに書き込む"""
         ob = context.active_object
         me = ob.data
         prefs = common.preferences()
 
         # ファイル先頭
-        common.write_str(file, 'CM3D2_MESH')
+        common.write_str(writer, 'CM3D2_MESH')
         self.version_num = int(self.version)
-        file.write(struct.pack('<i', self.version_num))
+        writer.write(struct.pack('<i', self.version_num))
 
-        common.write_str(file, self.model_name)
-        common.write_str(file, self.base_bone_name)
+        common.write_str(writer, self.model_name)
+        common.write_str(writer, self.base_bone_name)
 
         # ボーン情報書き出し
-        file.write(struct.pack('<i', len(bone_data)))
+        writer.write(struct.pack('<i', len(bone_data)))
         for bone in bone_data:
-            common.write_str(file, bone['name'])
-            file.write(struct.pack('<b', bone['unknown']))
+            common.write_str(writer, bone['name'])
+            writer.write(struct.pack('<b', bone['unknown']))
         context.window_manager.progress_update(3.3)
         for bone in bone_data:
-            file.write(struct.pack('<i', bone['parent_index']))
+            writer.write(struct.pack('<i', bone['parent_index']))
         context.window_manager.progress_update(3.7)
         for bone in bone_data:
-            file.write(struct.pack('<3f', bone['co'][0], bone['co'][1], bone['co'][2]))
-            file.write(struct.pack('<4f', bone['rot'][1], bone['rot'][2], bone['rot'][3], bone['rot'][0]))
+            writer.write(struct.pack('<3f', bone['co'][0], bone['co'][1], bone['co'][2]))
+            writer.write(struct.pack('<4f', bone['rot'][1], bone['rot'][2], bone['rot'][3], bone['rot'][0]))
             if self.version_num >= 2001:
                 use_scale = ('scale' in bone)
-                file.write(struct.pack('<b', use_scale))
+                writer.write(struct.pack('<b', use_scale))
                 if use_scale:
                     bone_scale = bone['scale']
-                    file.write(struct.pack('<3f', bone_scale[0], bone_scale[1], bone_scale[2]))
+                    writer.write(struct.pack('<3f', bone_scale[0], bone_scale[1], bone_scale[2]))
         context.window_manager.progress_update(4)
 
         # 正しい頂点数などを取得
@@ -487,16 +491,16 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             raise common.CM3D2ExportException("頂点数がまだ多いです (現在%d頂点)。あと%d頂点以上減らしてください、中止します" % (vert_count, vert_count - 65535))
         context.window_manager.progress_update(5)
 
-        file.write(struct.pack('<2i', vert_count, len(ob.material_slots)))
+        writer.write(struct.pack('<2i', vert_count, len(ob.material_slots)))
 
         # ローカルボーン情報を書き出し
-        file.write(struct.pack('<i', len(local_bone_data)))
+        writer.write(struct.pack('<i', len(local_bone_data)))
         for bone in local_bone_data:
-            common.write_str(file, bone['name'])
+            common.write_str(writer, bone['name'])
         context.window_manager.progress_update(5.3)
         for bone in local_bone_data:
             for f in bone['matrix']:
-                file.write(struct.pack('<f', f))
+                writer.write(struct.pack('<f', f))
         context.window_manager.progress_update(5.7)
 
         # カスタム法線情報を取得
@@ -520,9 +524,9 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 cm_verts.append(co)
                 cm_norms.append(no)
                 cm_uvs.append(uv)
-                file.write(struct.pack('<3f', -co.x, co.y, co.z))
-                file.write(struct.pack('<3f', -no.x, no.y, no.z))
-                file.write(struct.pack('<2f', uv.x, uv.y))
+                writer.write(struct.pack('<3f', -co.x, co.y, co.z))
+                writer.write(struct.pack('<3f', -no.x, no.y, no.z))
+                writer.write(struct.pack('<2f', uv.x, uv.y))
         context.window_manager.progress_update(6)
 
         cm_tris = self.parse_triangles(bm, ob, uv_lay, vert_iuv, vert_indices)
@@ -530,152 +534,87 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         # 接空間情報を書き出し
         if self.export_tangent:
             tangents = self.calc_tangents(cm_tris, cm_verts, cm_norms, cm_uvs)
-            file.write(struct.pack('<i', len(tangents)))
+            writer.write(struct.pack('<i', len(tangents)))
             for t in tangents:
-                file.write(struct.pack('<4f', *t))
+                writer.write(struct.pack('<4f', *t))
         else:
-            file.write(struct.pack('<i', 0))
+            writer.write(struct.pack('<i', 0))
 
         # ウェイト情報を書き出し
         for vert in vertices:
             for uv in vert_uvs[vert['index']]:
-                file.write(struct.pack('<4H', *vert['face_indexs']))
-                file.write(struct.pack('<4f', *vert['weights']))
+                writer.write(struct.pack('<4H', *vert['face_indexs']))
+                writer.write(struct.pack('<4f', *vert['weights']))
         context.window_manager.progress_update(7)
 
         # 面情報を書き出し
         for tri in cm_tris:
-            file.write(struct.pack('<i', len(tri)))
+            writer.write(struct.pack('<i', len(tri)))
             for vert_index in tri:
-                file.write(struct.pack('<H', vert_index))
+                writer.write(struct.pack('<H', vert_index))
         context.window_manager.progress_update(8)
 
         # マテリアルを書き出し
-        file.write(struct.pack('<i', len(ob.material_slots)))
+        writer.write(struct.pack('<i', len(ob.material_slots)))
         for slot_index, slot in enumerate(ob.material_slots):
             if self.mate_info_mode == 'MATERIAL':
-                mate = slot.material
-                common.write_str(file, common.remove_serial_number(mate.name, self.is_arrange_name))
-                common.write_str(file, mate['shader1'])
-                common.write_str(file, mate['shader2'])
-                for tindex, tslot in enumerate(mate.texture_slots):
-                    if not tslot:
-                        continue
-                    tex = tslot.texture
-                    if mate.use_textures[tindex]:
-                        common.write_str(file, 'tex')
-                        common.write_str(file, common.remove_serial_number(tex.name, self.is_arrange_name))
-                        if tex.image:
-                            img = tex.image
-                            common.write_str(file, 'tex2d')
-                            
-                            tex_name = common.remove_serial_number(img.name, self.is_arrange_name)
-                            tex_name = re.sub(r"\.[Pp][Nn][Gg]$", "", tex_name)
-                            common.write_str(file, tex_name)
-                            
-                            if 'cm3d2_path' in img:
-                                path = img['cm3d2_path']
-                            else:
-                                path = bpy.path.abspath(img.filepath)
-                            path = path.replace('\\', '/')
-                            path = re.sub(r'^[\/\.]*', "", path)
-                            if not re.search(r'^assets/texture/', path, re.I):
-                                path = "Assets/texture/texture/" + os.path.basename(path)
-                            common.write_str(file, path)
-                            col = tslot.color
-                            file.write(struct.pack('<3f', col[0], col[1], col[2]))
-                            file.write(struct.pack('<f', tslot.diffuse_color_factor))
-                        else:
-                            common.write_str(file, 'null')
-                    else:
-                        if tslot.use_rgb_to_intensity:
-                            common.write_str(file, 'col')
-                            common.write_str(file, common.remove_serial_number(tex.name, self.is_arrange_name))
-                            col = tslot.color
-                            file.write(struct.pack('<3f', col[0], col[1], col[2]))
-                            file.write(struct.pack('<f', tslot.diffuse_color_factor))
-                        else:
-                            common.write_str(file, 'f')
-                            common.write_str(file, common.remove_serial_number(tex.name, self.is_arrange_name))
-                            file.write(struct.pack('<f', tslot.diffuse_color_factor))
+                mat_data = cm3d2_data.MaterialHandler.parse_mate(slot.material, self.is_arrange_name)
+                mat_data.write(writer, write_header=False)
+
             elif self.mate_info_mode == 'TEXT':
-                data = context.blend_data.texts["Material:" + str(slot_index)].as_string()
-                data = data.split('\n')
-                common.write_str(file, data[2])
-                common.write_str(file, data[3])
-                common.write_str(file, data[4])
-                seek = 5
-                for i in range(9**9):
-                    if len(data) <= seek:
-                        break
-                    type = data[seek]
-                    if type == 'tex':
-                        common.write_str(file, type)
-                        common.write_str(file, common.line_trim(data[seek + 1]))
-                        common.write_str(file, common.line_trim(data[seek + 2]))
-                        if common.line_trim(data[seek + 2]) == 'tex2d':
-                            common.write_str(file, common.line_trim(data[seek + 3]))
-                            common.write_str(file, common.line_trim(data[seek + 4]))
-                            col = common.line_trim(data[seek + 5])
-                            col = col.split(' ')
-                            file.write(struct.pack('<4f', float(col[0]), float(col[1]), float(col[2]), float(col[3])))
-                            seek += 3
-                        seek += 2
-                    elif type == 'col':
-                        common.write_str(file, type)
-                        common.write_str(file, common.line_trim(data[seek + 1]))
-                        col = common.line_trim(data[seek + 2])
-                        col = col.split(' ')
-                        file.write(struct.pack('<4f', float(col[0]), float(col[1]), float(col[2]), float(col[3])))
-                        seek += 2
-                    elif type == 'f':
-                        common.write_str(file, type)
-                        common.write_str(file, common.line_trim(data[seek + 1]))
-                        file.write(struct.pack('<f', float(common.line_trim(data[seek + 2]))))
-                        seek += 2
-                    seek += 1
-            common.write_str(file, 'end')
+                text = context.blend_data.texts["Material:" + str(slot_index)].as_string()
+                mat_data = cm3d2_data.MaterialHandler.parse_text(slot.material, self.is_arrange_name)
+                mat_data.write(writer, write_header=False)
+
         context.window_manager.progress_update(9)
-        
+
         # モーフを書き出し
         if me.shape_keys:
-            temp_me = context.blend_data.meshes.new(me.name + ".temp")
-            vs = [vert.co for vert in me.vertices]
-            es = []
-            fs = [face.vertices for face in me.polygons]
-            temp_me.from_pydata(vs, es, fs)
-            if 2 <= len(me.shape_keys.key_blocks):
-                for shape_key in me.shape_keys.key_blocks[1:]:
-                    morph = []
-                    vert_index = 0
-                    for i in range(len(me.vertices)):
-                        temp_me.vertices[i].co = shape_key.data[i].co.copy()
-                    temp_me.update()
-                    for i, vert in enumerate(me.vertices):
-                        co_diff = shape_key.data[i].co - vert.co
-                        if me.has_custom_normals:
-                            no_diff = custom_normals[i] - vert.normal
-                        else:
-                            no_diff = temp_me.vertices[i].normal - vert.normal
-                        if 0.001 < co_diff.length or 0.001 < no_diff.length:
-                            co = co_diff * self.scale
-                            for d in vert_uvs[i]:
-                                morph.append((vert_index, co, no_diff))
-                                vert_index += 1
-                        else:
-                            vert_index += len(vert_uvs[i])
-                    if prefs.skip_shapekey and not len(morph):
+            temp_me = context.blend_data.meshes.new(name=me.name + ".temp")
+            try:
+                vs = [vert.co for vert in me.vertices]
+                es = []
+                fs = [face.vertices for face in me.polygons]
+                temp_me.from_pydata(vs, es, fs)
+                if 2 <= len(me.shape_keys.key_blocks):
+                    for shape_key in me.shape_keys.key_blocks[1:]:
+                        morph = []
+                        vert_index = 0
+                        for i in range(len(me.vertices)):
+                            temp_me.vertices[i].co = shape_key.data[i].co.copy()
+                        temp_me.update()
+                        for i, vert in enumerate(me.vertices):
+                            co_diff = shape_key.data[i].co - vert.co
+                            if me.has_custom_normals:
+                                no_diff = custom_normals[i] - vert.normal
+                            else:
+                                no_diff = temp_me.vertices[i].normal - vert.normal
+                            if 0.001 < co_diff.length or 0.001 < no_diff.length:
+                                co = co_diff * self.scale
+                                for d in vert_uvs[i]:
+                                    morph.append((vert_index, co, no_diff))
+                                    vert_index += 1
+                            else:
+                                vert_index += len(vert_uvs[i])
 
-                        continue
-                    common.write_str(file, 'morph')
-                    common.write_str(file, shape_key.name)
-                    file.write(struct.pack('<i', len(morph)))
-                    for v_index, vec, normal in morph:
-                        file.write(struct.pack('<H', v_index))
-                        file.write(struct.pack('<3f', -vec.x, vec.y, vec.z))
-                        file.write(struct.pack('<3f', -normal.x, normal.y, normal.z))
-            context.blend_data.meshes.remove(temp_me)
-        common.write_str(file, 'end')
+                        if prefs.skip_shapekey and not len(morph):
+                            continue
+                        common.write_str(writer, 'morph')
+                        common.write_str(writer, shape_key.name)
+                        writer.write(struct.pack('<i', len(morph)))
+                        for v_index, vec, normal in morph:
+                            writer.write(struct.pack('<H', v_index))
+                            writer.write(struct.pack('<3f', -vec.x, vec.y, vec.z))
+                            writer.write(struct.pack('<3f', -normal.x, normal.y, normal.z))
+            finally:
+                context.blend_data.meshes.remove(temp_me)
+        common.write_str(writer, 'end')
+
+    def write_tangents(self, writer, me):
+        if len(me.uv_layers) < 1:
+            return
+
+        num_loops = len(me.loops)
 
     def parse_triangles(self, bm, ob, uv_lay, vert_iuv, vert_indices):
         def vert_index_from_loops(loops):

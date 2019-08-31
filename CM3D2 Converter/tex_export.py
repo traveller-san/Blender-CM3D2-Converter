@@ -25,7 +25,7 @@ class CNV_OT_export_cm3d2_tex(bpy.types.Operator):
             ('1010', '1010', 'CM3D2 1.49 ～ or COM3D2', 'NONE', 1),
             ('1000', '1000', '旧フォーマット', 'NONE', 2),
         ], default='1010')
-    path = bpy.props.StringProperty(name="パス", default="Assets/texture/texture/*.png")
+    path = bpy.props.StringProperty(name="パス", default=common.BASE_PATH_TEX + "/*.png")
 
     @classmethod
     def poll(cls, context):
@@ -45,10 +45,11 @@ class CNV_OT_export_cm3d2_tex(bpy.types.Operator):
         else:
             self.filepath = common.default_cm3d2_dir(prefs.tex_export_path, common.remove_serial_number(img.name), "tex")
         self.is_backup = bool(prefs.backup_ext)
-        if 'cm3d2_path' in img:
-            self.path = img['cm3d2_path']
-        else:
-            self.path = "Assets/texture/texture/" + os.path.basename(self.filepath)
+        self.path = img.get('cm3d2_path')
+        if self.path is None:
+            self.path = common.get_tex_cm3d2path(self.filepath)
+            img['cm3d2_path'] = self.path
+
         if 'tex Name' in img:
             self.filepath = os.path.join(os.path.dirname(self.filepath), img['tex Name'])
         context.window_manager.fileselect_add(self)
@@ -97,8 +98,8 @@ class CNV_OT_export_cm3d2_tex(bpy.types.Operator):
             bpy.ops.image.save_as(override, save_as_render=save_as_render, copy=copy, filepath=temp_path, relative_path=True, show_multiview=False, use_multiview=False)
             is_remove = True
         except:
-            if os.path.exists( bpy.path.abspath(img.filepath) ):
-                temp_path = bpy.path.abspath(img.filepath)
+            temp_path = bpy.path.abspath(img.filepath)
+            if os.path.exists(temp_path):
                 is_remove = False
             else:
                 raise common.CM3D2ExportException("PNGファイルの取得に失敗しました")

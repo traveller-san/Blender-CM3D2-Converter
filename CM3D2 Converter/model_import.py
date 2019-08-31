@@ -43,6 +43,8 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
     is_bone_data_text = bpy.props.BoolProperty(name="テキスト", default=True, description="ボーン情報をテキストとして読み込みます")
     is_bone_data_obj_property = bpy.props.BoolProperty(name="オブジェクトのカスタムプロパティ", default=True, description="メッシュオブジェクトのカスタムプロパティにボーン情報を埋め込みます")
     is_bone_data_arm_property = bpy.props.BoolProperty(name="アーマチュアのカスタムプロパティ", default=True, description="アーマチュアデータのカスタムプロパティにボーン情報を埋め込みます")
+    tex_storage_files = None
+
     @classmethod
     def poll(cls, context):
         return True
@@ -99,148 +101,156 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         context.window_manager.progress_update(0)
 
         try:
-            file = open(self.filepath, 'rb')
+            reader = open(self.filepath, 'rb')
         except:
-            self.report(type={'ERROR'}, message="ファイルを開くのに失敗しました、アクセス不可かファイルが存在しません")
+            self.report(type={'ERROR'}, message="ファイルを開くのに失敗しました、アクセス不可かファイルが存在しません:%s" % self.filepath)
             return {'CANCELLED'}
 
-        # ヘッダー
-        ext = common.read_str(file)
-        if ext != 'CM3D2_MESH':
-            self.report(type={'ERROR'}, message="これはカスタムメイド3D2のモデルファイルではありません")
-            return {'CANCELLED'}
-        model_ver = struct.unpack('<i', file.read(4))[0]
-        context.window_manager.progress_update(0.1)
+        self.tex_storage_files = common.get_tex_storage_files()
 
-        # 名前群を取得
-        model_name1 = common.read_str(file)
-        model_name2 = common.read_str(file)
-        context.window_manager.progress_update(0.2)
-        
-        # ボーン情報読み込み
-        bone_data = []
-        bone_count = struct.unpack('<i', file.read(4))[0]
-        for i in range(bone_count):
-            bone_data.append({})
-            bone_data[i]['name'] = common.read_str(file)
-            bone_data[i]['unknown'] = struct.unpack('<B', file.read(1))[0]
-        for i in range(bone_count):
-            parent_index = struct.unpack('<i', file.read(4))[0]
-            parent_name = None
-            if parent_index != -1:
-                parent_name = bone_data[parent_index]['name']
-            bone_data[i]['parent_index'] = parent_index
-            bone_data[i]['parent_name'] = parent_name
-        for i in range(bone_count):
-            x, y, z = struct.unpack('<3f', file.read(3*4))
-            bone_data[i]['co'] = mathutils.Vector((x, y, z))
-            
-            x, y, z = struct.unpack('<3f', file.read(3*4))
-            w = struct.unpack('<f', file.read(4))[0]
-            bone_data[i]['rot'] = mathutils.Quaternion((w, x, y, z))
-            if model_ver >= 2001:
-                use_scale = struct.unpack('<B', file.read(1))[0]
-                if use_scale:
-                    scale_x, scale_y, scale_z = struct.unpack('<3f', file.read(3*4))
-                    bone_data[i]['scale'] = [scale_x, scale_y, scale_z]
+        with reader:
+            # ヘッダー
+            ext = common.read_str(reader)
+            if ext != 'CM3D2_MESH':
+                self.report(type={'ERROR'}, message="これはカスタムメイド3D2のモデルファイルではありません")
+                return {'CANCELLED'}
+            model_ver = struct.unpack('<i', reader.read(4))[0]
+            context.window_manager.progress_update(0.1)
 
-        context.window_manager.progress_update(0.3)
+            # 名前群を取得
+            model_name1 = common.read_str(reader)
+            model_name2 = common.read_str(reader)
+            context.window_manager.progress_update(0.2)
 
-        vertex_count, mesh_count, local_bone_count = struct.unpack('<3i', file.read(3*4))
+            # ボーン情報読み込み
+            bone_data = []
+            bone_count = struct.unpack('<i', reader.read(4))[0]
+            for i in range(bone_count):
+                name = common.read_str(reader)
+                unknown = struct.unpack('<B', reader.read(1))[0]
+                bone_data.append({'name': name, 'unknown': unknown})
 
-        # ローカルボーン情報読み込み
-        local_bone_data = []
-        for i in range(local_bone_count):
-            local_bone_data.append({})
-            local_bone_data[i]['name'] = common.read_str(file)
-        for i in range(local_bone_count):
-            row0 = struct.unpack('<4f', file.read(4*4))
-            row1 = struct.unpack('<4f', file.read(4*4))
-            row2 = struct.unpack('<4f', file.read(4*4))
-            row3 = struct.unpack('<4f', file.read(4*4))
-            local_bone_data[i]['matrix'] = mathutils.Matrix([row0, row1, row2, row3])
-        context.window_manager.progress_update(0.4)
+            for i in range(bone_count):
+                parent_index = struct.unpack('<i', reader.read(4))[0]
+                parent_name = None
+                if parent_index != -1:
+                    parent_name = bone_data[parent_index]['name']
+                bone_data[i]['parent_index'] = parent_index
+                bone_data[i]['parent_name'] = parent_name
 
-        # 頂点情報読み込み
-        vertex_data = []
-        for i in range(vertex_count):
-            co = struct.unpack('<3f', file.read(3*4))
-            no = struct.unpack('<3f', file.read(3*4))
-            uv = struct.unpack('<2f', file.read(2*4))
-            vertex_data.append({'co': co, 'normal': no, 'uv': uv})
-        comparison_data = list(hash(repr(v['co']) + " " + repr(v['normal'])) for v in vertex_data)
-        comparison_counter = Counter(comparison_data)
-        comparison_data = list((comparison_counter[h] > 1) for h in comparison_data)
-        del comparison_counter
-        unknown_count = struct.unpack('<i', file.read(4))[0]
-        for i in range(unknown_count):
-            struct.unpack('<4f', file.read(4*4))
-        for i in range(vertex_count):
-            indexes = struct.unpack('<4H', file.read(4*2))
-            values  = struct.unpack('<4f', file.read(4*4))
-            vertex_data[i]['weights'] = list({
-                    'index': index,
-                    'value': value,
-                    'name': local_bone_data[index]['name'],
-                } for index, value in zip(indexes, values))
-        context.window_manager.progress_update(0.5)
+            for i in range(bone_count):
+                x, y, z = struct.unpack('<3f', reader.read(3*4))
+                bone_data[i]['co'] = mathutils.Vector((x, y, z))
 
-        # 面情報読み込み
-        face_data = []
-        for i in range(mesh_count):
-            face_count = int(struct.unpack('<i', file.read(4))[0] / 3)
-            face_data.append([tuple(reversed(struct.unpack('<3H', file.read(3*2)))) for j in range(face_count)])
-        context.window_manager.progress_update(0.6)
+                x, y, z = struct.unpack('<3f', reader.read(3*4))
+                w = struct.unpack('<f', reader.read(4))[0]
+                bone_data[i]['rot'] = mathutils.Quaternion((w, x, y, z))
+                if model_ver >= 2001:
+                    use_scale = struct.unpack('<B', reader.read(1))[0]
+                    if use_scale:
+                        scale_x, scale_y, scale_z = struct.unpack('<3f', reader.read(3*4))
+                        bone_data[i]['scale'] = [scale_x, scale_y, scale_z]
 
-        # マテリアル情報読み込み
-        material_data = []
-        material_count = struct.unpack('<i', file.read(4))[0]
-        for i in range(material_count):
-            material_data.append({})
-            material_data[i]['name1'] = common.read_str(file)
-            material_data[i]['name2'] = common.read_str(file)
-            material_data[i]['name3'] = common.read_str(file)
-            material_data[i]['data'] = []
+            context.window_manager.progress_update(0.3)
+
+            vertex_count, mesh_count, local_bone_count = struct.unpack('<3i', reader.read(3*4))
+
+            # ローカルボーン情報読み込み
+            local_bone_data = []
+            for i in range(local_bone_count):
+                local_bone_data.append({'name': common.read_str(reader)})
+
+            for i in range(local_bone_count):
+                row0 = struct.unpack('<4f', reader.read(4 * 4))
+                row1 = struct.unpack('<4f', reader.read(4 * 4))
+                row2 = struct.unpack('<4f', reader.read(4 * 4))
+                row3 = struct.unpack('<4f', reader.read(4 * 4))
+                local_bone_data[i]['matrix'] = mathutils.Matrix([row0, row1, row2, row3])
+            context.window_manager.progress_update(0.4)
+
+            # 頂点情報読み込み
+            vertex_data = []
+            for i in range(vertex_count):
+                co = struct.unpack('<3f', reader.read(3 * 4))
+                no = struct.unpack('<3f', reader.read(3 * 4))
+                uv = struct.unpack('<2f', reader.read(2 * 4))
+                vertex_data.append({'co': co, 'normal': no, 'uv': uv})
+            comparison_data = list(hash(repr(v['co']) + " " + repr(v['normal'])) for v in vertex_data)
+            comparison_counter = Counter(comparison_data)
+            comparison_data = list((comparison_counter[h] > 1) for h in comparison_data)
+            del comparison_counter
+            unknown_count = struct.unpack('<i', reader.read(4))[0]
+            for i in range(unknown_count):
+                struct.unpack('<4f', reader.read(4 * 4))
+            for i in range(vertex_count):
+                indexes = struct.unpack('<4H', reader.read(4 * 2))
+                values = struct.unpack('<4f', reader.read(4 * 4))
+                vertex_data[i]['weights'] = list({
+                        'index': index,
+                        'value': value,
+                        'name': local_bone_data[index]['name'],
+                    } for index, value in zip(indexes, values))
+            context.window_manager.progress_update(0.5)
+
+            # 面情報読み込み
+            face_data = []
+            for i in range(mesh_count):
+                face_count = int(struct.unpack('<i', reader.read(4))[0] / 3)
+                datum = [tuple(reversed(struct.unpack('<3H', reader.read(3 * 2)))) for j in range(face_count)]
+                face_data.append(datum)
+            context.window_manager.progress_update(0.6)
+
+            # マテリアル情報読み込み
+            # TODO MaterialHandlerに変更
+            material_data = []
+            material_count = struct.unpack('<i', reader.read(4))[0]
+            for i in range(material_count):
+                name1 = common.read_str(reader)
+                name2 = common.read_str(reader)
+                name3 = common.read_str(reader)
+                data_list = []
+                material_data.append({'name1': name1, 'name2': name2, 'name3': name3, 'data': data_list})
+                while True:
+                    data_type = common.read_str(reader)
+                    if data_type == 'tex':
+                        data_item = {'type': data_type}
+                        data_list.append(data_item)
+                        data_item['name'] = common.read_str(reader)
+                        data_item['type2'] = common.read_str(reader)
+                        if data_item['type2'] == 'tex2d':
+                            data_item['name2'] = common.read_str(reader)
+                            data_item['path'] = common.read_str(reader)
+                            data_item['tex_map'] = struct.unpack('<4f', reader.read(4*4))
+                    elif data_type == 'col':
+                        name = common.read_str(reader)
+                        col = struct.unpack('<4f', reader.read(4*4))
+                        data_list.append({'type': data_type, 'name': name, 'color': col})
+                    elif data_type == 'f':
+                        name = common.read_str(reader)
+                        fval = struct.unpack('<f', reader.read(4))[0]
+                        data_list.append({'type': data_type, 'name': name, 'float': fval})
+                    else:
+                        break
+            context.window_manager.progress_update(0.8)
+
+            # その他情報読み込み
+            misc_data = []
             while True:
-                data_type = common.read_str(file)
-                if data_type == 'tex':
-                    material_data[i]['data'].append({'type':data_type})
-                    material_data[i]['data'][-1]['name'] = common.read_str(file)
-                    material_data[i]['data'][-1]['type2'] = common.read_str(file)
-                    if material_data[i]['data'][-1]['type2'] == 'tex2d':
-                        material_data[i]['data'][-1]['name2'] = common.read_str(file)
-                        material_data[i]['data'][-1]['path'] = common.read_str(file)
-                        material_data[i]['data'][-1]['color'] = struct.unpack('<4f', file.read(4*4))
-                elif data_type == 'col':
-                    material_data[i]['data'].append({'type':data_type})
-                    material_data[i]['data'][-1]['name'] = common.read_str(file)
-                    material_data[i]['data'][-1]['color'] = struct.unpack('<4f', file.read(4*4))
-                elif data_type == 'f':
-                    material_data[i]['data'].append({'type':data_type})
-                    material_data[i]['data'][-1]['name'] = common.read_str(file)
-                    material_data[i]['data'][-1]['float'] = struct.unpack('<f', file.read(4))[0]
+                data_type = common.read_str(reader)
+                if data_type == 'morph':
+                    misc_item = {'type': data_type}
+                    misc_data.append(misc_item)
+                    misc_item['name'] = common.read_str(reader)
+                    misc_item['data'] = data_list = []
+                    morph_vert_count = struct.unpack('<i', reader.read(4))[0]
+                    for i in range(morph_vert_count):
+                        index = struct.unpack('<H', reader.read(2))[0]
+                        co = mathutils.Vector(struct.unpack('<3f', reader.read(3 * 4)))
+                        normal = struct.unpack('<3f', reader.read(3 * 4))
+                        data_list.append({'index': index, 'co': co, 'normal': normal})
                 else:
                     break
-        context.window_manager.progress_update(0.8)
 
-        # その他情報読み込み
-        misc_data = []
-        while True:
-            data_type = common.read_str(file)
-            if data_type == 'morph':
-                misc_data.append({'type':data_type})
-                misc_data[-1]['name'] = common.read_str(file)
-                morph_vert_count = struct.unpack('<i', file.read(4))[0]
-                misc_data[-1]['data'] = []
-                for i in range(morph_vert_count):
-                    misc_data[-1]['data'].append({})
-                    misc_data[-1]['data'][i]['index'] = struct.unpack('<H', file.read(2))[0]
-                    misc_data[-1]['data'][i]['co'] = mathutils.Vector(struct.unpack('<3f', file.read(3*4)))
-                    misc_data[-1]['data'][i]['normal'] = struct.unpack('<3f', file.read(3*4))
-            else:
-                break
-
-        file.close()
         context.window_manager.progress_update(1)
 
         try:
@@ -360,8 +370,10 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                         arm.edit_bones.remove(bone)
 
             arm.layers[16] = True
-            arm.draw_type = 'STICK'
-            arm_ob.show_x_ray = True
+            compat.set_display_type(arm, 'STICK')
+            if compat.IS_LEGACY:
+                # TODO 2.8の代替処理
+                arm_ob.show_x_ray = True
             bpy.ops.armature.select_all(action='DESELECT')
             bpy.ops.object.mode_set(mode='OBJECT')
         context.window_manager.progress_update(2)
@@ -464,12 +476,11 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             progress_count_total = 0.0
             for data in material_data:
                 progress_count_total += len(data['data'])
-            progress_plus_value = 1.0 / progress_count_total
-            progress_count = 6.0
-
-            tex_storage_files = common.get_tex_storage_files()
+            self.progress_plus_value = 1.0 / progress_count_total
+            self.progress_count = 6.0
 
             face_seek = 0
+            texes_set = set()
             for index, data in enumerate(material_data):
                 override = context.copy()
                 override['object'] = ob
@@ -485,56 +496,13 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                 face_seek += len(face_data[index])
 
                 # テクスチャ追加
-                already_texs = []
-                tex_index = 0
-                for tex_data in data['data']:
+                if compat.IS_LEGACY:
+                    self.create_mateprop_old(context, me, texes_set, mate, index, data)
+                    common.decorate_material(mate, self.is_decorate, me, index)
+                else:
+                    self.create_mateprop(context, me, texes_set, mate, index, data)
+                common.setup_material(mate)
 
-                    if common.preferences().mate_unread_same_value:
-                        if tex_data['name'] in already_texs:
-                            continue
-                        already_texs.append(tex_data['name'])
-
-                    if tex_data['type'] == 'tex':
-                        slot = mate.texture_slots.create(tex_index)
-                        tex = context.blend_data.textures.new(tex_data['name'], 'IMAGE')
-                        slot.texture = tex
-                        if tex_data['type2'] == 'tex2d':
-                            slot.color = tex_data['color'][:3]
-                            slot.diffuse_color_factor = tex_data['color'][3]
-                            img = context.blend_data.images.new(tex_data['name2'], 128, 128)
-                            img.filepath = tex_data['path']
-                            img['cm3d2_path'] = tex_data['path']
-                            img.source = 'FILE'
-                            tex.image = img
-
-                            # tex探し
-                            if self.is_replace_cm3d2_tex:
-                                if common.replace_cm3d2_tex(img, tex_storage_files) and tex_data['name']=='_MainTex':
-                                    for face in me.polygons:
-                                        if face.material_index == index:
-                                            me.uv_textures.active.data[face.index].image = img
-
-                    elif tex_data['type'] == 'col':
-                        slot = mate.texture_slots.create(tex_index)
-                        mate.use_textures[tex_index] = False
-                        slot.color = tex_data['color'][:3]
-                        slot.diffuse_color_factor = tex_data['color'][3]
-                        slot.use_rgb_to_intensity = True
-                        tex = context.blend_data.textures.new(tex_data['name'], 'BLEND')
-                        slot.texture = tex
-
-                    elif tex_data['type'] == 'f':
-                        slot = mate.texture_slots.create(tex_index)
-                        mate.use_textures[tex_index] = False
-                        slot.diffuse_color_factor = tex_data['float']
-                        tex = context.blend_data.textures.new(tex_data['name'], 'BLEND')
-                        slot.texture = tex
-
-                    tex_index += 1
-
-                    progress_count += progress_plus_value
-                    context.window_manager.progress_update(progress_count)
-                common.decorate_material(mate, self.is_decorate, me, index)
             ob.active_material_index = 0
             context.window_manager.progress_update(7)
 
@@ -595,8 +563,9 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                         if tex_data['type2'] == 'tex2d':
                             txt.write("\t" + tex_data['name2'] + "\n")
                             txt.write("\t" + tex_data['path'] + "\n")
-                            col = " ".join([str(tex_data['color'][0]), str(tex_data['color'][1]), str(tex_data['color'][2]), str(tex_data['color'][3])])
-                            txt.write("\t" + col + "\n")
+                            map_list = tex_data['tex_map']
+                            tex_map = " ".join([str(map_list[0]), str(map_list[1]), str(map_list[2]), str(map_list[3])])
+                            txt.write("\t" + tex_map + "\n")
                     elif tex_data['type'] == 'col':
                         txt.write("\t" + tex_data['name'] + "\n")
                         col = " ".join([str(tex_data['color'][0]), str(tex_data['color'][1]), str(tex_data['color'][2]), str(tex_data['color'][3])])
@@ -690,6 +659,111 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         self.report(type={'INFO'}, message="modelのインポートが完了しました (%d %s/ %.2f 秒)" % (filesize, filesize_str, require_time))
 
         return {'FINISHED'}
+
+    def create_mateprop_old(self, context, me, tex_set, mate, mate_idx, data: list):
+        # create_matepropとの違いは、slot_indexの有無、nodeの接続・配置処理のみ
+
+        prefs = common.preferences()
+        # テクスチャ追加
+        slot_index = 0
+        for tex_data in data['data']:
+            if prefs.mate_unread_same_value:
+                if tex_data['name'] in tex_set:
+                    continue
+                tex_set.add(tex_data['name'])
+
+            node_name = tex_data['name']
+            if tex_data['type'] == 'tex':
+                path = tex_data['path']
+                tex_map_data = tex_data['tex_map']
+                common.create_tex(context, mate, node_name, tex_data['name2'], path, path, tex_map_data, self.is_replace_cm3d2_tex, slot_index)
+
+            elif tex_data['type'] == 'col':
+                col = tex_data['color']
+                common.create_col(context, mate, node_name, col, slot_index)
+
+            elif tex_data['type'] == 'f':
+                f = tex_data['float']
+                common.create_f(context, mate, node_name, f, slot_index)
+
+            slot_index += 1
+
+            self.progress(context)
+
+    def create_mateprop(self, context, me, tex_set, mate, mate_idx, data: list):
+        if mate.use_nodes is False:
+            mate.use_nodes = True
+
+        nodes = mate.node_tree.nodes
+        prefs = common.preferences()
+
+        for prop_data in data['data']:
+            if prefs.mate_unread_same_value:
+                if prop_data['name'] in tex_set:
+                    continue
+                tex_set.add(prop_data['name'])
+
+            if prop_data['type'] == 'tex':  # テクスチャ追加
+                prop_name = prop_data['name']
+                if prop_data['type2'] == 'tex2d':
+                    tex_name = prop_data['name2']
+                    cm3d2path = prop_data['path']
+                    tex_map = prop_data['tex_map']
+                    tex = common.create_tex(context, mate, prop_name, tex_name, cm3d2path, cm3d2path, tex_map)
+
+                    if prop_data['type2'] == 'tex2d':
+                        mapping = prop_data['tex_map']
+                        tex_map = tex.texture_mapping
+                        tex_map.translation[0] = mapping[0]
+                        tex_map.translation[1] = mapping[1]
+                        tex_map.scale[0] = mapping[2]
+                        tex_map.scale[1] = mapping[3]
+
+                        # ファイルの実体を割り当て
+                        if self.is_replace_cm3d2_tex:
+                            img = tex.image
+                            # col = mate.node_tree.nodes.new(type='ShaderNodeAttribute')
+                            # tex.image = bpy.data.images.load("C:\\path\\to\\im.jpg")
+                            replaced = common.replace_cm3d2_tex(img, self.tex_storage_files)
+                            if compat.IS_LEGACY and replaced and prop_name == '_MainTex':
+                                for face in me.polygons:
+                                    if face.material_index == mate_idx:
+                                        me.uv_textures.active.data[face.index].image = img
+                else:
+                    common.create_tex(context, mate, prop_name)
+
+            elif prop_data['type'] == 'col':
+                col = nodes.new(type='ShaderNodeRGB')
+                col.name = col.label = prop_data['name']
+                # val.type = 'RGB'
+                col.outputs[0].default_value = prop_data['color'][:4]
+
+                # mate.node_tree.links.new(bsdf.inputs['xxx'], val.outputs['Color'])
+                # mate.node_tree.nodes.active = col
+
+                # slot = mate.texture_slots.create(tex_index)
+                # mate.use_textures[tex_index] = False
+                # slot.diffuse_color_factor = tex_data['color'][3]
+                # slot.use_rgb_to_intensity = True
+                # tex = context.blend_data.textures.new(tex_data['name'], 'BLEND')
+                # slot.texture = tex
+
+            elif prop_data['type'] == 'f':
+                val = nodes.new(type='ShaderNodeValue')
+                val.name = prop_data['name']
+                val.label = prop_data['name']
+                # val.type = 'VALUE'
+                # mate.node_tree.links.new(bsdf.inputs['xxx'], val.outputs['Value'])
+
+                val.outputs[0].default_value = prop_data['float']
+
+            self.progress(context)
+
+        cm3d2_data.align_nodes(mate)
+
+    def progress(self, context):
+        self.progress_count += self.progress_plus_value
+        context.window_manager.progress_update(self.progress_count)
 
 
 # メニューを登録する関数

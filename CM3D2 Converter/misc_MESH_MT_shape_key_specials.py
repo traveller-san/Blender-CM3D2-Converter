@@ -568,10 +568,10 @@ class CNV_OT_change_base_shape_key(bpy.types.Operator):
         target_shape_key = ob.active_shape_key
         old_shape_key = me.shape_keys.key_blocks[0]
 
-        for i in range(9**9):
+        # TOP指定でindex=1になるケースは、さらにもう一度UP
+        bpy.ops.object.shape_key_move(type='TOP')
+        if ob.active_shape_key_index == 1:
             bpy.ops.object.shape_key_move(type='UP')
-            if ob.active_shape_key_index == 0:
-                break
 
         target_shape_key.relative_key = target_shape_key
         old_shape_key.relative_key = target_shape_key

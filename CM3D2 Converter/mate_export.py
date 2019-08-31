@@ -62,67 +62,24 @@ class CNV_OT_export_cm3d2_mate(bpy.types.Operator):
 
         try:
             with writer:
-                self.write_material(context, writer)
+                mate = context.material
+                if compat.IS_LEGACY:
+                    mat_data = cm3d2_data.MaterialHandler.parse_mate_old(mate, remove_serial=True)
+                else:
+                    mat_data = cm3d2_data.MaterialHandler.parse_mate(mate, remove_serial=True)
+
+                mat_data.version = self.version
+                mat_data.name1 = self.name1
+                mat_data.name2 = self.name2
+
+                mat_data.write(writer)
+
         except common.CM3D2ExportException as e:
             self.report(type={'ERROR'}, message=str(e))
             return {'CANCELLED'}
 
         return {'FINISHED'}
 
-    def write_material(self, context, file):
-        mate = context.material
-
-        common.write_str(file, 'CM3D2_MATERIAL')
-        file.write(struct.pack('<i', self.version))
-
-        common.write_str(file, self.name1)
-        common.write_str(file, self.name2)
-        common.write_str(file, mate['shader1'])
-        common.write_str(file, mate['shader2'])
-
-        for tex_slot in mate.texture_slots:
-            if not tex_slot:
-                continue
-            tex = tex_slot.texture
-            if tex_slot.use:
-                type = 'tex'
-            else:
-                if tex_slot.use_rgb_to_intensity:
-                    type = 'col'
-                else:
-                    type = 'f'
-            common.write_str(file, type)
-            common.write_str(file, common.remove_serial_number(tex.name))
-            if type == 'tex':
-                try:
-                    img = tex.image
-                except:
-                    raise common.CM3D2ExportException("texタイプの設定値の取得に失敗しました、中止します")
-                if img:
-                    common.write_str(file, 'tex2d')
-                    common.write_str(file, common.remove_serial_number(img.name))
-                    if 'cm3d2_path' in img:
-                        path = img['cm3d2_path']
-                    else:
-                        path = bpy.path.abspath(img.filepath)
-                    path = path.replace('\\', '/')
-                    path = re.sub(r'^[\/\.]*', "", path)
-                    if not re.search(r'^assets/texture/', path, re.I):
-                        path = "Assets/texture/texture/" + os.path.basename(path)
-                    common.write_str(file, path)
-                    col = tex_slot.color
-                    file.write(struct.pack('<3f', col[0], col[1], col[2]))
-                    file.write(struct.pack('<f', tex_slot.diffuse_color_factor))
-                else:
-                    common.write_str(file, 'null')
-            elif type == 'col':
-                col = tex_slot.color
-                file.write(struct.pack('<3f', col[0], col[1], col[2]))
-                file.write(struct.pack('<f', tex_slot.diffuse_color_factor))
-            elif type == 'f':
-                file.write(struct.pack('<f', tex_slot.diffuse_color_factor))
-
-        common.write_str(file, 'end')
 
 @compat.BlRegister()
 class CNV_OT_export_cm3d2_mate_text(bpy.types.Operator):
@@ -188,6 +145,13 @@ class CNV_OT_export_cm3d2_mate_text(bpy.types.Operator):
         common.preferences().mate_export_path = self.filepath
 
         try:
+            text = context.edit_text.as_string()
+            mat_data = cm3d2_data.MaterialHandler.parse_text(text)
+        except Exception as e:
+            self.report(type={'ERROR'}, message='マテリアル情報の貼付けを中止します。' + str(e))
+            return {'CANCELLED'}
+
+        try:
             file = common.open_temporary(self.filepath, 'wb', is_backup=self.is_backup)
         except:
             self.report(type={'ERROR'}, message="ファイルを開くのに失敗しました、アクセス不可の可能性があります")
@@ -195,63 +159,13 @@ class CNV_OT_export_cm3d2_mate_text(bpy.types.Operator):
 
         try:
             with file:
-                self.write_material(context, file)
-        except common.CM3D2ExportException as e:
-            self.report(type={'ERROR'}, message=str(e))
+                mat_data.write(file, write_header=True)
+        except Exception as e:
+            self.report(type={'ERROR'}, message="mateファイルの出力に失敗、中止します。 構文を見直して下さい。" + str(e))
             return {'CANCELLED'}
 
         return {'FINISHED'}
 
-    def write_material(self, context, file):
-        txt = context.edit_text
-        lines = txt.as_string().split('\n')
-
-        common.write_str(file, 'CM3D2_MATERIAL')
-        file.write(struct.pack('<i', self.version))
-
-        common.write_str(file, self.name1)
-        common.write_str(file, self.name2)
-        common.write_str(file, lines[3])
-        common.write_str(file, lines[4])
-
-        line_seek = 5
-        try:
-            for i in range(99999):
-                if len(lines) <= line_seek:
-                    break
-                if not lines[line_seek]:
-                    line_seek += 1
-                    continue
-                if lines[line_seek] == 'tex':
-                    common.write_str(file, common.line_trim(lines[line_seek]))
-                    common.write_str(file, common.line_trim(lines[line_seek + 1]))
-                    common.write_str(file, common.line_trim(lines[line_seek + 2]))
-                    line_seek += 3
-                    if common.line_trim(lines[line_seek - 1]) == 'tex2d':
-                        common.write_str(file, common.line_trim(lines[line_seek]))
-                        common.write_str(file, common.line_trim(lines[line_seek + 1]))
-                        floats = common.line_trim(lines[line_seek + 2]).split(' ')
-                        for f in floats:
-                            file.write(struct.pack('<f', float(f)))
-                        line_seek += 3
-                elif lines[line_seek] == 'col':
-                    common.write_str(file, common.line_trim(lines[line_seek]))
-                    common.write_str(file, common.line_trim(lines[line_seek + 1]))
-                    floats = common.line_trim(lines[line_seek + 2]).split(' ')
-                    for f in floats:
-                        file.write(struct.pack('<f', float(f)))
-                    line_seek += 3
-                elif lines[line_seek] == 'f':
-                    common.write_str(file, common.line_trim(lines[line_seek]))
-                    common.write_str(file, common.line_trim(lines[line_seek + 1]))
-                    f = float(common.line_trim(lines[line_seek + 2]))
-                    file.write(struct.pack('<f', f))
-                    line_seek += 3
-                else:
-                    raise common.CM3D2ExportException("tex col f 以外の設定値が見つかりました、中止します")
-        except:
-            raise common.CM3D2ExportException("mateファイルの出力に失敗、中止します。 構文を見直して下さい")
-        common.write_str(file, 'end')
 
 # テキストメニューに項目を登録
 def TEXT_MT_text(self, context):

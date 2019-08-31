@@ -53,82 +53,26 @@ class CNV_OT_import_cm3d2_mate(bpy.types.Operator):
             self.report(type={'ERROR'}, message="ファイルを開くのに失敗しました、アクセス不可かファイルが存在しません。file=%s" % self.filepath)
             return {'CANCELLED'}
 
-        if common.read_str(file) != 'CM3D2_MATERIAL':
-            self.report(type={'ERROR'}, message="これはmateファイルではありません、中止します")
+        try:
+            with file:
+                mat_data = cm3d2_data.MaterialHandler.read(file)
+
+        except Exception as e:
+            self.report(type={'ERROR'}, message="mateファイルのインポートを中止します。" + str(e))
             return {'CANCELLED'}
-        struct.unpack('<i', file.read(4))[0]
-        common.read_str(file)
-        mate_name = common.read_str(file)
 
         if not context.material_slot:
             bpy.ops.object.material_slot_add()
         root, ext = os.path.splitext(os.path.basename(self.filepath))
-        mate = context.blend_data.materials.new(mate_name)
+        mate = context.blend_data.materials.new(name=mat_data.name)
         context.material_slot.material = mate
+        common.setup_material(mate)
 
-        mate['shader1'] = common.read_str(file)
-        mate['shader2'] = common.read_str(file)
+        if compat.IS_LEGACY:
+            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, self.is_replace_cm3d2_tex, self.is_decorate, prefs.mate_unread_same_value)
+        else:
+            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, self.is_replace_cm3d2_tex)
 
-        slot_index = 0
-        already_texs = []
-        for i in range(99999):
-            type = common.read_str(file)
-            if type == 'tex':
-                slot = mate.texture_slots.create(slot_index)
-                tex_name = common.read_str(file)
-                tex = context.blend_data.textures.new(tex_name, 'IMAGE')
-                slot.texture = tex
-                sub_type = common.read_str(file)
-                if sub_type == 'tex2d':
-                    img = context.blend_data.images.new(common.read_str(file), 128, 128)
-                    img['cm3d2_path'] = common.read_str(file)
-                    img.filepath = img['cm3d2_path']
-                    img.source = 'FILE'
-                    tex.image = img
-                    slot.color = struct.unpack('<3f', file.read(4*3))
-                    slot.diffuse_color_factor = struct.unpack('<f', file.read(4))[0]
-
-                    # tex探し
-                    if self.is_replace_cm3d2_tex:
-                        if common.replace_cm3d2_tex(img) and tex_name=='_MainTex':
-                            for face in me.polygons:
-                                if face.material_index == ob.active_material_index:
-                                    me.uv_textures.active.data[face.index].image = img
-
-            elif type == 'col':
-                slot = mate.texture_slots.create(slot_index)
-                tex_name = common.read_str(file)
-                tex = context.blend_data.textures.new(tex_name, 'BLEND')
-                mate.use_textures[slot_index] = False
-                slot.use_rgb_to_intensity = True
-                slot.color = struct.unpack('<3f', file.read(4*3))
-                slot.diffuse_color_factor = struct.unpack('<f', file.read(4))[0]
-                slot.texture = tex
-
-            elif type == 'f':
-                slot = mate.texture_slots.create(slot_index)
-                tex_name = common.read_str(file)
-                tex = context.blend_data.textures.new(tex_name, 'BLEND')
-                mate.use_textures[slot_index] = False
-                slot.diffuse_color_factor = struct.unpack('<f', file.read(4))[0]
-                slot.texture = tex
-
-            elif type == 'end':
-                break
-            else:
-                self.report(type={'ERROR'}, message="未知の設定値タイプが見つかりました、中止します")
-                return {'CANCELLED'}
-
-            if common.preferences().mate_unread_same_value:
-                if tex_name in already_texs:
-                    mate.texture_slots.clear(slot_index)
-                    slot_index -= 1
-                already_texs.append(tex_name)
-
-            slot_index += 1
-
-        file.close()
-        common.decorate_material(mate, self.is_decorate, me, ob.active_material_index)
         return {'FINISHED'}
 
 
@@ -177,52 +121,34 @@ class CNV_OT_import_cm3d2_mate_text(bpy.types.Operator):
         except:
             self.report(type={'ERROR'}, message="ファイルを開くのに失敗しました、アクセス不可かファイルが存在しません")
             return {'CANCELLED'}
-        if common.read_str(file) != 'CM3D2_MATERIAL':
-            self.report(type={'ERROR'}, message="これはmateファイルではありません、中止します")
+
+        try:
+            with file:
+                mat_data = cm3d2_data.MaterialHandler.read(file)
+
+        except Exception as e:
+            self.report(type={'ERROR'}, message="mateファイルのインポートを中止します。" + str(e))
             return {'CANCELLED'}
 
-        version = str(struct.unpack('<i', file.read(4))[0])
-        name1 = common.read_str(file)
-        name2 = common.read_str(file)
+        if not context.material_slot:
+            bpy.ops.object.material_slot_add()
+        root, ext = os.path.splitext(os.path.basename(self.filepath))
+        mate = context.blend_data.materials.new(name=mat_data.name)
+        context.material_slot.material = mate
+        common.setup_material(mate)
+
+        if compat.IS_LEGACY:
+            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, self.is_replace_cm3d2_tex, self.is_decorate, prefs.mate_unread_same_value)
+        else:
+            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, self.is_replace_cm3d2_tex)
+
+
         if not edit_text:
-            edit_text = context.blend_data.texts.new(os.path.basename(name2))
+            edit_text = context.blend_data.texts.new(os.path.basename(mat_data.name))
             context.area.type = 'TEXT_EDITOR'
             context.space_data.text = edit_text
-        edit_text.write( version + "\n" )
-        edit_text.write( name1 + "\n" )
-        edit_text.write( name2 + "\n" )
-        edit_text.write( common.read_str(file) + "\n" )
-        edit_text.write( common.read_str(file) + "\n" )
-        edit_text.write("\n")
 
-        for i in range(99999):
-            type = common.read_str(file)
-            if type == 'tex':
-                edit_text.write( type + "\n" )
-                edit_text.write( "\t" + common.read_str(file) + "\n" )
-                tex_type = common.read_str(file)
-                edit_text.write( "\t" + tex_type + "\n" )
-                if tex_type == 'tex2d':
-                    edit_text.write( "\t" + common.read_str(file) + "\n" )
-                    edit_text.write( "\t" + common.read_str(file) + "\n" )
-                    fs = struct.unpack('<4f', file.read(4*4))
-                    edit_text.write( "\t" + " ".join([str(fs[0]), str(fs[1]), str(fs[2]), str(fs[3])]) + "\n" )
-            elif type == 'col':
-                edit_text.write( type + "\n" )
-                edit_text.write( "\t" + common.read_str(file) + "\n" )
-                fs = struct.unpack('<4f', file.read(4*4))
-                edit_text.write( "\t" + " ".join([str(fs[0]), str(fs[1]), str(fs[2]), str(fs[3])]) + "\n" )
-            elif type == 'f':
-                edit_text.write( type + "\n" )
-                edit_text.write( "\t" + common.read_str(file) + "\n" )
-                edit_text.write( "\t" + str(struct.unpack('<f', file.read(4))[0]) + "\n" )
-            elif type == 'end':
-                break
-            else:
-                self.report(type={'ERROR'}, message="未知の設定値タイプが見つかりました、中止します")
-                return {'CANCELLED'}
-
-        file.close()
+        edit_text.write(mat_data.to_text())
         edit_text.current_line_index = 0
         return {'FINISHED'}
 

@@ -60,7 +60,7 @@ class CNV_OT_import_cm3d2_tex(bpy.types.Operator):
             bpy.ops.image.open(filepath=png_path)
             img = context.edit_image
             img.name = os.path.basename(self.filepath)
-            img['cm3d2_path'] = in_path
+            img['cm3d2_path'] = common.get_tex_cm3d2path(root + ".png")
 
             if self.mode == 'PACK':
                 img.pack(as_png=True)

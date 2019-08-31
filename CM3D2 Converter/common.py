@@ -23,14 +23,28 @@ bl_info = {
     "category": "Import-Export"
 }
 
+re_png = re.compile(r"\.[Pp][Nn][Gg](\.\d{3})?$")
+re_serial = re.compile(r"(\.\d{3})?$")
+re_prefix = re.compile(r'^[\/\.]*')
+re_path_prefix = re.compile(r'^assets/', re.I)
+re_ext_png = re.compile(r'\.png$', re.I)
+re_bone1 = re.compile(r'([_ ])\*([_ ].*)\.([rRlL])$')
+re_bone2 = re.compile(r'([_ ])([rRlL])([_ ].*)$')
+
 addon_name = "CM3D2 Converter"
+BASE_PATH_TEX = 'Assets/texture/texture/'
 preview_collections = {}
 KISS_ICON = None
+PREFS = None
+texpath_dict = {}
 
 
 # このアドオンの設定値群を呼び出す
 def preferences():
-    return bpy.context.user_preferences.addons[__name__.split('.')[0]].preferences
+    global PREFS
+    if PREFS is None:
+        PREFS = compat.get_prefs(bpy.context).addons[__package__].preferences
+    return PREFS
 
 
 def kiss_icon():
@@ -42,7 +56,8 @@ def kiss_icon():
 
 # データ名末尾の「.001」などを削除
 def remove_serial_number(name, enable=True):
-    return re.sub(r'\.\d{3,}$', "", name) if enable else name
+    return re_serial.sub('', name) if enable else name
+
 
 # 文字列の左右端から空白を削除
 def line_trim(line, enable=True):
@@ -482,6 +497,48 @@ def replace_cm3d2_tex(img, pre_files=[]):
             return False
     return False
 
+
+def get_texpath_dict(reload=False):
+    if reload or len(texpath_dict) == 0:
+        texpath_dict.clear()
+        tex_dirs = get_default_tex_paths()
+        for tex_dir in tex_dirs:
+            for path in fild_tex_all_files(tex_dir):
+                path = bpy.path.abspath(path)
+                file_name = os.path.basename(path).lower()
+                # 先に見つけたファイルを優先
+                if file_name not in texpath_dict:
+                    texpath_dict[file_name] = path
+    return texpath_dict
+
+
+def replace_cm3d2_tex2(img, reload_path=False):
+    source_name = remove_serial_number(img.name).lower()
+    source_png_name = source_name + ".png"
+    source_tex_name = source_name + ".tex"
+
+    texpathes = get_texpath_dict(reload_path)
+    png_path = texpathes.get(source_png_name)
+    if png_path:
+        img.filepath = png_path
+        img.reload()
+        return True
+    tex_path = texpathes.get(source_tex_name)
+    try:
+        tex_data = load_cm3d2tex(tex_path)
+        if tex_data is None:
+            return False
+
+        with open(tex_path, 'wb') as png_file:
+            png_file.write(tex_data[-1])
+        img.filepath = tex_path
+        img.reload()
+        return True
+    except:
+        pass
+    return False
+
+
 # texファイルの読み込み
 def load_cm3d2tex(path, skip_data=False):
 
@@ -511,6 +568,152 @@ def load_cm3d2tex(path, skip_data=False):
             png_size = struct.unpack('<i', file.read(4))[0]
             data = file.read(png_size)
         return version, tex_format, uv_rects, data
+
+
+def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path=None, tex_map_data=None, replace_tex=False, slot_index=-1):
+    if compat.IS_LEGACY:
+        slot = mate.texture_slots.create(slot_index)
+        tex = context.blend_data.textures.new(node_name, 'IMAGE')
+        slot.texture = tex
+
+        if tex_name:
+            slot.offset[0] = tex_map_data[0]
+            slot.offset[1] = tex_map_data[1]
+            slot.scale[0] = tex_map_data[2]
+            slot.scale[1] = tex_map_data[3]
+
+            if os.path.exists(filepath):
+                img = bpy.data.images.load(filepath)
+                img.name = tex_name
+            else:
+                img = context.blend_data.images.new(tex_name, 128, 128)
+                img.filepath = filepath
+            img['cm3d2_path'] = cm3d2path
+            img.source = 'FILE'
+            tex.image = img
+
+            if replace_tex:
+                replaced = replace_cm3d2_tex(tex.image)
+                if replaced and node_name == '_MainTex':
+                    ob = context.active_object
+                    me = ob.data
+                    for face in me.polygons:
+                        if face.material_index == ob.active_material_index:
+                            me.uv_textures.active.data[face.index].image = tex.image
+
+    else:
+        # if mate.use_nodes is False:
+        # 	mate.use_nodes = True
+        nodes = mate.node_tree.nodes
+        tex = nodes.get(node_name)
+        if tex is None:
+            tex = mate.node_tree.nodes.new(type='ShaderNodeTexImage')
+            tex.name = tex.label = node_name
+            tex.show_texture = True
+
+        if tex_name:
+            if tex.image is None:
+                if os.path.exists(filepath):
+                    img = bpy.data.images.load(filepath)
+                    img.name = tex_name
+                else:
+                    img = context.blend_data.images.new(tex_name, 128, 128)
+                    img.filepath = filepath
+                img.source = 'FILE'
+                tex.image = img
+                img['cm3d2_path'] = cm3d2path
+            else:
+                img = tex.image
+                path = img.get('cm3d2_path')
+                if path != cm3d2path:
+                    img['cm3d2_path'] = cm3d2path
+                    img.filepath = filepath
+
+            tex_map = tex.texture_mapping
+            tex_map.translation[0] = tex_map_data[0]
+            tex_map.translation[1] = tex_map_data[1]
+            tex_map.scale[0] = tex_map_data[2]
+            tex_map.scale[1] = tex_map_data[3]
+
+        # tex.color = tex_data['color'][:3]
+        # tex.outputs['Color'].default_value = tex_data['color'][:]
+        # tex.outputs['ALpha'].default_value = tex_data['color'][3]
+
+            # tex探し
+            if replace_tex:
+                replaced = replace_cm3d2_tex(tex.image)
+                # TODO 2.8での実施方法を調査. shader editorで十分？
+
+    return tex
+
+
+def create_col(context, mate, node_name, color, slot_index=-1):
+    if compat.IS_LEGACY:
+        if slot_index >= 0:
+            mate.use_textures[slot_index] = False
+        node = mate.texture_slots.create(slot_index)
+        node.color = color[:3]
+        node.diffuse_color_factor = color[3]
+        node.use_rgb_to_intensity = True
+        tex = context.blend_data.textures.new(node_name, 'BLEND')
+        node.texture = tex
+        node.use = False
+    else:
+        node = mate.node_tree.nodes.get(node_name)
+        if node is None:
+            node = mate.node_tree.nodes.new(type='ShaderNodeRGB')
+            node.name = node.label = node_name
+        node.outputs[0].default_value = color
+
+    return node
+
+
+def create_float(context, mate, node_name, value, slot_index=-1):
+    if compat.IS_LEGACY:
+        if slot_index >= 0:
+            mate.use_textures[slot_index] = False
+        node = mate.texture_slots.create(slot_index)
+        node.diffuse_color_factor = value
+        node.use_rgb_to_intensity = False
+        tex = context.blend_data.textures.new(node_name, 'BLEND')
+        node.texture = tex
+        node.use = False
+    else:
+        node = mate.node_tree.nodes.get(node_name)
+        if node is None:
+            node = mate.node_tree.nodes.new(type='ShaderNodeValue')
+            node.name = node.label = node_name
+        node.outputs[0].default_value = value
+
+    return node
+
+
+def setup_material(mate):
+    if mate:
+        if 'CM3D2 Texture Expand' not in mate:
+            mate['CM3D2 Texture Expand'] = True
+
+        if not compat.IS_LEGACY:
+            mate.use_nodes = True
+
+
+def setup_image_name(img):
+    """イメージの名前から拡張子を除外する"""
+    # consider case with serial number. ex) sample.png.001
+    img.name = re_png.sub(r'\1', img.name)
+
+
+def get_tex_cm3d2path(filepath):
+    return BASE_PATH_TEX + os.path.basename(filepath)
+
+
+def to_cm3d2path(path):
+    path = path.replace('\\', '/')
+    path = re_prefix.sub('', path)
+    if not re_path_prefix.search(path):
+        path = get_tex_cm3d2path(path)
+    return path
+
 
 # col f タイプの設定値を値に合わせて着色
 def set_texture_color(slot):
@@ -560,8 +763,12 @@ def set_texture_color(slot):
         else:
             elements[1].color, elements[2].color = [1, 1, 1, 1], [1, 1, 1, 1]
 
+
 # 必要なエリアタイプを設定を変更してでも取得
-def get_request_area(context, request_type, except_types=['VIEW_3D', 'PROPERTIES', 'INFO', 'USER_PREFERENCES']):
+def get_request_area(context, request_type, except_types=None):
+    if except_types is None:
+        except_types = ['VIEW_3D', 'PROPERTIES', 'INFO', compat.pref_type()]
+
     request_areas = [(a, a.width * a.height) for a in context.screen.areas if a.type == request_type]
     candidate_areas = [(a, a.width * a.height) for a in context.screen.areas if a.type not in except_types]
 
