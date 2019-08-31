@@ -59,8 +59,8 @@ class CNV_OT_render_cm3d2_icon(bpy.types.Operator):
             if ob.type != 'MESH':
                 continue
             me = ob.data
-            if not len(me.uv_textures): continue
-            if me.uv_textures.active.data[0].image:
+            uv = compat.get_active_uv(me)
+            if uv and uv.data[0]:
                 self.mode = 'FACE_TEXTURE'
                 break
         else:
