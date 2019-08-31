@@ -789,14 +789,24 @@ def remove_data(target_data):
     except:
         target_data = [target_data]
 
-    for data in target_data:
-        if data.__class__.__name__ == 'Object':
-            if data.name in bpy.context.scene.objects:
-                bpy.context.scene.objects.unlink(data)
+    if compat.IS_LEGACY:
+        for data in target_data:
+            if data.__class__.__name__ == 'Object':
+                if data.name in bpy.context.scene.objects:
+                    bpy.context.scene.objects.unlink(data)
+    else:
+        for data in target_data:
+            if data.__class__.__name__ == 'Object':
+                if data.name in bpy.context.scene.collection.objects:
+                    bpy.context.scene.collection.objects.unlink(data)
 
-    for data in target_data:
-        if 'users' in dir(data) and 'user_clear' in dir(data):
-            if data.users: data.user_clear()
+    # https://developer.blender.org/T49837
+    # によると、xxx.remove(data, do_unlink=True)で十分
+    #
+    # for data in target_data:
+    # 	users = getattr(data, 'users')
+    # 	if users and 'user_clear' in dir(data):
+    # 		data.user_clear()
 
     for data in target_data:
         for data_str in dir(bpy.data):
