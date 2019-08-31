@@ -6,8 +6,10 @@
 　慣れてきたら[CM3D2 Converterのチュートリアル](http://seesaawiki.jp/eastpoint/d/blender_MOD01)もやってみましょう。  
 
 **注意点**
-* Blender-2.8xへの対応は現在移植中であり、正常に動作しない機能があります。  
-* Blender-2.7x上でBlender-CM3D2-Converterを用いて取り込み・作成したデータをそのままBlender-2.8xで開くと一部のデータは移行されません。  
+* Blender-2.7xでは動作しません。  
+* Blender-2.8xへの移植作業を進行中のため、正常に動作しない機能があります。  
+* Blender-2.7x上でBlender-CM3D2-Converterを用いて取り込み・作成したデータを  
+そのままBlender-2.8xで開いても正常に移行されません。  
   (Blender-2.8xでtexture_slotsが廃止されたため、移行前にtexture_slotsの各種データをnode_treeに移しておく必要があります)
 * **使い方**以降の記述は、Blender-2.8xに対応していない可能性があります
 * Blender-2.8xでの変更点
@@ -17,6 +19,7 @@
   * ベイク機能
   * アイコンレンダリング機能
   * アドオン更新機能
+  * append_data.blendの動作確認
 
 ## 目次
 * [インストール](#インストール)
