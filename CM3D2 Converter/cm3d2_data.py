@@ -515,7 +515,7 @@ class Material():
     def write(self, writer, write_header=True):
         if write_header:
             common.write_str(writer, 'CM3D2_MATERIAL')
-            common.writer.write(struct.pack('<i', self.version))
+            writer.write(struct.pack('<i', self.version))
             common.write_str(writer, self.name1)
 
         common.write_str(writer, self.name2)
