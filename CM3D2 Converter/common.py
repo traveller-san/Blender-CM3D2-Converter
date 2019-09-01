@@ -14,10 +14,15 @@ from . import compat
 bl_info = {}
 addon_name = "CM3D2 Converter"
 BASE_PATH_TEX = "Assets/texture/texture/"
-preview_collections = {}
+BRANCH = "bl_28"
+URL_REPOS = "https://github.com/trzr/Blender-CM3D2-Converter/"
+URL_ATOM = URL_REPOS + "commits/" + BRANCH + ".atom"
+URL_MODULE = URL_REPOS + "archive/" + BRANCH + ".zip"
 KISS_ICON = None
 PREFS = None
+preview_collections = {}
 texpath_dict = {}
+
 
 re_png = re.compile(r"\.[Pp][Nn][Gg](\.\d{3})?$")
 re_serial = re.compile(r"(\.\d{3})$")

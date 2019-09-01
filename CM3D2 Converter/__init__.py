@@ -4,7 +4,7 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz",
-    "version": (2019, 9, 1, 18, 30, 0),
+    "version": (2019, 9, 1, 18, 57, 29),
     "blender": (2, 80, 0),
     "location": "ファイル > インポート/エクスポート > CM3D2 Model (.model)",
     "description": "カスタムメイド3D2/カスタムオーダーメイド3D2専用ファイルのインポート/エクスポートを行います",
@@ -234,9 +234,9 @@ class AddonPreferences(bpy.types.AddonPreferences):
         row.prop(self, 'skip_shapekey', icon='SHAPEKEY_DATA')
         row.prop(self, 'is_apply_modifiers', icon='MODIFIER')
         # row = box.row()
-        # row = self.layout.row()
-        # row.operator('script.update_cm3d2_converter', icon='FILE_REFRESH')
-        # row.menu('INFO_MT_help_CM3D2_Converter_RSS', icon='INFO')
+        row = self.layout.row()
+        row.operator('script.update_cm3d2_converter', icon='FILE_REFRESH')
+        row.menu('INFO_MT_help_CM3D2_Converter_RSS', icon='INFO')
 
 
 # プラグインをインストールしたときの処理

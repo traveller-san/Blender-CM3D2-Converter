@@ -30,7 +30,7 @@ class INFO_MT_help_CM3D2_Converter_RSS(bpy.types.Menu):
 
     def draw(self, context):
         try:
-            response = urllib.request.urlopen("https://github.com/CM3Duser/Blender-CM3D2-Converter/commits/master.atom")
+            response = urllib.request.urlopen(common.URL_ATOM)
             html = response.read().decode('utf-8')
             titles = re.findall(r'\<title\>[　\s]*([^　\s][^\<]*[^　\s])[　\s]*\<\/title\>', html)[1:]
             updates = re.findall(r'\<updated\>([^\<\>]*)\<\/updated\>', html)[1:]
@@ -105,10 +105,10 @@ class CNV_OT_update_cm3d2_converter(bpy.types.Operator):
 
     def execute(self, context):
 
-        zip_path = os.path.join(bpy.app.tempdir, "Blender-CM3D2-Converter-master.zip")
+        zip_path = os.path.join(bpy.app.tempdir, "Blender-CM3D2-Converter-" + common.BRANCH + ".zip")
         addon_path = os.path.dirname(__file__)
 
-        response = urllib.request.urlopen("https://github.com/CM3Duser/Blender-CM3D2-Converter/archive/master.zip")
+        response = urllib.request.urlopen(common.URL_MODULE)
         zip_file = open(zip_path, 'wb')
         zip_file.write(response.read())
         zip_file.close()
