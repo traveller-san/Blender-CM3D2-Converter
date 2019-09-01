@@ -12,7 +12,7 @@ from . import compat
 
 # アドオン情報
 bl_info = {}
-addon_name = "CM3D2 Converter"
+ADDON_NAME = "CM3D2 Converter"
 BASE_PATH_TEX = "Assets/texture/texture/"
 BRANCH = "bl_28"
 URL_REPOS = "https://github.com/trzr/Blender-CM3D2-Converter/"

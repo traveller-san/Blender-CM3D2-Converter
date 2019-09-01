@@ -76,7 +76,7 @@ class INFO_MT_help_CM3D2_Converter_RSS(bpy.types.Menu):
             for text, icon, link, update_diff in output_data:
 
                 if update_diff == min_update_diff:
-                    if update_diff == 0:
+                    if update_diff < 30:
                         text = "Now! " + text
                     icon = 'QUESTION'
 
@@ -152,7 +152,7 @@ class CNV_OT_show_cm3d2_converter_preference(bpy.types.Operator):
         my_info = None
         for module in addon_utils.modules():
             info = addon_utils.module_bl_info(module)
-            if info['name'] == common.addon_name:
+            if info['name'] == common.ADDON_NAME:
                 my_info = info
                 break
         area = common.get_request_area(context, compat.pref_type())
