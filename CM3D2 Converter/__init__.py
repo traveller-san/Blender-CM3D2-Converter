@@ -4,7 +4,7 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz",
-    "version": (2019, 9, 4, 22, 48, 29),
+    "version": (2019, 9, 4, 23, 12, 34),
     "blender": (2, 80, 0),
     "location": "ファイル > インポート/エクスポート > CM3D2 Model (.model)",
     "description": "カスタムメイド3D2/カスタムオーダーメイド3D2専用ファイルのインポート/エクスポートを行います",
@@ -278,7 +278,7 @@ def register():
         bpy.types.VIEW3D_MT_add.append(misc_INFO_MT_add.menu_func)
         bpy.types.VIEW3D_MT_curve_add.append(misc_INFO_MT_curve_add.menu_func)
         # (更新機能)
-        # bpy.types.TOPBAR_MT_help.append(misc_INFO_MT_help.menu_func)
+        bpy.types.TOPBAR_MT_help.append(misc_INFO_MT_help.menu_func)
 
         # マテリアルパネルの追加先がないため、別途Panelを追加
         # bpy.types.MATERIAL_PT_context_xxx.append(misc_MATERIAL_PT_context_material.menu_func)
@@ -363,7 +363,7 @@ def unregister():
 
         bpy.types.VIEW3D_MT_add.remove(misc_INFO_MT_add.menu_func)
         bpy.types.VIEW3D_MT_curve_add.remove(misc_INFO_MT_curve_add.menu_func)
-        # bpy.types.TOPBAR_MT_help.remove(misc_INFO_MT_help.menu_func)
+        bpy.types.TOPBAR_MT_help.remove(misc_INFO_MT_help.menu_func)
 
         # bpy.types.MATERIAL_MT_context_menu.remove(misc_MATERIAL_PT_context_material.menu_func)
         # bpy.types.CYCLES_RENDER_PT_bake.remove(misc_RENDER_PT_bake.menu_func)
