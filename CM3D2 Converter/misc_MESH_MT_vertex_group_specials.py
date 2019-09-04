@@ -89,7 +89,7 @@ class CNV_OT_quick_transfer_vertex_group(bpy.types.Operator):
         compat.set_select(target_ob, False)
         compat.set_active(context, original_source_obs[0])
         bpy.ops.object.duplicate(linked=False, mode='TRANSLATION')
-        if len(context.selected_object) > 1:
+        if len(context.selected_objects) > 1:
             bpy.ops.object.join()
         join_source_ob = context.selected_objects[0]
         join_source_me = join_source_ob.data
