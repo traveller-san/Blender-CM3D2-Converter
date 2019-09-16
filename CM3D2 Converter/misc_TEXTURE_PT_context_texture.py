@@ -367,7 +367,7 @@ class CNV_OT_replace_cm3d2_tex_old(bpy.types.Operator):
     def execute(self, context):
         tex = context.texture
         img = tex.image
-        if not common.replace_cm3d2_tex(img):
+        if not common.replace_cm3d2_tex(img, reload_path=True):
             self.report(type={'ERROR'}, message="見つかりませんでした")
             return {'CANCELLED'}
         tex.image_user.use_auto_refresh = True
@@ -396,7 +396,7 @@ class CNV_OT_replace_cm3d2_tex(bpy.types.Operator, common.NodeHandler):
         node = self.get_node(context)
         if node and node.type == 'TEX_IMAGE':
             img = node.image
-            if img and common.replace_cm3d2_tex2(img):
+            if img and common.replace_cm3d2_tex(img, reload_path=True):
                 self.report(type={'INFO'}, message="テクスチャファイルを読み込みました。file=%s" % img.filepath)
                 node.image_user.use_auto_refresh = True
                 return {'FINISHED'}

@@ -20,7 +20,7 @@ class CNV_OT_import_cm3d2_mate(bpy.types.Operator):
     filter_glob = bpy.props.StringProperty(default="*.mate", options={'HIDDEN'})
 
     is_decorate = bpy.props.BoolProperty(name="種類に合わせてマテリアルを装飾", default=True)
-    is_replace_cm3d2_tex = bpy.props.BoolProperty(name="テクスチャを探す", default=True, description="CM3D2本体のインストールフォルダからtexファイルを探して開きます")
+    # is_replace_cm3d2_tex = bpy.props.BoolProperty(name="テクスチャを探す", default=True, description="CM3D2本体のインストールフォルダからtexファイルを探して開きます")
 
     @classmethod
     def poll(cls, context):
@@ -35,14 +35,14 @@ class CNV_OT_import_cm3d2_mate(bpy.types.Operator):
             self.filepath = common.default_cm3d2_dir(prefs.mate_default_path, None, "mate")
         else:
             self.filepath = common.default_cm3d2_dir(prefs.mate_import_path, None, "mate")
-        self.is_replace_cm3d2_tex = prefs.is_replace_cm3d2_tex
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
     def draw(self, context):
+        prefs = common.preferences()
         if compat.IS_LEGACY:
             self.layout.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
-        self.layout.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
+        self.layout.prop(prefs, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
 
     def execute(self, context):
         prefs = common.preferences()
@@ -70,9 +70,9 @@ class CNV_OT_import_cm3d2_mate(bpy.types.Operator):
         common.setup_material(mate)
 
         if compat.IS_LEGACY:
-            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, self.is_replace_cm3d2_tex, self.is_decorate, prefs.mate_unread_same_value)
+            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, prefs.is_replace_cm3d2_tex, self.is_decorate, prefs.mate_unread_same_value)
         else:
-            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, self.is_replace_cm3d2_tex)
+            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, prefs.is_replace_cm3d2_tex)
 
         return {'FINISHED'}
 
@@ -107,7 +107,8 @@ class CNV_OT_import_cm3d2_mate_text(bpy.types.Operator):
         self.layout.prop(self, 'is_overwrite', icon='SAVE_COPY')
 
     def execute(self, context):
-        common.preferences().mate_import_path = self.filepath
+        prefs = common.preferences()
+        prefs.mate_import_path = self.filepath
 
         edit_text = None
         if self.is_overwrite:
@@ -139,10 +140,9 @@ class CNV_OT_import_cm3d2_mate_text(bpy.types.Operator):
         common.setup_material(mate)
 
         if compat.IS_LEGACY:
-            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, self.is_replace_cm3d2_tex, self.is_decorate, prefs.mate_unread_same_value)
+            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, prefs.is_replace_cm3d2_tex, self.is_decorate, prefs.mate_unread_same_value)
         else:
-            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, self.is_replace_cm3d2_tex)
-
+            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, prefs.is_replace_cm3d2_tex)
 
         if not edit_text:
             edit_text = context.blend_data.texts.new(os.path.basename(mat_data.name))

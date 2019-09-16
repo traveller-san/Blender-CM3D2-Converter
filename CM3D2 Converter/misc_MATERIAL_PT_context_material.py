@@ -11,7 +11,7 @@ from . import compat
 from . import cm3d2_data
 
 
-# メニュー等に項目追加 (旧版用)
+# メニュー等に項目追加 (for 2.7x or less)
 def menu_func(self, context):
     if compat.IS_LEGACY is False:
         return
@@ -279,14 +279,13 @@ class Material_PT_properries(bpy.types.Panel):
 
 class new_mate_opr():
     is_decorate = bpy.props.BoolProperty(name="種類に合わせてマテリアルを装飾", default=True)
-    is_replace_cm3d2_tex = bpy.props.BoolProperty(name="テクスチャを探す", default=False, description="CM3D2本体のインストールフォルダからtexファイルを探して開きます")
+    # is_replace_cm3d2_tex = bpy.props.BoolProperty(name="テクスチャを探す", default=False, description="CM3D2本体のインストールフォルダからtexファイルを探して開きます")
 
     @classmethod
     def poll(cls, context):
         return True
 
     def invoke(self, context, event):
-        self.is_replace_cm3d2_tex = common.preferences().is_replace_cm3d2_tex
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
@@ -294,7 +293,9 @@ class new_mate_opr():
         self.layout.prop(self, 'shader_type', icon='MATERIAL')
         if compat.IS_LEGACY:
             self.layout.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
-        self.layout.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
+        prefs = common.preferences()
+
+        self.layout.prop(prefs, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
 
     def execute(self, context):
         ob = context.active_object
@@ -577,20 +578,20 @@ class new_mate_opr():
             f_list.append(_RimPower)
             f_list.append(_RimShift)
 
-        tex_storage_files = common.get_tex_storage_files()
+        texpath_dict = common.get_texpath_dict()
         slot_index = 0
 
         for data in tex_list:
             key = data[0]
             tex_name = data[1]
             cm3d2path = data[2]
-            # TODO prefsから初期値を取得
-            tex_map = [0, 0, 1, 1]
+            # prefsから初期値を取得
+            tex_map = prefs.new_mate_tex_offset[:2] + prefs.new_mate_tex_scale[:2]
             tex = common.create_tex(context, mate, key, tex_name, cm3d2path, cm3d2path, tex_map, False, slot_index)
 
             # tex探し
-            if self.is_replace_cm3d2_tex:
-                replaced = common.replace_cm3d2_tex(tex.image, tex_storage_files)
+            if prefs.is_replace_cm3d2_tex:
+                replaced = common.replace_cm3d2_tex(tex.image, texpath_dict=texpath_dict, reload_path=False)
                 if compat.IS_LEGACY and replaced and key == '_MainTex':
                     for face in me.polygons:
                         if face.material_index == ob.active_material_index:
@@ -672,7 +673,6 @@ class CNV_OT_paste_material(bpy.types.Operator):
 
     def invoke(self, context, event):
         if self.use_dialog:
-            self.is_replace_cm3d2_tex = common.preferences().is_replace_cm3d2_tex
             return context.window_manager.invoke_props_dialog(self)
         return self.execute(context)
 
@@ -680,7 +680,8 @@ class CNV_OT_paste_material(bpy.types.Operator):
         self.layout.prop(self, 'override_name')
         if compat.IS_LEGACY:
             self.layout.prop(self, 'is_decorate')
-        self.layout.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
+        prefs = common.preferences()
+        self.layout.prop(prefs, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
 
     def execute(self, context):
         text = context.window_manager.clipboard
@@ -707,10 +708,11 @@ class CNV_OT_paste_material(bpy.types.Operator):
                 if common.remove_serial_number(mate_name) != common.remove_serial_number(mate.name):
                     mate.name = mate_name
 
+        prefs = common.preferences()
         if compat.IS_LEGACY:
-            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, self.is_replace_cm3d2_tex, self.is_decorate)
+            cm3d2_data.MaterialHandler.apply_to_old(context, mate, mat_data, prefs.is_replace_cm3d2_tex, self.is_decorate)
         else:
-            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, self.is_replace_cm3d2_tex)
+            cm3d2_data.MaterialHandler.apply_to(context, mate, mat_data, prefs.is_replace_cm3d2_tex)
 
         self.report(type={'INFO'}, message="クリップボードからマテリアルを貼付けました")
         return {'FINISHED'}

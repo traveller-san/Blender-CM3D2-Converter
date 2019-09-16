@@ -888,7 +888,7 @@ class MaterialHandler:
                 slot.offset = item[3]
                 slot.scale = item[4]
                 if replace_tex:
-                    if common.replace_cm3d2_tex(tex.image) and prop_name == '_MainTex':
+                    if common.replace_cm3d2_tex(tex.image, reload_path=True) and prop_name == '_MainTex':
                         for face in me.polygons:
                             if face.material_index == ob.active_material_index:
                                 me.uv_textures.active.data[face.index].image = tex.image

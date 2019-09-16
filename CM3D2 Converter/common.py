@@ -430,12 +430,12 @@ def file_backup(filepath, enable=True):
 
 
 # サブフォルダを再帰的に検索してリスト化
-def fild_tex_all_files(dir):
+def find_tex_all_files(dir):
     for root, dirs, files in os.walk(dir):
-        for file in files:
-            ext = os.path.splitext(file)[1].lower()
+        for f in files:
+            ext = os.path.splitext(f)[1].lower()
             if ext == ".tex" or ext == ".png":
-                yield os.path.join(root, file)
+                yield os.path.join(root, f)
 
 
 # テクスチャ置き場のパスのリストを返す
@@ -465,9 +465,9 @@ def get_default_tex_paths():
         tex_dirs = [path for path in target_dirs if os.path.isdir(path)]
 
         for index, path in enumerate(tex_dirs):
-            prefs.__setattr__('default_tex_path' + str(index), path)
+            setattr(prefs, 'default_tex_path' + str(index), path)
     else:
-        tex_dirs = [prefs.__getattribute__('default_tex_path' + str(i)) for i in range(4) if prefs.__getattribute__('default_tex_path' + str(i))]
+        tex_dirs = [getattr(prefs, 'default_tex_path' + str(i)) for i in range(4) if getattr(prefs, 'default_tex_path' + str(i))]
     return tex_dirs
 
 
@@ -477,51 +477,8 @@ def get_tex_storage_files():
     tex_dirs = get_default_tex_paths()
     for tex_dir in tex_dirs:
         tex_dir = bpy.path.abspath(tex_dir)
-        files.extend(fild_tex_all_files(tex_dir))
+        files.extend(find_tex_all_files(tex_dir))
     return files
-
-
-# テクスチャを検索して空の画像へ置換
-def replace_cm3d2_tex(img, pre_files=[]):
-    source_name = remove_serial_number(img.name).lower()
-    source_png_name = source_name + ".png"
-    source_tex_name = source_name + ".tex"
-
-    tex_dirs = get_default_tex_paths()
-
-    for tex_dir in tex_dirs:
-
-        if len(pre_files):
-            files = pre_files
-        else:
-            files = fild_tex_all_files(tex_dir)
-
-        for path in files:
-            path = bpy.path.abspath(path)
-            file_name = os.path.basename(path).lower()
-
-            if file_name == source_png_name:
-                img.filepath = path
-                img.reload()
-                return True
-
-            elif file_name == source_tex_name:
-                try:
-                    tex_data = load_cm3d2tex(path)
-                    if tex_data is None:
-                        return False
-
-                    with open(path, 'wb') as png_file:
-                        png_file.write(tex_data[-1])
-                    img.filepath = path
-                    img.reload()
-                    return True
-                except:
-                    return False
-
-        if len(pre_files):
-            return False
-    return False
 
 
 def get_texpath_dict(reload=False):
@@ -529,7 +486,7 @@ def get_texpath_dict(reload=False):
         texpath_dict.clear()
         tex_dirs = get_default_tex_paths()
         for tex_dir in tex_dirs:
-            for path in fild_tex_all_files(tex_dir):
+            for path in find_tex_all_files(tex_dir):
                 path = bpy.path.abspath(path)
                 file_name = os.path.basename(path).lower()
                 # 先に見つけたファイルを優先
@@ -538,19 +495,53 @@ def get_texpath_dict(reload=False):
     return texpath_dict
 
 
-def replace_cm3d2_tex2(img, reload_path=False):
-    source_name = remove_serial_number(img.name).lower()
-    source_png_name = source_name + ".png"
-    source_tex_name = source_name + ".tex"
-
-    texpathes = get_texpath_dict(reload_path)
-    png_path = texpathes.get(source_png_name)
+def reload_png(img, texpath_dict, png_name):
+    png_path = texpath_dict.get(png_name)
     if png_path:
         img.filepath = png_path
         img.reload()
         return True
-    tex_path = texpathes.get(source_tex_name)
+    return False
+
+
+def replace_cm3d2_tex(img, texpath_dict: dict=None, reload_path: bool=True) -> bool:
+    """replace tex file.
+    pngファイルを先に走査し、見つからなければtexファイルを探す.
+    texはpngに展開して読み込みを行う.
+    reload_path=Trueの場合、png,texファイルが見つからない場合にキャッシュを再構成し、
+    再度検索を行う.
+
+    Parameters:
+        img (Image): イメージオブジェクト
+        texpath_dict (dict): テクスチャパスのdict (キャッシュ)
+        reload_path (bool): 見つからない場合にキャッシュを再読込するか
+
+    Returns:
+        bool: tex load successful
+    """
+    if texpath_dict is None:
+        texpath_dict = get_texpath_dict()
+
+    if __replace_cm3d2_tex(img, texpath_dict):
+        return True
+    if reload_path:
+        texpath_dict = get_texpath_dict(True)
+        return __replace_cm3d2_tex(img, texpath_dict)
+    return False
+
+
+def __replace_cm3d2_tex(img, texpath_dict: dict) -> bool:
+    source_name = remove_serial_number(img.name).lower()
+
+    source_png_name = source_name + ".png"
+    if reload_png(img, texpath_dict, source_png_name):
+        return True
+
+    source_tex_name = source_name + ".tex"
+    tex_path = texpath_dict.get(source_tex_name)
     try:
+        if tex_path is None:
+            return False
         tex_data = load_cm3d2tex(tex_path)
         if tex_data is None:
             return False
@@ -619,7 +610,7 @@ def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path
             tex.image = img
 
             if replace_tex:
-                replaced = replace_cm3d2_tex(tex.image)
+                replaced = replace_cm3d2_tex(tex.image, reload_path=False)
                 if replaced and node_name == '_MainTex':
                     ob = context.active_object
                     me = ob.data
@@ -667,7 +658,7 @@ def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path
 
             # tex探し
             if replace_tex:
-                replaced = replace_cm3d2_tex(tex.image)
+                replaced = replace_cm3d2_tex(tex.image, reload_path=False)
                 # TODO 2.8での実施方法を調査. shader editorで十分？
 
     return tex

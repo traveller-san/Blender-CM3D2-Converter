@@ -33,7 +33,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
     is_vertex_group_sort = bpy.props.BoolProperty(name="頂点グループを名前順ソート", default=True, description="頂点グループを名前順でソートします")
     is_remove_empty_vertex_group = bpy.props.BoolProperty(name="割り当てのない頂点グループを削除", default=True, description="全ての頂点に割り当てのない頂点グループを削除します")
 
-    is_replace_cm3d2_tex = bpy.props.BoolProperty(name="テクスチャを探す", default=True, description="CM3D2本体のインストールフォルダからtexファイルを探して開きます")
+    reload_tex_cache = bpy.props.BoolProperty(name="テクスチャキャッシュを再構成", default=False, description="texファイルを探す際、キャッシュを再構成します")
     is_decorate = bpy.props.BoolProperty(name="種類に合わせてマテリアルを装飾", default=True)
     is_mate_data_text = bpy.props.BoolProperty(name="テキストにマテリアル情報埋め込み", default=True, description="シェーダー情報をテキストに埋め込みます")
 
@@ -43,7 +43,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
     is_bone_data_text = bpy.props.BoolProperty(name="テキスト", default=True, description="ボーン情報をテキストとして読み込みます")
     is_bone_data_obj_property = bpy.props.BoolProperty(name="オブジェクトのカスタムプロパティ", default=True, description="メッシュオブジェクトのカスタムプロパティにボーン情報を埋め込みます")
     is_bone_data_arm_property = bpy.props.BoolProperty(name="アーマチュアのカスタムプロパティ", default=True, description="アーマチュアデータのカスタムプロパティにボーン情報を埋め込みます")
-    tex_storage_files = None
+    texpath_dict = None
 
     @classmethod
     def poll(cls, context):
@@ -56,12 +56,12 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         else:
             self.filepath = common.default_cm3d2_dir(prefs.model_import_path, None, "model")
         self.scale = prefs.scale
-        self.is_replace_cm3d2_tex = prefs.is_replace_cm3d2_tex
         self.is_convert_bone_weight_names = prefs.is_convert_bone_weight_names
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
     def draw(self, context):
+        prefs = common.preferences()
         self.layout.prop(self, 'scale')
         box = self.layout.box()
         box.prop(self, 'is_mesh', icon='MESH_DATA')
@@ -76,7 +76,8 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         sub_box.prop(self, 'is_convert_bone_weight_names', icon='BLENDER')
         sub_box = box.box()
         sub_box.label(text="マテリアル")
-        sub_box.prop(self, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
+        sub_box.prop(prefs, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
+        sub_box.prop(self, 'reload_tex_cache', icon='FILE_REFRESH')
         if compat.IS_LEGACY:
             sub_box.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
         sub_box.prop(self, 'is_mate_data_text', icon='TEXT')
@@ -107,7 +108,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             self.report(type={'ERROR'}, message="ファイルを開くのに失敗しました、アクセス不可かファイルが存在しません:%s" % self.filepath)
             return {'CANCELLED'}
 
-        self.tex_storage_files = common.get_tex_storage_files()
+        self.texpath_dict = common.get_texpath_dict(reload=self.reload_tex_cache)
 
         with reader:
             # ヘッダー
@@ -677,7 +678,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             if tex_data['type'] == 'tex':
                 path = tex_data['path']
                 tex_map_data = tex_data['tex_map']
-                common.create_tex(context, mate, node_name, tex_data['name2'], path, path, tex_map_data, self.is_replace_cm3d2_tex, slot_index)
+                common.create_tex(context, mate, node_name, tex_data['name2'], path, path, tex_map_data, prefs.is_replace_cm3d2_tex, slot_index)
 
             elif tex_data['type'] == 'col':
                 col = tex_data['color']
@@ -721,11 +722,11 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                         tex_map.scale[1] = mapping[3]
 
                         # ファイルの実体を割り当て
-                        if self.is_replace_cm3d2_tex:
+                        if prefs.is_replace_cm3d2_tex:
                             img = tex.image
                             # col = mate.node_tree.nodes.new(type='ShaderNodeAttribute')
                             # tex.image = bpy.data.images.load("C:\\path\\to\\im.jpg")
-                            replaced = common.replace_cm3d2_tex(img, self.tex_storage_files)
+                            replaced = common.replace_cm3d2_tex(img, self.texpath_dict, reload_path=False)
                             if compat.IS_LEGACY and replaced and prop_name == '_MainTex':
                                 for face in me.polygons:
                                     if face.material_index == mate_idx:
