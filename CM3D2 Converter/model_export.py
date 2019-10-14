@@ -240,6 +240,8 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                     self.report(type={'INFO'}, message="%d個のオブジェクトをマージしました" % selected_count)
 
             ret = self.export(context, ob_main)
+            if 'FINISHED' not in ret:
+                return ret
 
             context.window_manager.progress_update(10)
             diff_time = time.time() - start_time
