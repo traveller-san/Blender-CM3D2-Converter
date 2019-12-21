@@ -41,6 +41,10 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         if len(ob.modifiers) == 0:
             return {'CANCELLED'}
 
+        for index, mod in enumerate(ob.modifiers):
+            if mod.show_viewport:
+                self.is_applies[index] = True
+
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
@@ -48,6 +52,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         self.layout.prop(prefs, 'custom_normal_blend', icon='SNAP_NORMAL', slider=True)
         self.layout.label(text="適用するモディファイア")
         ob = context.active_object
+
         for index, mod in enumerate(ob.modifiers):
             icon = 'MOD_%s' % mod.type
             try:
@@ -55,14 +60,21 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             except:
                 self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon='MODIFIER')
 
-            if mod.show_viewport:
-                self.is_applies[index] = True
-
     def execute(self, context):
-        custom_normal_blend = common.preferences().custom_normal_blend
-
-        bpy.ops.object.mode_set(mode='OBJECT')
         ob = context.active_object
+
+        # 対象が一つも無い場合はキャンセル扱いとする
+        has_target = False
+        for index, mod in enumerate(ob.modifiers):
+            if self.is_applies[index]:
+                has_target = True
+                break
+        if has_target is False:
+            return {'CANCELLED'}
+
+        custom_normal_blend = common.preferences().custom_normal_blend
+        bpy.ops.object.mode_set(mode='OBJECT')
+
         me = ob.data
         is_shaped = bool(me.shape_keys)
 
