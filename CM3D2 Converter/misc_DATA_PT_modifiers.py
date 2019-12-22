@@ -70,6 +70,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 has_target = True
                 break
         if has_target is False:
+            self.report(type={'INFO'}, message="適用対象のモディファイアがないため、キャンセルします")
             return {'CANCELLED'}
 
         custom_normal_blend = common.preferences().custom_normal_blend
