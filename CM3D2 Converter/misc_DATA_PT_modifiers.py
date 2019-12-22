@@ -64,12 +64,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         ob = context.active_object
 
         # 対象が一つも無い場合はキャンセル扱いとする
-        has_target = False
-        for index, mod in enumerate(ob.modifiers):
-            if self.is_applies[index]:
-                has_target = True
-                break
-        if has_target is False:
+        if not any(self.is_applies):
             self.report(type={'INFO'}, message="適用対象のモディファイアがないため、キャンセルします")
             return {'CANCELLED'}
 
