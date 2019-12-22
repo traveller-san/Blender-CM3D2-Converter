@@ -88,7 +88,7 @@ def menu_func(self, context):
             sub_row.enabled = False
 
         sub_row = row.row(align=True)
-        op = sub_row.operator('wm.context_set_int', icon='POSE_DATA', text="ポージング")
+        op = sub_row.operator('wm.context_set_int', icon='MOD_ARMATURE', text="ポージング")
         op.data_path, op.value = 'scene.frame_current', 0
         if not context.scene.frame_current % 2:
             sub_row.enabled = False
