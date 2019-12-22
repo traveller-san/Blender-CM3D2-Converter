@@ -100,8 +100,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
                 bone.keyframe_insert(data_path='scale', frame=i)
         bpy.ops.pose.constraints_clear()
 
-        common.remove_data(temp_arm)
-        common.remove_data(temp_ob)
+        common.remove_data((temp_ob, temp_arm))
 
         bpy.ops.pose.select_all(action='DESELECT')
         for bone in pre_selected_pose_bones:
