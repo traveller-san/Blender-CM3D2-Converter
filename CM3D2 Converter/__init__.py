@@ -4,7 +4,7 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz",
-    "version": (2019, 12, 22, 13, 42, 54),
+    "version": (2020, 6, 8, 21, 40, 41),
     "blender": (2, 80, 0),
     "location": "ファイル > インポート/エクスポート > CM3D2 Model (.model)",
     "description": "カスタムメイド3D2/カスタムオーダーメイド3D2専用ファイルのインポート/エクスポートを行います",
@@ -314,7 +314,7 @@ def register():
     bpy.types.VIEW3D_MT_pose_apply.append(misc_VIEW3D_MT_pose_apply.menu_func)
 
     system = compat.get_system(bpy.context)
-    if not system.use_international_fonts:
+    if hasattr(system, 'use_international_fonts') and not system.use_international_fonts:
         system.use_international_fonts = True
     if not system.use_translate_interface:
         system.use_translate_interface = True
