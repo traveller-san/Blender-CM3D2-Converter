@@ -216,6 +216,12 @@ def mul4(w, x, y, z):
         return w * x * y * z
 
     return w @ x @ y @ z
+    
+def set_bone_matrix(bone, mat):
+    bone.matrix = mat
+    if not IS_LEGACY and isinstance(bone, bpy.types.EditBone):
+        #print("Bone align_roll: ", (mat[0][0],mat[1][0],mat[2][0]))
+        bone.align_roll((mat[0][0],mat[1][0],mat[2][0]))
 
 
 LEGACY_ICONS = {
