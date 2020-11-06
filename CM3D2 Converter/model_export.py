@@ -55,6 +55,8 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
     is_convert_tris = bpy.props.BoolProperty(name="四角面を三角面に", default=True, description="四角ポリゴンを三角ポリゴンに変換してから出力します、元のメッシュには影響ありません")
     is_normalize_weight = bpy.props.BoolProperty(name="ウェイトの合計を1.0に", default=True, description="4つのウェイトの合計値が1.0になるように正規化します")
     is_convert_bone_weight_names = bpy.props.BoolProperty(name="頂点グループ名をCM3D2用に変換", default=True, description="全ての頂点グループ名をCM3D2で使える名前にしてからエクスポートします")
+    is_clean_vertex_groups = bpy.props.BoolProperty(name="クリーンな頂点グループ", default=True, description="重みがゼロの場合、頂点グループから頂点を削除します")
+    
 
     is_batch = bpy.props.BoolProperty(name="バッチモード", default=False, description="モードの切替やエラー個所の選択を行いません")
 
@@ -175,6 +177,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
         sub_box = box.box()
         sub_box.prop(self, 'is_normalize_weight', icon='MOD_VERTEX_WEIGHT')
+        sub_box.prop(self, 'is_clean_vertex_groups', icon='MOD_VERTEX_WEIGHT')
         sub_box.prop(self, 'is_convert_bone_weight_names', icon_value=common.kiss_icon())
         sub_box = box.box()
         sub_box.prop(prefs, 'is_apply_modifiers', icon='MODIFIER')
@@ -200,7 +203,8 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         prev_mode = None
         try:
             ob_source = context.active_object
-            ob_name = ob_source.name
+            selected_objs.append(ob_source)
+            ob_name = ob_source.name # luvoid : Fix error where object is active but not selected
             ob_main = None
             if self.is_batch:
                 # アクティブオブジェクトを１つコピーするだけでjoinしない
@@ -361,6 +365,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 self.base_bone_name = base_bone_candidate
             else:
                 return self.report_cancel("基点ボーンが存在しません")
+        bone_name_indices = {bone['name']: index for index, bone in enumerate(bone_data)}
         context.window_manager.progress_update(2)
 
         # LocalBoneData情報読み込み
@@ -377,22 +382,35 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             return self.report_cancel("テキスト「LocalBoneData」に有効なデータがありません")
         local_bone_name_indices = {bone['name']: index for index, bone in enumerate(local_bone_data)}
         context.window_manager.progress_update(3)
-
+        
+        used_local_bone = {index: False for index, bone in enumerate(local_bone_data)}
+        
         # ウェイト情報読み込み
         vertices = []
         is_over_one = 0
         is_under_one = 0
+        is_in_too_many = 0
         for i, vert in enumerate(me.vertices):
             vgs = []
             for vg in vert.groups:
                 name = common.encode_bone_name(ob.vertex_groups[vg.group].name, self.is_convert_bone_weight_names)
                 index = local_bone_name_indices.get(name, -1)
-                if 0 <= index and 0.0 < vg.weight:
+                if 0 <= index and (0.0 < vg.weight or not self.is_clean_vertex_groups):
                     vgs.append([index, vg.weight])
+                    # luvoid : track used bones
+                    used_local_bone[index] = True
+                    boneindex = bone_name_indices.get(name, -1)
+                    while boneindex >= 0:
+                        parent = bone_data[boneindex]
+                        localindex = local_bone_name_indices.get(parent['name'], -1)
+                        used_local_bone[localindex] = True
+                        boneindex = parent['parent_index']
             if len(vgs) == 0:
                 if not self.is_batch:
                     self.select_no_weight_vertices(context, local_bone_name_indices)
                 return self.report_cancel("ウェイトが割り当てられていない頂点が見つかりました、中止します")
+            if len(vgs) > 4:
+                is_in_too_many += 1
             vgs = sorted(vgs, key=itemgetter(1), reverse=True)[0:4]
             total = sum(vg[1] for vg in vgs)
             if self.is_normalize_weight:
@@ -410,11 +428,29 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 'face_indexs': list(map(itemgetter(0), vgs)),
                 'weights': list(map(itemgetter(1), vgs)),
             })
+        
         if 1 <= is_over_one:
-            self.report(type={'INFO'}, message="ウェイトの合計が1.0を超えている頂点が見つかりました。超過している頂点の数:%d" % is_over_one)
+            self.report(type={'WARNING'}, message="ウェイトの合計が1.0を超えている頂点が見つかりました。正規化してください。超過している頂点の数:%d" % is_over_one)
         if 1 <= is_under_one:
-            self.report(type={'INFO'}, message="ウェイトの合計が1.0未満の頂点が見つかりました。不足している頂点の数:%d" % is_under_one)
+            self.report(type={'WARNING'}, message="ウェイトの合計が1.0未満の頂点が見つかりました。正規化してください。不足している頂点の数:%d" % is_under_one)
+        
+        # luvoid : warn that there are vertices in too many vertex groups
+        if is_in_too_many > 0:
+            self.report(type={'WARNING'}, message="4つを超える頂点グループにある頂点が見つかりました。頂点グループをクリーンアップしてください。不足している頂点の数:%d" % is_in_too_many)
+                
+        # luvoid : check for unused local bones that the game will delete
+        is_deleted = 0
+        deleted_names = "The game will delete these local bones"
+        for i in range(len(used_local_bone)):
+            if used_local_bone[i] == False:
+                is_deleted += 1
+                deleted_names = deleted_names + '\n' + local_bone_data[i]['name']
+        if is_deleted > 0:
+            self.report(type={'WARNING'}, message="頂点が割り当てられていない%dつのローカルボーンが見つかりました。 詳細については、ログを参照してください。" % is_deleted)
+            self.report(type={'INFO'}, message=deleted_names)
+                
         context.window_manager.progress_update(4)
+        
 
         try:
             writer = common.open_temporary(self.filepath, 'wb', is_backup=self.is_backup)
@@ -429,16 +465,15 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         }
         try:
             with writer:
-                self.write_model(context, writer, **model_datas)
+                self.write_model(context, ob, writer, **model_datas)
         except common.CM3D2ExportException as e:
             self.report(type={'ERROR'}, message=str(e))
             return {'CANCELLED'}
 
         return {'FINISHED'}
 
-    def write_model(self, context, writer, bone_data=[], local_bone_data=[], vertices=[]):
+    def write_model(self, context, ob, writer, bone_data=[], local_bone_data=[], vertices=[]):
         """モデルデータをファイルオブジェクトに書き込む"""
-        ob = context.active_object
         me = ob.data
         prefs = common.preferences()
 
