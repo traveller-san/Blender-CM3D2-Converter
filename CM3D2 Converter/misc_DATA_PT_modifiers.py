@@ -42,6 +42,9 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             return {'CANCELLED'}
 
         for index, mod in enumerate(ob.modifiers):
+            if index >= 32: # luvoid : can only apply 32 modifiers at once.
+                self.report(type={'WARNING'}, message="Can only apply the first 32 modifiers at once.")
+                break
             if mod.show_viewport:
                 self.is_applies[index] = True
 
@@ -54,7 +57,9 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         ob = context.active_object
 
         for index, mod in enumerate(ob.modifiers):
-            icon = 'MOD_%s' % mod.type
+            if index >= 32: # luvoid : can only apply 32 modifiers at once.
+                break
+            icon = 'MOD_%s' % mod.type.replace('DECIMATE','DECIM').replace('SOFT_BODY','SOFT').replace('PARTICLE_SYSTEM','PARTICLES').replace('_SPLIT','SPLIT').replace('_PROJECT','PROJECT').replace('_DEFORM','DEFORM').replace('_SIMULATION','SIM').replace('_EDIT','').replace('_MIX','').replace('_PROXIMITY','').replace('_PAINT','PAINT')
             try:
                 self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon=icon)
             except:
@@ -122,6 +127,8 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         copy_modifiers = ob.modifiers[:]
 
         for index, mod in enumerate(copy_modifiers):
+            if index >= 32: # luvoid : can only apply 32 modifiers at once.
+                break
             if self.is_applies[index] and mod.type != 'ARMATURE':
 
                 if mod.type == 'MIRROR':
@@ -135,7 +142,9 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 try:
                     bpy.ops.object.modifier_apply(modifier=mod.name)
                 except:
-                    ob.modifiers.remove(mod)
+                    #ob.modifiers.remove(mod)
+                    self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\"" % (mod.type, mod.name) )
+                    
 
         arm_ob = None
         for mod in ob.modifiers:
@@ -185,11 +194,14 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 custom_normals.append(no)
 
         for index, mod in enumerate(copy_modifiers):
+            if index >= 32: # luvoid : can only apply 32 modifiers at once.
+                break
             if self.is_applies[index] and mod.type == 'ARMATURE':
                 try:
                     bpy.ops.object.modifier_apply(modifier=mod.name)
                 except:
-                    ob.modifiers.remove(mod)
+                    #ob.modifiers.remove(mod)
+                    self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\"" % (mod.type, mod.name) )
 
         compat.set_active(context, ob)
 
