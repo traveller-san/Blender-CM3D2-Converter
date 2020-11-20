@@ -14,8 +14,9 @@ from . import compat
 bl_info = {}
 ADDON_NAME = "CM3D2 Converter"
 BASE_PATH_TEX = "Assets/texture/texture/"
-BRANCH = "bl_28"
-URL_REPOS = "https://github.com/trzr/Blender-CM3D2-Converter/"
+BRANCH = "en_US"
+
+URL_REPOS = "https://github.com/luvoid/Blender-CM3D2-Converter/"
 URL_ATOM = URL_REPOS + "commits/" + BRANCH + ".atom"
 URL_MODULE = URL_REPOS + "archive/" + BRANCH + ".zip"
 KISS_ICON = None
@@ -972,3 +973,66 @@ class NodeHandler():
             # 		break
 
         return None
+
+
+
+
+
+# luvoid : for loop helper returns values with matching keys
+def values_of_matched_keys(dict1, dict2):
+    value_list = []
+    items1 = dict1.items()
+    items2 = dict2.items()
+    if len(items1) <= len(items2): 
+        items1.reverse()
+        for k1, v1 in items1:
+            for i in range(len(items2)-1, 0, -1):
+                k2, v2 = items2[i]
+                if k1 == k2:
+                    value_list.append((v1,v2))
+                    del items2[i]
+    else:
+        items2.reverse()
+        for k2, v2 in items2:
+            for i in range(len(items1)-1, 0, -1):
+                k1, v1 = items1[i]
+                if k1 == k2:
+                    value_list.append((v1,v2))
+                    del items1[i]
+    
+    value_list.reverse()
+    return value_list
+
+
+# luvoid : helper to easily get source and target objects
+def get_target_and_source_ob(context, copyTarget=False, copySource=False):
+    target_ob = None
+    source_ob = None
+
+    target_original_ob = context.active_object
+    if copyTarget:
+        target_ob = target_original_ob.copy()
+        target_ob.data = target_original_ob.data.copy()
+    else:
+        target_ob = target_original_ob
+
+    for ob in context.selected_objects:
+        if ob != target_ob:
+            source_original_ob = ob
+            break
+    
+    if copySource:
+        source_ob = source_original_ob.copy()
+        source_ob.data = source_original_ob.data.copy()
+    else:
+        source_ob = source_original_ob
+    
+    if copyTarget:
+        if copySource:
+            return target_ob, source_ob, target_original_ob, source_original_ob
+        else:
+            return target_ob, source_ob, target_original_ob
+    elif copySource:
+        return  target_ob, source_ob, source_original_ob
+    else:
+        return  target_ob, source_ob

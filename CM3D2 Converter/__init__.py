@@ -4,13 +4,13 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz, @luvoid",
-    "version": ("luv", 2020, 11, "8b"),
+    "version": ("luv", 2020, 11, "8c"),
     "blender": (2, 80, 0),
     "location" : "File > Import/Export > CM3D2 Model (.model)",
     "description" : "A plugin dedicated to the editing, importing, and exporting of CM3D2 .Model Files.",
     "warning": "",
-    "wiki_url": "https://github.com/luvoid/Blender-CM3D2-Converter-en_US/blob/bl_28/README.md",
-    "tracker_url": "https://github.com/luvoid/Blender-CM3D2-Converter-en_US",
+    "wiki_url": "https://github.com/luvoid/Blender-CM3D2-Converter/blob/en_US/README.md",
+    "tracker_url": "https://github.com/luvoid/Blender-CM3D2-Converter",
     "category": "Import-Export"
 }
 
