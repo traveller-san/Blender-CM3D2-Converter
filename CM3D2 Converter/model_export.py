@@ -397,7 +397,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             for vg in vert.groups:
                 name = common.encode_bone_name(ob.vertex_groups[vg.group].name, self.is_convert_bone_weight_names)
                 index = local_bone_name_indices.get(name, -1)
-                if 0 <= index and (0.0 < vg.weight or not self.is_clean_vertex_groups):
+                if index >= 0 and (vg.weight > 0.0 or not self.is_clean_vertex_groups):
                     vgs.append([index, vg.weight])
                     # luvoid : track used bones
                     used_local_bone[index] = True
@@ -405,6 +405,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                     while boneindex >= 0:
                         parent = bone_data[boneindex]
                         localindex = local_bone_name_indices.get(parent['name'], -1)
+                        # could check for `localindex == -1` here, but it's prescence may be useful in determing if the local bones resolve back to some root
                         used_local_bone[localindex] = True
                         boneindex = parent['parent_index']
             if len(vgs) == 0:
@@ -443,12 +444,18 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         # luvoid : check for unused local bones that the game will delete
         is_deleted = 0
         deleted_names = "The game will delete these local bones"
-        for i in range(len(used_local_bone)-1):
-            if used_local_bone[i] == False:
+        for index, is_used in used_local_bone.items():
+            print(index, is_used)
+            if is_used == False:
                 is_deleted += 1
                 deleted_names = deleted_names + '\n' + local_bone_data[i]['name']
+            elif is_used == True:
+                pass
+            else:
+                print("Unexpected: used_local_bone[{key}] == {value} when len(used_local_bone) == {length}".format(key=index, value=is_used, length=len(used_local_bone)))
+                self.report(type={'WARNING'}, message="Could not find whether bone with index {index} was used. See console for more info.".format(index=i))
         if is_deleted > 0:
-            self.report(type={'WARNING'}, message="Found %d local bones with no vertices assigned. See log for more info." % is_deleted)
+            self.report(type={'WARNING'}, message="Found {num} local bones with no vertices assigned. See log for more info.".format(num=is_deleted))
             self.report(type={'INFO'}, message=deleted_names)
                 
         context.window_manager.progress_update(4)
