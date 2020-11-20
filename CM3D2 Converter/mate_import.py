@@ -20,7 +20,7 @@ class CNV_OT_import_cm3d2_mate(bpy.types.Operator):
     filter_glob = bpy.props.StringProperty(default="*.mate", options={'HIDDEN'})
 
     is_decorate = bpy.props.BoolProperty(name="Decorate the material according to its type", default=True)
-    # is_replace_cm3d2_tex = bpy.props.BoolProperty(name="Find textures", default=True, description="Will search for the textures.")
+    is_replace_cm3d2_tex = bpy.props.BoolProperty(name="Find textures", default=True, description="Will search for the textures.")
 
     @classmethod
     def poll(cls, context):
