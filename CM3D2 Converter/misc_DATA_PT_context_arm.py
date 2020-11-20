@@ -16,8 +16,8 @@ from . import compat
 def menu_func(self, context):
     import re
     ob = context.active_object
-    if not ob: return
-    if ob.type != 'ARMATURE': return
+    if not ob or ob.type != 'ARMATURE':
+        return
 
     arm = ob.data
     is_boxed = False

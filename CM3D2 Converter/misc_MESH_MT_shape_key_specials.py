@@ -3,6 +3,7 @@ import time
 import bpy
 import bmesh
 import mathutils
+import traceback
 from . import common
 from . import compat
 
@@ -11,26 +12,405 @@ from . import compat
 def menu_func(self, context):
     icon_id = common.kiss_icon()
     self.layout.separator()
-    self.layout.operator('object.quick_shape_key_transfer', icon_value=icon_id)
-    self.layout.operator('object.precision_shape_key_transfer', icon_value=icon_id)
-    self.layout.separator()
-    self.layout.operator('object.multiply_shape_key', icon_value=icon_id)
-    self.layout.separator()
-    self.layout.operator('object.blur_shape_key', icon_value=icon_id)
-    self.layout.separator()
-    self.layout.operator('object.change_base_shape_key', icon_value=icon_id)
+    sub = self.layout.column()
+    self.layout.label(text="CM3D2 Converter", icon_value=icon_id)
+    sub.separator()
+    sub.operator('object.change_base_shape_key', icon='SHAPEKEY_DATA')
+    sub.operator('object.multiply_shape_key', icon=compat.icon('CON_SIZELIKE'))
+    sub.operator('object.blur_shape_key', icon='MOD_SMOOTH')
+    sub.separator()
+    sub.operator('object.copy_shape_key_values', icon='COPYDOWN')
+    sub.separator()
+    sub.operator('object.quick_shape_key_transfer', icon=compat.icon('MOD_DATA_TRANSFER'))
+    sub.operator('object.precision_shape_key_transfer', icon='MOD_MESHDEFORM')
+    sub.separator()
+
+class transfer_shape_key_iter:
+    index = -1
+
+    target_ob = None
+    source_ob = None
+
+    binded_shape_key = None
+    binded_shape_key_data = None
+
+    #target_mat = None
+    #source_mat = None
+
+    source_iter = None
+
+    source_shape_key_data = None
+    target_shape_key_data = None
+
+    def __init__(self, target_ob, source_ob, binded_shape_key=None):
+        self.target_ob = target_ob
+        self.source_ob = source_ob
+        self.binded_shape_key = self.binded_shape_key or self.source_ob.data.shape_keys.key_blocks[0]
+
+    def __iter__(self):
+        self.index = -1
+        if self.source_iter:
+            self.source_iter = iter(self.source_iter)
+
+        #self.target_mat = self.target_ob.matrix_world
+        #self.source_mat = self.source_ob.matrix_world
+
+        if self.source_ob and self.source_ob.data.shape_keys:
+            binded_index = self.source_ob.data.shape_keys.key_blocks.find(self.binded_shape_key.name)
+            #self.binded_shape_key_data = bmesh.new(use_operators=False)
+            #self.binded_shape_key_data.from_mesh(self.source_ob.data, use_shape_key=True, shape_key_index=binded_index)
+            #self.binded_shape_key_data.verts.ensure_lookup_table()
+            self.binded_shape_key_data = self.binded_shape_key.data
+            self.source_iter = iter(self.source_ob.data.shape_keys.key_blocks)
+        return self
+
+    def __next__(self):
+        target_me = self.target_ob.data
+        source_me = self.source_ob.data
+
+        target_shape_key = None
+        source_shape_key = next(self.source_iter, None)
+        if not source_shape_key:
+            raise StopIteration
+        
+        self.index += 1
+
+        if target_me.shape_keys:
+            if source_shape_key.name in target_me.shape_keys.key_blocks:
+                target_shape_key = target_me.shape_keys.key_blocks[source_shape_key.name]
+            else:
+                target_shape_key = self.target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
+        else:
+            target_shape_key = self.target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
+
+        relative_key_name = source_shape_key.relative_key.name
+
+        rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
+        if rel_key:
+            target_shape_key.relative_key = rel_key
+        
+        if not self.target_ob.active_shape_key_index == 0:
+            target_me.shape_keys.key_blocks[self.target_ob.active_shape_key_index].value = 0.0
+        if not self.source_ob.active_shape_key_index == 0:
+            source_me.shape_keys.key_blocks[self.source_ob.active_shape_key_index].value = 0.0
+
+        target_index = target_me.shape_keys.key_blocks.find(target_shape_key.name)
+        source_index = source_me.shape_keys.key_blocks.find(source_shape_key.name)
+
+        self.target_ob.active_shape_key_index = target_index
+        self.source_ob.active_shape_key_index = source_index
+
+        target_shape_key.value = 1.0
+        source_shape_key.value = 1.0
+        
+        #source_shape_key_data = [compat.mul3(self.source_mat, source_shape_key.data[v.index].co, self.target_mat) - compat.mul3(self.source_mat, source_me.vertices[v.index].co, self.target_mat) for v in source_me.vertices]
+        #for i, v in enumerate(self.source_bind_data):
+        #    shape_co = compat.mul3(self.source_mat, source_shape_key.data[i].co, self.target_mat)
+        #    mesh_co  = compat.mul3(self.source_mat, self.source_bind_data[i].co, self.target_mat)
+        #    self.source_shape_key_data[i] = shape_co - mesh_co
+
+        #self.target_shape_key_data = bmesh.from_edit_mesh(self.target_ob.data)
+        #self.source_shape_key_data = bmesh.from_edit_mesh(self.source_ob.data)
+        #self.source_shape_key_data = bmesh.new(use_operators=False)
+        #self.source_shape_key_data.from_mesh(self.source_ob.data, use_shape_key=True, shape_key_index=source_index)
+
+        #self.target_shape_key_data.verts.ensure_lookup_table()
+        #self.source_shape_key_data.verts.ensure_lookup_table()
+
+        self.source_shape_key_data = source_shape_key.data
+        self.target_shape_key_data = target_shape_key.data
+
+        return self.index, target_shape_key, self.binded_shape_key_data, self.source_shape_key_data, self.target_shape_key_data
+
+    # update() will free resources for the current iteration of a loop, but not the loop itself.
+    def update(self, destructive=False):
+        pass
+        #if self.target_shape_key_data and self.target_shape_key_data.is_valid:
+            #bmesh.update_edit_mesh(self.target_ob.data, loop_triangles=True, destructive=destructive)
+            #self.target_shape_key_data.free()
+            #pass
+
+        #if self.source_shape_key_data and self.source_shape_key_data.is_valid:
+            #bmesh.update_edit_mesh(self.source_ob.data, loop_triangles=True, destructive=destructive)
+            #self.source_shape_key_data.free()
+            #pass
+
+    # free() will release all resources for the loop, leaving it unable to run unless iter() is used again.
+    def free(self, destructive=False):
+        pass
+        #self.update()
+        #if self.binded_shape_key_data and self.binded_shape_key_data.is_valid:
+            #bmesh.update_edit_mesh(self.source_ob.data, loop_triangles=True, destructive=destructive)
+            #self.binded_shape_key_data.free()
+
+
+
+class shape_key_transfer_op:
+    is_first_remove_all = bpy.props.BoolProperty(name="First delete all shape keys", default=True)
+    is_remove_empty     = bpy.props.BoolProperty(name="Remove shape key without deformation", default=True)
+    is_bind_current_mix = bpy.props.BoolProperty(name="Bind to current source mix", default=False)
+    subdivide_number    = bpy.props.IntProperty(name="Split referrer", default=1, min=0, max=10, soft_min=0, soft_max=10)
+
+    target_ob = None
+    source_ob = None
+    og_source_ob = None
+
+    _start_time = 0
+    _timer = None
+    
+    is_finished = False
+    is_canceled = False
+
+    pre_mode = None
+    pre_selected = None
+
+    binded_shape_key = None
+    kd = None
+    is_shapeds = {}
+
+
+    def draw(self, context):
+        self.layout.prop(self, 'is_first_remove_all', icon='ERROR'        )
+        self.layout.prop(self, 'subdivide_number'   , icon='LATTICE_DATA' )
+        self.layout.prop(self, 'is_remove_empty'    , icon='X'            )
+        self.layout.prop(self, 'is_bind_current_mix', icon='AUTOMERGE_OFF')
+    
+    def execute(self, context):
+        self.pre_selected = list(context.selected_objects)
+        self.target_ob, self.source_ob, self.og_source_ob = common.get_target_and_source_ob(context, copySource=True)
+
+        self.og_source_ob.hide_set(True)
+
+        self._start_time = time.time()
+        self._timer = None
+        self.is_finished = False
+        self.is_canceled = False
+        self.pre_mode = self.target_ob.mode
+
+        self.binded_shape_key = None
+        self.source_bind_data = None
+        self.kd = None
+        self.is_shapeds = {}
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        try:
+            compat.link(context.scene, self.source_ob)
+            self.prepare(context)
+        
+        except:
+            self.is_canceled = True
+            traceback.print_exc()
+            self.report(type={'ERROR'}, message="Error while preparing shapekey transfer.")
+            self.cancel(context)
+            return {'FINISHED'}
+
+        else:
+            wm = context.window_manager
+            self._timer = wm.event_timer_add(1.0/60.0, window=context.window)
+            wm.modal_handler_add(self)
+            self.report(type={'INFO'}, message="Press ESC to cancel shape key transfer")
+        
+        compat.set_active(context, self.target_ob)
+        return {'RUNNING_MODAL'}
+
+    def modal(self, context, event):
+        if event.type == 'ESC':
+            self.is_canceled = 'WARNING'
+        if not event.type == 'TIMER':
+            return {'PASS_THROUGH'}
+        
+        #print("Run Modal")
+
+        if self.is_canceled:
+            #print("Canceled")
+            try:
+                self.cancel(context)
+            except:
+                traceback.print_exc()
+                self.report(type={'ERROR'}, message="Error while canceling shapekey transfer.")
+            finally:
+                return {'FINISHED'}
+
+        if not self.is_canceled and not self.is_finished:
+            #print("Loop")
+            try:
+                self.is_finished = self.loop(context)
+            except:
+                self.is_canceled = True
+                traceback.print_exc()
+                self.report(type={'ERROR'}, message="Error while performing shapekey transfer.")
+            finally:
+                return {'PASS_THROUGH'}
+
+        else:
+            #print("Finish")
+            try:
+                self.finish(context)
+            except:
+                self.is_canceled = True
+                traceback.print_exc()
+                self.report(type={'ERROR'}, message="Error while finishing shapekey transfer.")
+                return {'PASS_THROUGH'}
+            else:
+                self.cleanup(context)
+                diff_time = time.time() - self._start_time
+                self.report(type={'INFO'}, message="%.2f Seconds" % diff_time)
+                return {'FINISHED'}
+
+    def prepare(self, context):
+        target_ob = self.target_ob
+        source_ob = self.source_ob
+
+        for ob in self.pre_selected:
+            compat.set_select(ob, False)
+
+        compat.set_active(context, source_ob)
+        #compat.set_select(source_og_ob, False)
+        #compat.set_select(target_ob, False)
+        
+        # transform source's mesh now so theres no need to worry about it later
+        matrix_source_to_target = compat.mul(target_ob.matrix_world.inverted_safe(), source_ob.matrix_world)
+        source_ob.data.transform(matrix_source_to_target, shape_keys=True)
+        source_ob.matrix_world = target_ob.matrix_world
+
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.reveal()
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        if self.is_first_remove_all:
+            try:
+                target_ob.active_shape_key_index = 1
+                bpy.ops.object.shape_key_remove(all=True)
+            except:
+                pass
+            finally:
+                target_ob.active_shape_key_index = 0
+        else:
+            if target_ob.data.shape_keys:
+                for i, key in enumerate(target_ob.data.shape_keys.key_blocks):
+                    if i == 0:
+                        continue
+                    else:
+                        key.value = 0.0
+            target_ob.active_shape_key_index = 0
+
+        if self.is_bind_current_mix:
+            source_basis = source_ob.data.shape_keys.key_blocks[0]
+            
+            old_basis = target_ob.data.shape_keys and next(iter(target_ob.data.shape_keys.key_blocks), False) or target_ob.shape_key_add()
+            old_basis.name = "__old_basis__" + old_basis.name
+            new_basis = target_ob.shape_key_add(name=source_basis.name)
+
+            self.binded_shape_key = source_ob.shape_key_add(name="__bind_shape_key", from_mix=True)
+            self.source_bind_data = self.binded_shape_key.data
+            
+            compat.set_active(context, target_ob)
+            target_ob.active_shape_key_index = target_ob.data.shape_keys.key_blocks.find(new_basis.name)
+            # TOP指定でindex=1になるケースは、さらにもう一度UP
+            bpy.ops.object.shape_key_move(type='TOP')
+            if target_ob.active_shape_key_index == 1:
+                bpy.ops.object.shape_key_move(type='UP')
+            
+            old_basis.relative_key = new_basis
+            
+            source_ob.active_shape_key_index = source_ob.data.shape_keys.key_blocks.find(self.binded_shape_key.name)
+
+        else:
+            source_ob.active_shape_key_index = 0
+            self.source_bind_data = source_ob.data.vertices
+
+        #print(len(source_ob.data.vertices), len(self.source_bind_data))
+        self.kd = mathutils.kdtree.KDTree(len(self.source_bind_data))
+        for index, vert in enumerate(self.source_bind_data):
+            co = compat.mul(source_ob.matrix_world, vert.co)
+            self.kd.insert(co, index)
+        self.kd.balance()
+
+        for i, key in enumerate(source_ob.data.shape_keys.key_blocks):
+            if i == 0:
+                continue
+            else:
+                key.value = 0.0
+
+    def finish(self, context):
+        target_me = self.target_ob.data
+        
+        if self.is_remove_empty:
+            for source_shape_key_name, is_shaped in reversed( list(self.is_shapeds.items()) ):
+                if not is_shaped:
+                    target_shape_key = target_me.shape_keys.key_blocks.get(source_shape_key_name)
+                    if not target_shape_key:
+                        continue
+                    key_blocks_values = target_me.shape_keys.key_blocks.values()
+                    is_used = False
+                    for key in key_blocks_values:
+                        if key.relative_key == target_shape_key:
+                            is_used = True
+                            break
+                    if not is_used:
+                        self.target_ob.shape_key_remove(target_shape_key)
+
+        self.target_ob.active_shape_key_index = 0
+
+    def cancel(self, context):
+        report_type = (self.is_canceled == 'WARNING' and 'WARNING') or 'ERROR'
+        self.report(type={report_type}, message="Shape key transfer canceled. Results may not be as expected. Use Undo / Ctrl Z to revert changes")
+        self.cleanup(context)
+
+    def cleanup(self, context):
+        #compat.set_select(source_original_ob, True)
+        if self.target_ob:
+            #compat.set_select(target_ob, True)
+            compat.set_active(context, self.target_ob)
+
+        if self.og_source_ob:
+            self.og_source_ob.hide_set(False)
+
+        source_me = self.source_ob and self.source_ob.data
+        if source_me:
+            common.remove_data([self.source_ob, source_me])
+        elif self.source_ob:
+            common.remove_data([self.source_ob])
+
+        if self._timer:
+            wm = context.window_manager
+            wm.event_timer_remove(self._timer)
+
+        if self.pre_mode:
+            bpy.ops.object.mode_set(mode=self.pre_mode)
+            
+        if self.pre_selected:
+            for ob in self.pre_selected:
+                compat.set_select(ob, True)
+
+        self.target_ob = None
+        self.source_ob = None
+
+        self._timer = None
+
+        self.pre_mode = None
+        self.pre_selected = None
+
+        self.binded_shape_key = None
+        self.kd = None
+        self.is_shapeds = {}
+
 
 
 @compat.BlRegister()
-class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
+class CNV_OT_quick_shape_key_transfer(shape_key_transfer_op, bpy.types.Operator):
     bl_idname = 'object.quick_shape_key_transfer'
     bl_label = "Quick shape key transfer"
     bl_description = "Fast transfer of other selected mesh's shape keys to active mesh"
     bl_options = {'REGISTER', 'UNDO'}
 
-    is_first_remove_all = bpy.props.BoolProperty(name="First delete all shape keys", default=True)
-    subdivide_number = bpy.props.IntProperty(name="Split referrer", default=1, min=0, max=10, soft_min=0, soft_max=10)
-    is_remove_empty = bpy.props.BoolProperty(name="Remove shape key without deformation", default=True)
+    step_size = bpy.props.IntProperty(name="Step Size (low = quality, high = speed)", default=4, min=1, max=100, soft_min=1, soft_max=10, step=1)
+
+    near_vert_indexs = []
+    my_iter = None
 
     @classmethod
     def poll(cls, context):
@@ -48,123 +428,92 @@ class CNV_OT_quick_shape_key_transfer(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        self.layout.prop(self, 'is_first_remove_all', icon='ERROR')
-        self.layout.prop(self, 'subdivide_number', icon='LATTICE_DATA')
-        self.layout.prop(self, 'is_remove_empty', icon='X')
+        shape_key_transfer_op.draw(self, context)
+        self.layout.prop(self, 'step_size')
 
-    def execute(self, context):
-        start_time = time.time()
+    def prepare(self, context):
+        shape_key_transfer_op.prepare(self, context)
 
-        target_ob = context.active_object
-        target_me = target_ob.data
+        target_me = self.target_ob.data
+        source_me = self.source_ob.data
+        
+        self.near_vert_indexs = list( range(len(target_me.vertices)) )
 
-        pre_mode = target_ob.mode
-        bpy.ops.object.mode_set(mode='OBJECT')
-
-        for ob in context.selected_objects:
-            if ob.name != target_ob.name:
-                source_original_ob = ob
-                break
-        source_ob = source_original_ob.copy()
-        source_me = source_original_ob.data.copy()
-        source_ob.data = source_me
-        try:
-            compat.link(context.scene, source_ob)
-            compat.set_active(context, source_ob)
-            compat.set_select(source_original_ob, False)
-            compat.set_select(target_ob, False)
-
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.reveal()
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
-            source_ob.active_shape_key_index = 0
-            bpy.ops.object.mode_set(mode='OBJECT')
-
-            if self.is_first_remove_all:
-                try:
-                    target_ob.active_shape_key_index = 1
-                    bpy.ops.object.shape_key_remove(all=True)
-                except:
-                    pass
-
-            kd = mathutils.kdtree.KDTree(len(source_me.vertices))
-            for vert in source_me.vertices:
-                co = compat.mul(source_ob.matrix_world, vert.co)
-                kd.insert(co, vert.index)
-            kd.balance()
-
-            near_vert_indexs = [kd.find(compat.mul(target_ob.matrix_world, v.co))[1] for v in target_me.vertices]
-
-            is_shapeds = {}
-            relative_keys = set()
-            context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
-            context.window_manager.progress_update(0)
-            for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
-
-                if target_me.shape_keys:
-                    target_shape_key = target_me.shape_keys.key_blocks.get(source_shape_key.name)
-                    if target_shape_key is None:
-                        target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
-                else:
-                    target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
-
-                relative_key_name = source_shape_key.relative_key.name
-                relative_keys.add(relative_key_name)
-                is_shapeds[source_shape_key.name] = False
-
-                rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
-                if rel_key:
-                    target_shape_key.relative_key = rel_key
-
-                mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
-                source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
-
-                for target_vert in target_me.vertices:
-
-                    near_vert_index = near_vert_indexs[target_vert.index]
-                    near_shape_co = source_shape_keys[near_vert_index]
-
-                    target_shape_key.data[target_vert.index].co = target_me.vertices[target_vert.index].co + near_shape_co
-                    if 0.01 < near_shape_co.length:
-                        is_shapeds[source_shape_key.name] = True
-
-                context.window_manager.progress_update(source_shape_key_index)
+        for v in target_me.vertices:
+            near_co = v.co #compat.mul(self.target_ob.matrix_world, v.co)
+            self.near_vert_indexs[v.index] = self.kd.find(near_co)[1]
+        
+        self.my_iter = iter( transfer_shape_key_iter(self.target_ob, self.source_ob, self.binded_shape_key) )
+        context.window_manager.progress_begin( 0, len(source_me.shape_keys.key_blocks) * len(target_me.vertices) )
+        context.window_manager.progress_update( 0 )
+    
+    def loop(self, context):
+        source_shape_key_index, target_shape_key, binded_shape_key_data, source_shape_key_data, target_shape_key_data = next(self.my_iter, (-1, None, None, None, None))
+        if not target_shape_key:
             context.window_manager.progress_end()
+            return True
 
-            if self.is_remove_empty:
-                for source_shape_key_name, is_shaped in is_shapeds.items():
-                    if source_shape_key_name not in relative_keys and not is_shaped:
-                        target_shape_key = target_me.shape_keys.key_blocks[source_shape_key_name]
-                        target_ob.shape_key_remove(target_shape_key)
+        progress = source_shape_key_index * len(self.target_ob.data.vertices)
 
-            target_ob.active_shape_key_index = 0
+        def check(index):
+            near_vert_index = self.near_vert_indexs[index]
+            near_shape_co = source_shape_key_data[near_vert_index].co - binded_shape_key_data[near_vert_index].co
 
-        finally:
-            common.remove_data([source_ob, source_me])
+            context.window_manager.progress_update( progress + index )
+            
+            if near_shape_co.length > 2e-126: # 2e-126 is the smallest float != 0
+                target_shape_key_data[index].co += near_shape_co
+                return True
 
-            compat.set_select(source_original_ob, True)
-            compat.set_select(target_ob, True)
-            compat.set_active(context, target_ob)
-            bpy.ops.object.mode_set(mode=pre_mode)
+        is_changed = False
+        just_changed = False
+        found_more = False
+        for i in range(0, len(target_shape_key_data), self.step_size):
+            
+            if check(i) or found_more:
+                is_changed = True
+                found_more = False
+                if not just_changed:
+                    for j in range(i-self.step_size+1, i):
+                        if j < len(target_shape_key_data) and j > 0:
+                            found_more = check(j) or found_more
+                for k in range(i+1, i+self.step_size):
+                    if k < len(target_shape_key_data) and k > 0:
+                        found_more = check(k) or found_more
+                just_changed = True
+            else:
+                just_changed = False
 
-        diff_time = time.time() - start_time
-        self.report(type={'INFO'}, message="%.2f Seconds" % diff_time)
-        return {'FINISHED'}
+        self.is_shapeds[target_shape_key.name] = is_changed
+        self.my_iter.update() # only call this when done with current iteration.
+    
+    def cleanup(self, context):
+        self.near_vert_indexs = []
+        self.my_iter.free()
+        self.my_iter = None
+        shape_key_transfer_op.cleanup(self, context)
+
 
 
 @compat.BlRegister()
-class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
+class CNV_OT_precision_shape_key_transfer(shape_key_transfer_op, bpy.types.Operator):
     bl_idname = 'object.precision_shape_key_transfer'
-    bl_label = "Space blur/shape key transfer"
+    bl_label = "Precision shape key transfer"
     bl_description = "Transfers the shape keys of other selected meshes to the active mesh, blurring them further"
     bl_options = {'REGISTER', 'UNDO'}
 
-    is_first_remove_all = bpy.props.BoolProperty(name="First delete all shape keys", default=True)
-    subdivide_number = bpy.props.IntProperty(name="Split referrer", default=1, min=0, max=10, soft_min=0, soft_max=10)
+    step_size = bpy.props.IntProperty(name="Step Size (low = quality, high = speed)", default=1, min=1, max=100, soft_min=1, soft_max=10, step=1)
     extend_range = bpy.props.FloatProperty(name="Range magnification", default=1.1, min=1.0001, max=5.0, soft_min=1.0001, soft_max=5.0, step=10, precision=2)
-    is_remove_empty = bpy.props.BoolProperty(name="Remove shape key without deformation", default=True)
 
+    
+    near_vert_data = []
+    near_vert_multi_total = []
+    my_iter = None
+
+    #source_raw_data = None
+    #binded_raw_data = None
+    #target_raw_data = None
+    
     @classmethod
     def poll(cls, context):
         obs = context.selected_objects
@@ -181,59 +530,32 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        self.layout.prop(self, 'is_first_remove_all', icon='ERROR')
-        self.layout.prop(self, 'subdivide_number', icon='LATTICE_DATA')
+        shape_key_transfer_op.draw(self, context)
+        self.layout.prop(self, 'step_size')
         self.layout.prop(self, 'extend_range', icon='PROP_ON')
-        self.layout.prop(self, 'is_remove_empty', icon='X')
 
-    def execute(self, context):
+    def xexecute(self, context):
         start_time = time.time()
 
-        target_ob = context.active_object
+        target_ob, source_ob = common.get_target_and_source_ob(context, copySource=True)
         target_me = target_ob.data
+        source_me = source_ob.ldata
 
         pre_mode = target_ob.mode
         bpy.ops.object.mode_set(mode='OBJECT')
 
-        for ob in context.selected_objects:
-            if ob.name != target_ob.name:
-                source_original_ob = ob
-                break
-        source_ob = source_original_ob.copy()
-        source_me = source_original_ob.data.copy()
-        source_ob.data = source_me
-
         try:
-            compat.link(context.scene, source_ob)
-            compat.set_active(context, source_ob)
-            compat.set_select(source_original_ob, False)
-            compat.set_select(target_ob, False)
-
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.reveal()
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.subdivide(number_cuts=self.subdivide_number, smoothness=0.0, quadcorner='STRAIGHT_CUT', fractal=0.0, fractal_along_normal=0.0, seed=0)
-            source_ob.active_shape_key_index = 0
-            bpy.ops.object.mode_set(mode='OBJECT')
-
-            if self.is_first_remove_all:
-                try:
-                    target_ob.active_shape_key_index = 1
-                    bpy.ops.object.shape_key_remove(all=True)
-                except:
-                    pass
-
-            kd = mathutils.kdtree.KDTree(len(source_me.vertices))
-            for vert in source_me.vertices:
-                co = compat.mul(source_ob.matrix_world, vert.co)
-                kd.insert(co, vert.index)
-            kd.balance()
+            kd = self.prepare_sks_transfer(context, target_ob, source_ob)
 
             context.window_manager.progress_begin(0, len(target_me.vertices))
             progress_reduce = len(target_me.vertices) // 200 + 1
             near_vert_data = []
             near_vert_multi_total = []
             near_vert_multi_total_append = near_vert_multi_total.append
+            
+            mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
+            source_shape_key_data = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
+            
             for vert in target_me.vertices:
                 new_vert_data = []
                 near_vert_data.append(new_vert_data)
@@ -259,30 +581,10 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
             context.window_manager.progress_end()
 
             is_shapeds = {}
-            relative_keys = set()
-            context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks))
+            context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks) * len(target_me.vertices))
             context.window_manager.progress_update(0)
-            for source_shape_key_index, source_shape_key in enumerate(source_me.shape_keys.key_blocks):
 
-                if target_me.shape_keys:
-                    if source_shape_key.name in target_me.shape_keys.key_blocks:
-                        target_shape_key = target_me.shape_keys.key_blocks[source_shape_key.name]
-                    else:
-                        target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
-                else:
-                    target_shape_key = target_ob.shape_key_add(name=source_shape_key.name, from_mix=False)
-
-                relative_key_name = source_shape_key.relative_key.name
-                relative_keys.add(relative_key_name)
-                is_shapeds[source_shape_key.name] = False
-
-                rel_key = target_me.shape_keys.key_blocks.get(relative_key_name)
-                if rel_key:
-                    target_shape_key.relative_key = rel_key
-
-                mat1, mat2 = source_ob.matrix_world, target_ob.matrix_world
-                source_shape_keys = [compat.mul3(mat1, source_shape_key.data[v.index].co, mat2) - compat.mul3(mat1, source_me.vertices[v.index].co, mat2) for v in source_me.vertices]
-
+            for source_shape_key_index, source_shape_key, target_shape_key in self.enumerate_transfer_sks(context, target_ob, source_ob):
                 for target_vert in target_me.vertices:
 
                     if 0 < near_vert_multi_total[target_vert.index]:
@@ -290,7 +592,7 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
                         total_diff_co = mathutils.Vector((0, 0, 0))
 
                         for near_index, near_multi in near_vert_data[target_vert.index]:
-                            total_diff_co += source_shape_keys[near_index] * near_multi
+                            total_diff_co += source_shape_key_data[near_index] * near_multi
 
                         average_diff_co = total_diff_co / near_vert_multi_total[target_vert.index]
 
@@ -298,31 +600,213 @@ class CNV_OT_precision_shape_key_transfer(bpy.types.Operator):
                         average_diff_co = mathutils.Vector((0, 0, 0))
 
                     target_shape_key.data[target_vert.index].co = target_me.vertices[target_vert.index].co + average_diff_co
-                    if 0.01 < average_diff_co.length:
-                        is_shapeds[source_shape_key.name] = True
+                    is_shapeds[target_shape_key.name] = is_shapeds.get(target_shape_key.name) or 0.01 < average_diff_co.length
 
-                context.window_manager.progress_update(source_shape_key_index)
+                    context.window_manager.progress_update((source_shape_key_index+1) * (target_me.vertices+1))
+                #context.window_manager.progress_update(source_shape_key_index)
             context.window_manager.progress_end()
 
-            if self.is_remove_empty:
-                for source_shape_key_name, is_shaped in is_shapeds.items():
-                    if source_shape_key_name not in relative_keys and not is_shaped:
-                        target_shape_key = target_me.shape_keys.key_blocks[source_shape_key_name]
-                        target_ob.shape_key_remove(target_shape_key)
-
-            target_ob.active_shape_key_index = 0
+            self.finish_sks_transfer(context, target_ob, source_ob, is_shapeds)
+        
+        except:
+            traceback.print_exc()
+            self.report(type={'ERROR'}, message="Error while transfering shapekeys. Results may not be as expected. Use Undo / Ctrl Z to revert changes")
 
         finally:
-            common.remove_data([source_ob, source_me])
-
-            compat.set_select(source_original_ob, True)
-            compat.set_select(target_ob, True)
-            compat.set_active(context, target_ob)
-            bpy.ops.object.mode_set(mode=pre_mode)
+            self.cleanup_sks_transfer(context, target_ob, source_ob, pre_mode)
 
         diff_time = time.time() - start_time
         self.report(type={'INFO'}, message="%.2f Seconds" % diff_time)
         return {'FINISHED'}
+
+    def prepare(self, context):
+        shape_key_transfer_op.prepare(self, context)
+
+        target_me = self.target_ob.data
+        source_me = self.source_ob.data
+
+        context.window_manager.progress_begin(0, len(target_me.vertices))
+        progress_reduce = len(target_me.vertices) // 200 + 1
+        self.near_vert_data = []
+        self.near_vert_multi_total = []
+        near_vert_multi_total_append = self.near_vert_multi_total.append
+            
+        for vert in target_me.vertices:
+            new_vert_data = []
+            self.near_vert_data.append(new_vert_data)
+            self.near_vert_data_append = new_vert_data.append
+
+            target_co = vert.co
+            mini_co, mini_index, mini_dist = self.kd.find(target_co)
+            radius = mini_dist * self.extend_range
+            diff_radius = radius - mini_dist
+
+            multi_total = 0.0
+            for co, index, dist in self.kd.find_range(target_co, radius):
+                if 0 < diff_radius:
+                    multi = (diff_radius - (dist - mini_dist)) / diff_radius
+                else:
+                    multi = 1.0
+                self.near_vert_data_append((index, multi))
+                multi_total += multi
+            near_vert_multi_total_append(multi_total)
+
+            if vert.index % progress_reduce == 0:
+                context.window_manager.progress_update(vert.index)
+        context.window_manager.progress_end()
+
+        self.my_iter = iter(transfer_shape_key_iter(self.target_ob, self.source_ob, binded_shape_key=self.binded_shape_key))
+
+        #self.source_raw_data = numpy.ndarray(shape=(len(source_me.vertices), 3), dtype=float, order='C')
+        #self.target_raw_data = numpy.ndarray(shape=(len(target_me.vertices), 3), dtype=float, order='C')
+
+        #self.binded_raw_data = numpy.ndarray(shape=len(self.source_bind_data)*3, dtype=float, order='C')
+        #self.source_bind_data.foreach_get('co', self.binded_raw_data)
+        #self.binded_raw_data.resize(self.binded_raw_data.size//3, 3)
+
+        context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks) * len(target_me.vertices))
+        context.window_manager.progress_update(0)
+
+    def loop(self, context):
+        #bpy.ops.object.mode_set(mode='OBJECT')
+        source_shape_key_index, target_shape_key, binded_shape_key_data, source_shape_key_data, target_shape_key_data = next(self.my_iter, (-1, None, None, None, None))
+        if not target_shape_key:
+            context.window_manager.progress_end()
+            return True
+        
+        #print("Loop for " + target_shape_key.name)
+
+        #context.window_manager.progress_begin( 0, len(self.source_ob.shape_keys.key_blocks) * len(target_ob.data.vertices) )
+        progress = source_shape_key_index * len(self.target_ob.data.vertices)
+        #context.window_manager.progress_update( progress )
+
+        diff_data = [None] * len(source_shape_key_data)
+        near_diff_co = mathutils.Vector.Fill(3, 0) # Creates a vector of length 3 filled with 0's
+        def check(index, near_diff_co=near_diff_co):
+            near_diff_co.zero() # This should be faster than creating a new vector every time
+
+            if self.near_vert_multi_total[index] > 0:
+                for near_index, near_multi in self.near_vert_data[index]:
+                    diff_data[near_index] = diff_data[near_index] or source_shape_key_data[near_index].co - binded_shape_key_data[near_index].co
+                    near_diff_co += diff_data[near_index] * near_multi
+
+                near_diff_co /= self.near_vert_multi_total[index]
+            
+            context.window_manager.progress_update( progress + index )
+
+            if near_diff_co.length > 2e-126: # 2e-126 is the smallest float != 0
+                target_shape_key_data[index].co += near_diff_co
+                return True
+
+        is_changed = False
+        just_changed = False
+        if self.step_size > 1:
+            found_more = False
+            for i in range(0, len(target_shape_key_data), self.step_size):
+                
+                if check(i) or found_more:
+                    is_changed = True
+                    found_more = False
+                    if not just_changed:
+                        for j in range(i-self.step_size+1, i):
+                            if j < len(target_shape_key_data) and j > 0:
+                                found_more = check(j) or found_more
+                    for k in range(i+1, i+self.step_size):
+                        if k < len(target_shape_key_data) and k > 0:
+                            found_more = check(k) or found_more
+                    just_changed = True
+                else:
+                    just_changed = False
+        
+        else: # if self.step_size == 1:
+            for index, binded_vert, source_vert in zip(range(len(diff_data)), binded_shape_key_data, source_shape_key_data):
+                diff_data[index] = source_vert.co - binded_vert.co
+                if diff_data[index].length > 2e-126:
+                    just_changed = True
+            
+            if just_changed:
+                for target_vert, near_indices, near_total in zip(target_shape_key_data, self.near_vert_data, self.near_vert_multi_total):
+                    near_diff_co.zero() # This should be faster than creating a new vector every time
+
+                    if near_total > 0:
+                        for near_index, near_multi in near_indices:
+                            near_diff_co += diff_data[near_index] * near_multi
+
+                        near_diff_co /= near_total
+
+                    if near_diff_co.length > 2e-126: # 2e-126 is the smallest float != 0
+                        target_vert.co += near_diff_co
+                        is_changed = True
+                    
+                    progress += 1
+                    context.window_manager.progress_update( progress )
+            else:
+                context.window_manager.progress_update( progress + len(target_shape_key_data) )
+
+        self.is_shapeds[target_shape_key.name] = is_changed
+        self.my_iter.update() # only call this when done with current iteration.
+        #bpy.ops.object.mode_set(mode='SCULPT') # Preview shape keys while transfering
+
+    def cleanup(self, context):
+        self.near_vert_data = []
+        self.near_vert_multi_total = []
+        self.my_iter = None
+        #self.source_raw_data = None
+        #self.binded_raw_data = None
+        #self.target_raw_data = None
+        shape_key_transfer_op.cleanup(self, context)
+
+
+
+""" 
+@compat.BlRegister()
+class CNV_OT_weighted_shape_key_transfer(CNV_OT_precision_shape_key_transfer, ):
+    bl_idname = 'object.weighted_shape_key_transfer'
+    bl_label = "Precision shape key transfer"
+    bl_description = "Transfers the shape keys of other selected meshes to the active mesh, blurring them further"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def prepare(self, context):
+        shape_key_transfer_op.prepare(self, context)
+
+        target_me = self.target_ob.data
+        source_me = self.source_ob.data
+
+        context.window_manager.progress_begin(0, len(target_me.vertices))
+        progress_reduce = len(target_me.vertices) // 200 + 1
+        self.near_vert_data = []
+        self.near_vert_multi_total = []
+        near_vert_multi_total_append = self.near_vert_multi_total.append
+            
+        for vert in target_me.vertices:
+            new_vert_data = []
+            self.near_vert_data.append(new_vert_data)
+            self.near_vert_data_append = new_vert_data.append
+
+            target_co = compat.mul(self.target_ob.matrix_world, vert.co)
+            mini_co, mini_index, mini_dist = self.kd.find(target_co)
+            radius = mini_dist * self.extend_range
+            diff_radius = radius - mini_dist
+
+            multi_total = 0.0
+            for co, index, dist in self.kd.find_range(target_co, radius):
+                if 0 < diff_radius:
+                    multi = (diff_radius - (dist - mini_dist)) / diff_radius
+                else:
+                    multi = 1.0
+                self.near_vert_data_append((index, multi))
+                multi_total += multi
+            near_vert_multi_total_append(multi_total)
+
+            if vert.index % progress_reduce == 0:
+                context.window_manager.progress_update(vert.index)
+        context.window_manager.progress_end()
+
+        self.my_iter = iter(transfer_shape_key_iter(self.target_ob, self.source_ob))
+
+        context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks) * len(target_me.vertices))
+        context.window_manager.progress_update(0)
+ """
 
 
 @compat.BlRegister()
@@ -386,6 +870,7 @@ class CNV_OT_multiply_shape_key(bpy.types.Operator):
                 data[i].co = vert.co + diff
         bpy.ops.object.mode_set(mode=pre_mode)
         return {'FINISHED'}
+
 
 
 @compat.BlRegister()
@@ -538,6 +1023,7 @@ class CNV_OT_blur_shape_key(bpy.types.Operator):
         return {'FINISHED'}
 
 
+
 @compat.BlRegister()
 class CNV_OT_change_base_shape_key(bpy.types.Operator):
     bl_idname = 'object.change_base_shape_key'
@@ -593,4 +1079,56 @@ class CNV_OT_change_base_shape_key(bpy.types.Operator):
                         shape_key.data[vert.index].co = shape_key.data[vert.index].co + diff_co
 
         bpy.ops.object.mode_set(mode=pre_mode)
+        return {'FINISHED'}
+
+
+
+@compat.BlRegister()
+class CNV_OT_copy_shape_key_values(bpy.types.Operator):
+    bl_idname = 'object.copy_shape_key_values'
+    bl_label = "Copy shape key values"
+    bl_description = "Copy the shape key values from the other selected mesh"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    use_drivers = bpy.props.BoolProperty(name="Apply as drivers", default=False)
+
+    @classmethod
+    def poll(cls, context):
+        obs = context.selected_objects
+        if len(obs) == 2:
+            active_ob = context.active_object
+            for ob in obs:
+                if ob.type != 'MESH':
+                    return False
+                if ob.data.shape_keys and ob.name != active_ob.name:
+                    return True
+        return False
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        self.layout.prop(self, 'use_drivers', icon='DRIVER')
+
+    def execute(self, context):
+        target_ob, source_ob = common.get_target_and_source_ob(context)
+            
+        source_sks = source_ob.data.shape_keys.key_blocks
+        target_sks = target_ob.data.shape_keys.key_blocks
+        for source_sk, target_sk in common.values_of_matched_keys(source_sks, target_sks):
+            if not self.use_drivers:
+                target_sk.value = source_sk.value
+            else:
+                driver = target_sk.driver_add('value').driver
+                driver.type = 'AVERAGE'
+
+                driver_var = driver.variables.new() if len(driver.variables) < 1 else driver.variables[0]
+                driver_var.type = 'SINGLE_PROP'
+
+                driver_target = driver_var.targets[0]
+                driver_target.id_type = 'KEY'
+                driver_target.id = source_sk.id_data
+                driver_target.data_path = source_sk.path_from_id('value')
+            
+        
         return {'FINISHED'}

@@ -88,7 +88,7 @@ class INFO_MT_help_CM3D2_Converter_RSS(bpy.types.Menu):
 @compat.BlRegister()
 class CNV_OT_update_cm3d2_converter(bpy.types.Operator):
     bl_idname = 'script.update_cm3d2_converter'
-    bl_label = "Update CM3D2 Converter (WARNING: COULD REMOVE TRANSLATIONS)"
+    bl_label = "Update CM3D2 Converter (\"luv\" version)"
     bl_description = "Will quickly download the latest CM3D2 Converter from the Github Page."
     bl_options = {'REGISTER'}
 
