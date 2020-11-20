@@ -112,7 +112,11 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
         with reader:
             # ヘッダー
-            ext = common.read_str(reader)
+            ext = None
+            try: # luvoid : utf-8 decoding could possibly throw an error here
+                ext = common.read_str(reader)
+            except:
+                ext = False
             if ext != 'CM3D2_MESH':
                 self.report(type={'ERROR'}, message="これはカスタムメイド3D2のモデルファイルではありません")
                 return {'CANCELLED'}
