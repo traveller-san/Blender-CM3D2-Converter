@@ -288,7 +288,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                     fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
                     fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
-                    bone.matrix = compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after)
+                    compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
 
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:
@@ -329,7 +329,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                     fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
                     fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
-                    bone.matrix = compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after)
+                    compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
 
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:
