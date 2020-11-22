@@ -448,7 +448,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             print(index, is_used)
             if is_used == False:
                 is_deleted += 1
-                deleted_names = deleted_names + '\n' + local_bone_data[i]['name']
+                deleted_names = deleted_names + '\n' + local_bone_data[index]['name']
             elif is_used == True:
                 pass
             else:
