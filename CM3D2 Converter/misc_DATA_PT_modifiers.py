@@ -137,7 +137,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                         for before, after in replace_list:
                             mirrored_name = re.sub(before, after, vg.name)
                             if mirrored_name not in ob.vertex_groups:
-                                ob.vertex_groups.new(mirrored_name)
+                                ob.vertex_groups.new(name=mirrored_name)
 
                 try:
                     bpy.ops.object.modifier_apply(modifier=mod.name)
