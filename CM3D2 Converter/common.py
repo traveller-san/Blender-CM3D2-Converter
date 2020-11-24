@@ -589,9 +589,12 @@ def load_cm3d2tex(path, skip_data=False):
 
 
 def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path=None, tex_map_data=None, replace_tex=False, slot_index=-1):
+    if isinstance(context, bpy.types.Context):
+        context = context.copy()
+
     if compat.IS_LEGACY:
         slot = mate.texture_slots.create(slot_index)
-        tex = context.blend_data.textures.new(node_name, 'IMAGE')
+        tex = context['blend_data'].textures.new(node_name, 'IMAGE')
         slot.texture = tex
 
         if tex_name:
@@ -604,7 +607,7 @@ def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path
                 img = bpy.data.images.load(filepath)
                 img.name = tex_name
             else:
-                img = context.blend_data.images.new(tex_name, 128, 128)
+                img = context['blend_data'].images.new(tex_name, 128, 128)
                 img.filepath = filepath
             img['cm3d2_path'] = cm3d2path
             img.source = 'FILE'
@@ -613,7 +616,7 @@ def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path
             if replace_tex:
                 replaced = replace_cm3d2_tex(tex.image, reload_path=False)
                 if replaced and node_name == '_MainTex':
-                    ob = context.active_object
+                    ob = context['active_object']
                     me = ob.data
                     for face in me.polygons:
                         if face.material_index == ob.active_material_index:
@@ -635,7 +638,7 @@ def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path
                     img = bpy.data.images.load(filepath)
                     img.name = tex_name
                 else:
-                    img = context.blend_data.images.new(tex_name, 128, 128)
+                    img = context['blend_data'].images.new(tex_name, 128, 128)
                     img.filepath = filepath
                 img.source = 'FILE'
                 tex.image = img
@@ -666,6 +669,9 @@ def create_tex(context, mate, node_name, tex_name=None, filepath=None, cm3d2path
 
 
 def create_col(context, mate, node_name, color, slot_index=-1):
+    if isinstance(context, bpy.types.Context):
+        context = context.copy()
+
     if compat.IS_LEGACY:
         if slot_index >= 0:
             mate.use_textures[slot_index] = False
@@ -673,7 +679,7 @@ def create_col(context, mate, node_name, color, slot_index=-1):
         node.color = color[:3]
         node.diffuse_color_factor = color[3]
         node.use_rgb_to_intensity = True
-        tex = context.blend_data.textures.new(node_name, 'BLEND')
+        tex = context['blend_data'].textures.new(node_name, 'BLEND')
         node.texture = tex
         node.use = False
     else:
@@ -687,13 +693,16 @@ def create_col(context, mate, node_name, color, slot_index=-1):
 
 
 def create_float(context, mate, node_name, value, slot_index=-1):
+    if isinstance(context, bpy.types.Context):
+        context = context.copy()
+
     if compat.IS_LEGACY:
         if slot_index >= 0:
             mate.use_textures[slot_index] = False
         node = mate.texture_slots.create(slot_index)
         node.diffuse_color_factor = value
         node.use_rgb_to_intensity = False
-        tex = context.blend_data.textures.new(node_name, 'BLEND')
+        tex = context['blend_data'].textures.new(node_name, 'BLEND')
         node.texture = tex
         node.use = False
     else:

@@ -27,7 +27,8 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
     is_mesh = bpy.props.BoolProperty(name="Load Mesh", default=True, description="Leaving this on will load in the mesh.")
     is_remove_doubles = bpy.props.BoolProperty(name="Remove Doubles", default=True, description="Doubles will be removed in both the uv and the mesh at the time of import.")
-    is_seam = bpy.props.BoolProperty(name="Mark Seams", default=True, description="This will mark the UV seams on your mesh.")
+    is_seam  = bpy.props.BoolProperty(name="Mark Seams", default=True,  description="This will mark the UV seams on your mesh.")
+    is_sharp = bpy.props.BoolProperty(name="Mark Sharp", default=False, description="This will mark removed doubles on your mesh as sharp (based on UV).")
 
     is_convert_bone_weight_names = bpy.props.BoolProperty(name="Convert Bone Weight Names to Blender", default=False, description="This will convert bone and vertex group names for use with blender mirroring.")
     is_vertex_group_sort = bpy.props.BoolProperty(name="Sort Vertex Groups", default=True, description="This will sort your vertex groups so they are easier to work with.")
@@ -68,7 +69,8 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         sub_box = box.box()
         sub_box.label(text="Mesh")
         sub_box.prop(self, 'is_remove_doubles', icon='STICKY_UVS_VERT')
-        sub_box.prop(self, 'is_seam', icon='KEY_DEHLT')
+        sub_box.prop(self, 'is_seam',  icon='KEY_DEHLT')
+        sub_box.prop(self, 'is_sharp', icon='KEY_DEHLT')
         sub_box = box.box()
         sub_box.label(text="Vertex Group")
         sub_box.prop(self, 'is_vertex_group_sort', icon='SORTALPHA')
@@ -211,32 +213,39 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             material_data = []
             material_count = struct.unpack('<i', reader.read(4))[0]
             for i in range(material_count):
-                name1 = common.read_str(reader)
-                name2 = common.read_str(reader)
-                name3 = common.read_str(reader)
-                data_list = []
-                material_data.append({'name1': name1, 'name2': name2, 'name3': name3, 'data': data_list})
-                while True:
-                    data_type = common.read_str(reader)
-                    if data_type == 'tex':
-                        data_item = {'type': data_type}
-                        data_list.append(data_item)
-                        data_item['name'] = common.read_str(reader)
-                        data_item['type2'] = common.read_str(reader)
-                        if data_item['type2'] == 'tex2d':
-                            data_item['name2'] = common.read_str(reader)
-                            data_item['path'] = common.read_str(reader)
-                            data_item['tex_map'] = struct.unpack('<4f', reader.read(4*4))
-                    elif data_type == 'col':
-                        name = common.read_str(reader)
-                        col = struct.unpack('<4f', reader.read(4*4))
-                        data_list.append({'type': data_type, 'name': name, 'color': col})
-                    elif data_type == 'f':
-                        name = common.read_str(reader)
-                        fval = struct.unpack('<f', reader.read(4))[0]
-                        data_list.append({'type': data_type, 'name': name, 'float': fval})
-                    else:
-                        break
+                print("mate count: {num} of {count}".format(num=i, count=material_count))
+                data = cm3d2_data.MaterialHandler.read(reader, read_header=False)
+                data.version = model_ver
+                data.name1 = data.name.lower()
+                material_data.append(data)
+                
+                # name1 = common.read_str(reader)
+                # name2 = common.read_str(reader)
+                # name3 = common.read_str(reader)
+                # data_list = []
+                # material_data.append({'name1': name1, 'name2': name2, 'name3': name3, 'data': data_list})
+                # while True:
+                #     data_type = common.read_str(reader)
+                #     if data_type == 'tex':
+                #         data_item = {'type': data_type}
+                #         data_list.append(data_item)
+                #         data_item['name'] = common.read_str(reader)
+                #         data_item['type2'] = common.read_str(reader)
+                #         if data_item['type2'] == 'tex2d':
+                #             data_item['name2'] = common.read_str(reader)
+                #             data_item['path'] = common.read_str(reader)
+                #             data_item['tex_map'] = struct.unpack('<4f', reader.read(4*4))
+                #     elif data_type == 'col':
+                #         name = common.read_str(reader)
+                #         col = struct.unpack('<4f', reader.read(4*4))
+                #         data_list.append({'type': data_type, 'name': name, 'color': col})
+                #     elif data_type == 'f':
+                #         name = common.read_str(reader)
+                #         fval = struct.unpack('<f', reader.read(4))[0]
+                #         data_list.append({'type': data_type, 'name': name, 'float': fval})
+                #     else:
+                #         break
+
             context.window_manager.progress_update(0.8)
 
             # その他情報読み込み
@@ -481,19 +490,25 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             # マテリアル追加
             progress_count_total = 0.0
             for data in material_data:
-                progress_count_total += len(data['data'])
+                progress_count_total += 1 #len(data['data'])
             self.progress_plus_value = 1.0 / (progress_count_total if progress_count_total > 0.0 else 1.0)
             self.progress_count = 6.0
 
             face_seek = 0
-            texes_set = set()
+            mates_set = set()
+            override = context.copy()
+            override['object'] = ob
+            prefs = common.preferences()
             for index, data in enumerate(material_data):
-                override = context.copy()
-                override['object'] = ob
+                print("material count: {num} of {count}".format(num=index, count=material_count))
+                if prefs.mate_unread_same_value and data.name in mates_set:
+                    continue
+                mates_set.add(data.name)
+                common.preferences().mate_unread_same_value
                 bpy.ops.object.material_slot_add(override)
-                mate = context.blend_data.materials.new(data['name1'])
-                mate['shader1'] = data['name2']
-                mate['shader2'] = data['name3']
+                mate = context.blend_data.materials.new(data.name)#['name1'])
+                #mate['shader1'] = data['name2']
+                #mate['shader2'] = data['name3']
 
                 ob.material_slots[-1].material = mate
                 # 面にマテリアル割り当て
@@ -503,10 +518,13 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
                 # テクスチャ追加
                 if compat.IS_LEGACY:
-                    self.create_mateprop_old(context, me, texes_set, mate, index, data)
+                    #self.create_mateprop_old(context, me, texes_set, mate, index, data)
+                    cm3d2_data.MaterialHandler.apply_to_old(override, mate, data)
                     common.decorate_material(mate, self.is_decorate, me, index)
                 else:
-                    self.create_mateprop(context, me, texes_set, mate, index, data)
+                    #self.create_mateprop(context, me, texes_set, mate, index, data)
+                    cm3d2_data.MaterialHandler.apply_to(override, mate, data)
+                    #common.decorate_material(mate, self.is_decorate, me, index)
                 common.setup_material(mate)
 
             ob.active_material_index = 0
@@ -529,10 +547,10 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                 bpy.ops.object.mode_set(mode='OBJECT')
 
                 context.tool_settings.mesh_select_mode = pre_mesh_select_mode
-            if self.is_seam:
+            if self.is_seam or self.is_sharp:
                 bpy.ops.object.mode_set(mode='EDIT')
-                bpy.ops.mesh.select_all(action='SELECT')
-                bpy.ops.uv.seams_from_islands()
+                bpy.ops.uv.select_all(action='SELECT')
+                bpy.ops.uv.seams_from_islands(mark_seams=self.is_seam, mark_sharp=self.is_sharp)
                 bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.mesh.select_all(action='DESELECT')
@@ -555,31 +573,33 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                     txt.clear()
                 else:
                     txt = context.blend_data.texts.new(txt_name)
-                txt.write("1000" + "\n")
-                txt.write(data['name1'].lower() + "\n")
-                txt.write(data['name1'] + "\n")
-                txt.write(data['name2'] + "\n")
-                txt.write(data['name3'] + "\n")
-                txt.write("\n")
-                for tex_data in data['data']:
-                    txt.write(tex_data['type'] + "\n")
-                    if tex_data['type'] == 'tex':
-                        txt.write("\t" + tex_data['name'] + "\n")
-                        txt.write("\t" + tex_data['type2'] + "\n")
-                        if tex_data['type2'] == 'tex2d':
-                            txt.write("\t" + tex_data['name2'] + "\n")
-                            txt.write("\t" + tex_data['path'] + "\n")
-                            map_list = tex_data['tex_map']
-                            tex_map = " ".join([str(map_list[0]), str(map_list[1]), str(map_list[2]), str(map_list[3])])
-                            txt.write("\t" + tex_map + "\n")
-                    elif tex_data['type'] == 'col':
-                        txt.write("\t" + tex_data['name'] + "\n")
-                        col = " ".join([str(tex_data['color'][0]), str(tex_data['color'][1]), str(tex_data['color'][2]), str(tex_data['color'][3])])
-                        txt.write("\t" + col + "\n")
-                    elif tex_data['type'] == 'f':
-                        txt.write("\t" + tex_data['name'] + "\n")
-                        txt.write("\t" + str(tex_data['float']) + "\n")
-                txt.current_line_index = 0
+                txt.write(data.to_text())
+                
+                # txt.write("1000" + "\n")
+                # txt.write(data['name1'].lower() + "\n")
+                # txt.write(data['name1'] + "\n")
+                # txt.write(data['name2'] + "\n")
+                # txt.write(data['name3'] + "\n")
+                # txt.write("\n")
+                # for tex_data in data['data']:
+                #     txt.write(tex_data['type'] + "\n")
+                #     if tex_data['type'] == 'tex':
+                #         txt.write("\t" + tex_data['name'] + "\n")
+                #         txt.write("\t" + tex_data['type2'] + "\n")
+                #         if tex_data['type2'] == 'tex2d':
+                #             txt.write("\t" + tex_data['name2'] + "\n")
+                #             txt.write("\t" + tex_data['path'] + "\n")
+                #             map_list = tex_data['tex_map']
+                #             tex_map = " ".join([str(map_list[0]), str(map_list[1]), str(map_list[2]), str(map_list[3])])
+                #             txt.write("\t" + tex_map + "\n")
+                #     elif tex_data['type'] == 'col':
+                #         txt.write("\t" + tex_data['name'] + "\n")
+                #         col = " ".join([str(tex_data['color'][0]), str(tex_data['color'][1]), str(tex_data['color'][2]), str(tex_data['color'][3])])
+                #         txt.write("\t" + col + "\n")
+                #     elif tex_data['type'] == 'f':
+                #         txt.write("\t" + tex_data['name'] + "\n")
+                #         txt.write("\t" + str(tex_data['float']) + "\n")
+                # txt.current_line_index = 0
         context.window_manager.progress_update(9)
 
         # ボーン情報のテキスト埋め込み
