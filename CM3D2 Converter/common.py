@@ -546,10 +546,11 @@ def __replace_cm3d2_tex(img, texpath_dict: dict) -> bool:
         tex_data = load_cm3d2tex(tex_path)
         if tex_data is None:
             return False
-
-        with open(tex_path, 'wb') as png_file:
+        
+        png_path = tex_path[:-4] + ".png"
+        with open(png_path, 'wb') as png_file:
             png_file.write(tex_data[-1])
-        img.filepath = tex_path
+        img.filepath = png_path
         img.reload()
         return True
     except:
@@ -995,7 +996,7 @@ def values_of_matched_keys(dict1, dict2):
     if len(items1) <= len(items2): 
         items1.reverse()
         for k1, v1 in items1:
-            for i in range(len(items2)-1, 0, -1):
+            for i in range(len(items2)-1, 0-1, -1):
                 k2, v2 = items2[i]
                 if k1 == k2:
                     value_list.append((v1,v2))
@@ -1003,7 +1004,7 @@ def values_of_matched_keys(dict1, dict2):
     else:
         items2.reverse()
         for k2, v2 in items2:
-            for i in range(len(items1)-1, 0, -1):
+            for i in range(len(items1)-1, 0-1, -1):
                 k1, v1 = items1[i]
                 if k1 == k2:
                     value_list.append((v1,v2))

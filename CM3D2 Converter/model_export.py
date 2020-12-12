@@ -742,17 +742,29 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 a2 = v3 - v1
                 s1 = w2 - w1
                 s2 = w3 - w1
+                
+                r_inverse = (s1.x * s2.y - s2.x * s1.y)
 
-                r = 1.0 / (s1.x * s2.y - s2.x * s1.y)
-                sdir = mathutils.Vector(((s2.y * a1.x - s1.y * a2.x) * r, (s2.y * a1.y - s1.y * a2.y) * r, (s2.y * a1.z - s1.y * a2.z) * r))
-                tan1[i1] += sdir
-                tan1[i2] += sdir
-                tan1[i3] += sdir
+                if r_inverse != 0:
+                    # print("i1 = {i1}   i2 = {i2}   i3 = {i3}".format(i1=i1, i2=i2, i3=i3))
+                    # print("v1 = {v1}   v2 = {v2}   v3 = {v3}".format(v1=v1, v2=v2, v3=v3))
+                    # print("w1 = {w1}   w2 = {w2}   w3 = {w3}".format(w1=w1, w2=w2, w3=w3))
 
-                tdir = mathutils.Vector(((s1.x * a2.x - s2.x * a1.x) * r, (s1.x * a2.y - s2.x * a1.y) * r, (s1.x * a2.z - s2.x * a1.z) * r))
-                tan2[i1] += tdir
-                tan2[i2] += tdir
-                tan2[i3] += tdir
+                    # print("a1 = {a1}   a2 = {a2}".format(a1=a1, a2=a2))
+                    # print("s1 = {s1}   s2 = {s2}".format(s1=s1, s2=s2))
+                    
+                    # print("r_inverse = ({s1x} * {s2y} - {s2x} * {s1y}) = {r_inverse}".format(r_inverse=r_inverse, s1x=s1.x, s1y=s1.y, s2x=s2.x, s2y=s2.y))
+                                                
+                    r = 1.0 / r_inverse
+                    sdir = mathutils.Vector(((s2.y * a1.x - s1.y * a2.x) * r, (s2.y * a1.y - s1.y * a2.y) * r, (s2.y * a1.z - s1.y * a2.z) * r))
+                    tan1[i1] += sdir
+                    tan1[i2] += sdir
+                    tan1[i3] += sdir
+
+                    tdir = mathutils.Vector(((s1.x * a2.x - s2.x * a1.x) * r, (s1.x * a2.y - s2.x * a1.y) * r, (s1.x * a2.z - s2.x * a1.z) * r))
+                    tan2[i1] += tdir
+                    tan2[i2] += tdir
+                    tan2[i3] += tdir
 
                 tri_idx += 3
 
