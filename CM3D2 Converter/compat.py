@@ -10,6 +10,38 @@ from typing import Any, Optional
 # LEGAY: version less than 2.80
 IS_LEGACY = not hasattr(bpy.app, 'version') or bpy.app.version < (2, 80)
 
+OPENGL_TO_BLEND_MAT4 = mathutils.Matrix(
+    [(-1,  0,  0,  0), 
+     ( 0,  0, -1,  0), 
+     ( 0,  1,  0,  0),
+     ( 0,  0,  0,  1)]
+)
+OPENGL_TO_BLEND_QUAT = OPENGL_TO_BLEND_MAT4.to_quaternion()
+
+BLEND_TO_OPENGL_MAT4 = mathutils.Matrix(
+    [( 1,  0,  0,  0), 
+     ( 0,  0,  1,  0), 
+     ( 0, -1,  0,  0),
+     ( 0,  0,  0,  1)]
+)
+BLEND_TO_OPENGL_QUAT = BLEND_TO_OPENGL_MAT4.to_quaternion()
+
+Y_UP_TO_Z_UP_MAT4 = mathutils.Matrix(
+    [( 0, -1,  0,  0), 
+     ( 1,  0,  0,  0), 
+     ( 0,  0,  1,  0),
+     ( 0,  0,  0,  1)]
+)
+Y_UP_TO_Z_UP_QUAT = Y_UP_TO_Z_UP_MAT4.to_quaternion()
+
+Z_UP_TO_Y_UP_MAT4 = Y_UP_TO_Z_UP_MAT4.inverted()
+#mathutils.Matrix(     
+#    [( 0,  1,  0,  0), 
+#     (-1,  0,  0,  0), 
+#     ( 0,  0,  1,  0),
+#     ( 0,  0,  0,  1)]
+#)                     
+Z_UP_TO_Y_UP_QUAT = Z_UP_TO_Y_UP_MAT4.to_quaternion()
 
 class BlRegister():
     idnames = set()
@@ -109,6 +141,12 @@ def get_active():
         return bpy.context.scene.objects.active
 
     return bpy.context.view_layer.objects.active
+
+def get_active(context):
+    if IS_LEGACY:
+        return context.scene.objects.active
+
+    return context.view_layer.objects.active
 
 
 def set_active(context, obj):
@@ -217,7 +255,8 @@ def mul4(w, x, y, z):
         return w * x * y * z
 
     return w @ x @ y @ z
-    
+
+
 def opengl_quat_to_mat3(q):
     w = q.w
     x = q.x
@@ -230,16 +269,29 @@ def opengl_quat_to_mat3(q):
          (     2*x*z + 2*w*y,     2*y*z - 2*w*x, 1 - 2*x*x - 2*y*y)]
     )
 
-def opengl_to_blend_mat4(mat4):
-    return mul(
-        mat4,
-        mathutils.Matrix(
-            [( 1,  0,  0,  0), 
-             ( 0,  0,  1,  0), 
-             ( 0,  1,  0,  0),
-             ( 0,  0,  0,  1)]
-        )
-    )
+def convert_opengl_y_up_to_blend_z_up_mat4(x):
+    return mul3(OPENGL_TO_BLEND_MAT4, x, Y_UP_TO_Z_UP_MAT4)
+
+def convert_blend_z_up_to_opengl_y_up_mat4(x):
+    return mul3(BLEND_TO_OPENGL_MAT4, x, Z_UP_TO_Y_UP_MAT4)
+
+def convert_opengl_y_up_to_blend_z_up_quat(x):
+    return mul3(OPENGL_TO_BLEND_QUAT, x, Y_UP_TO_Z_UP_QUAT)
+
+def convert_blend_z_up_to_opengl_y_up_quat(x):
+    return mul3(BLEND_TO_OPENGL_QUAT, x, Z_UP_TO_Y_UP_QUAT)
+
+def convert_opengl_to_blend_mat4(x):
+    return mul(OPENGL_TO_BLEND_MAT4, x)
+
+def convert_blend_to_opengl_mat4(x):
+    return mul(BLEND_TO_OPENGL_MAT4, x)
+
+def convert_y_up_to_z_up_mat4(x):
+    return mul(x, Y_UP_TO_Z_UP_MAT4)
+
+def convert_z_up_to_y_up_mat4(x):
+    return mul(x, Z_UP_TO_Y_UP_MAT4)
     
 def set_bone_matrix(bone, mat):
     bone.matrix = mat
@@ -248,41 +300,213 @@ def set_bone_matrix(bone, mat):
         bone.align_roll((mat[0][0],mat[1][0],mat[2][0]))
 
 
-LEGACY_ICONS = {
-    'ADD': 'ZOOMIN',
-    'REMOVE': 'ZOOMOUT',
-    'ARROW_LEFTRIGHT': 'MAN_SCALE',
-    'FILE_FOLDER': 'FILESEL',
-    'FILE_NEW': 'NEW',
-    'FILEBROWSER': 'FILESEL',
-    'FILE_IMAGE': 'IMAGE_COL',
-    'LIGHT_HEMI': 'LAMP_HEMI',
-    'MOD_DATA_TRANSFER': 'RETOPO',
-    'BRUSH_SOFTEN': 'MATCAP_19',
-    'CLIPUV_DEHLT': 'MATCAP_24',
-    'MESH_CIRCLE': 'MATCAP_24',
-    'PIVOT_INDIVIDUAL': 'ROTATECOLLECTION',
-    'SHADING_SOLID': 'SOLID',
-    'SHADING_WIRE': 'WIRE',
-    'SHADING_RENDERED': 'SMOOTH',
-    'SHADING_TEXTURE': 'TEXTURE_SHADED',
-    'NORMALS_VERTEX': 'MATCAP_23',
-    'VIS_SEL_01': 'VISIBLE_IPO_OFF',
-    'VIS_SEL_11': 'VISIBLE_IPO_ON',
-    # 'BRUSH_TEXFILL': 'MATCAP_05',
-    'NODE_MATERIAL': 'MATCAP_05',
-    'HOLDOUT_ON': 'MATCAP_13',
-    'CON_LOCLIKE': 'MAN_TRANS',
-    'CON_ROTLIKE': 'MAN_ROT',
-    'CON_SIZELIKE': 'MAN_SCALE',
+BL28_TO_LEGACY = {
+    # Renamed in 2.80               
+    'ADD'                          : 'ZOOMIN'             ,  
+    'REMOVE'                       : 'ZOOMOUT'            ,  
+    'FILE_NEW'                     : 'NEW'                ,  
+    'SHADING_BBOX'                 : 'BBOX'               ,  
+    'SHADING_TEXTURE'              : 'POTATO'             , #'TEXTURE_SHADED',  
+    'SHADING_RENDERED'             : 'SMOOTH'             ,  
+    'SHADING_SOLID'                : 'SOLID'              ,  
+    'SHADING_WIRE'                 : 'WIRE'               ,  
+    'XRAY'                         : 'ORTHO'              ,  
+    'PROPERTIES'                   : 'BUTS'               ,  
+    'IMAGE'                        : 'IMAGE_COL'          ,  
+    'OUTLINER'                     : 'OOPS'               ,  
+    'GRAPH'                        : 'IPO'                ,  
+    'PREFERENCES'                  : 'SCRIPTWIN'          ,  
+    'PIVOT_CURSOR'                 : 'CURSOR'             ,  
+    'PIVOT_INDIVIDUAL'             : 'ROTATECOLLECTION'   ,  
+    'PIVOT_MEDIAN'                 : 'ROTATECENTER'       ,  
+    'PIVOT_ACTIVE'                 : 'ROTACTIVE'          ,  
+    'WINDOW'                       : 'FULLSCREEN'         ,  
+    'LIGHT'                        : 'LAMP'               ,  
+    'LIGHT_DATA'                   : 'LAMP_DATA'          ,  
+    'OUTLINER_OB_LIGHT'            : 'OUTLINER_OB_LAMP'   ,  
+    'OUTLINER_DATA_LIGHT'          : 'OUTLINER_DATA_LAMP' ,  
+    'LIGHT_POINT'                  : 'LAMP_POINT'         ,  
+    'LIGHT_SUN'                    : 'LAMP_SUN'           ,  
+    'LIGHT_SPOT'                   : 'LAMP_SPOT'          ,  
+    'LIGHT_HEMI'                   : 'LAMP_HEMI'          ,  
+    'LIGHT_AREA'                   : 'LAMP_AREA'          ,  
+    'HIDE_OFF'                     : 'VISIBLE_IPO_ON'     ,  
+    'HIDE_ON'                      : 'VISIBLE_IPO_OFF'    ,  
+
+    # Added in 2.80
+    'ALEMBIC'                      : None                 ,
+    'ALIGN_BOTTOM'                 : None                 ,  
+    'ALIGN_CENTER'                 : None                 ,  
+    'ALIGN_FLUSH'                  : None                 ,  
+    'ALIGN_JUSTIFY'                : None                 ,  
+    'ALIGN_LEFT'                   : None                 ,  
+    'ALIGN_MIDDLE'                 : None                 ,  
+    'ALIGN_RIGHT'                  : None                 ,  
+    'ALIGN_TOP'                    : None                 ,  
+    'ASSET_MANAGER'                : None                 ,  
+    'BOLD'                         : None                 ,  
+    'DECORATE'                     : None                 ,  
+    'DECORATE_ANIMATE'             : None                 ,  
+    'DECORATE_DRIVER'              : None                 ,  
+    'DECORATE_KEYFRAME'            : None                 ,  
+    'DECORATE_LIBRARY_OVERRIDE'    : None                 ,  
+    'DECORATE_LINKED'              : None                 ,  
+    'DECORATE_LOCKED'              : None                 ,  
+    'DECORATE_OVERRIDE'            : None                 ,  
+    'DECORATE_UNLOCKED'            : None                 ,  
+    'DRIVER_DISTANCE'              : None                 ,  
+    'DRIVER_ROTATIONAL_DIFFERENCE' : None                 ,  
+    'DRIVER_TRANSFORM'             : None                 ,  
+    'DUPLICATE'                    : None                 ,  
+    'FACE_MAPS'                    : None                 ,
+    'FAKE_USER_OFF'                : None                 ,
+    'FAKE_USER_ON'                 : None                 ,
+    'GP_MULTIFRAME_EDITING'        : None                 ,
+    'GP_ONLY_DSELECTED'            : None                 ,
+    'GP_SELECT_POINTS'             : None                 ,
+    'GP_SELECT_STROKES'            : None                 ,
+    'GREASEPENCIL'                 : None                 ,
+    'HEART'                        : None                 ,
+    'ITALIC'                       : None                 ,
+    'LIBRARY_DATA_OVERRIDE'        : None                 ,
+    'LIGHTPROBE_CUBEMAP'           : None                 ,
+    'LIGHTPROBE_GRID'              : None                 ,
+    'LIGHTPROBE_PLANAR'            : None                 ,
+    'LINE_DATA'                    : None                 ,
+    'MATCLOTH'                     : None                 ,
+    'MATFLUID'                     : None                 ,
+    'MATSHADERBALL'                : None                 ,
+    'MOD OPACITY'                  : None                 ,
+    'MOD_HUE_SATURATION'           : None                 ,
+    'MOD_INSTANCE'                 : None                 ,
+    'MOD_NOISE'                    : None                 ,
+    'MOD_OFFSET'                   : None                 ,
+    'MOD_PARTICLE_INSTANCE'        : None                 ,
+    'MOD_SIMPLIFY'                 : None                 ,
+    'MOD_THICKNESS'                : None                 ,
+    'MOD_TIME'                     : None                 ,
+    'MODIFIER_OFF'                 : None                 ,
+    'MODIFIER_ON'                  : None                 ,
+    'MOUSE_LMB'                    : None                 ,
+    'MOUSE_LMB_DRAG'               : None                 ,
+    'MOUSE_MMB'                    : None                 ,
+    'MOUSE_MMB_DRAG'               : None                 ,
+    'MOUSE_MOVE'                   : None                 ,
+    'MOUSE_RMB'                    : None                 ,
+    'MOUSE_RMB_DRAG'               : None                 ,
+    'NORMALS_FACE'                 : None                 ,
+    'NORMALS_VERTEX'               : 'MATCAP_23'          ,
+    'NORMALS_VERTEX_FACE'          : 'MATCAP_23'          ,
+    'OBJECT_ORIGIN'                : None                 ,
+    'ONIONSKIN_OFF'                : None                 ,
+    'ONIONSKIN_ON'                 : None                 ,
+    'ORIENTATION_GIMBAL'           : None                 ,
+    'ORIENTATION_GLOBAL'           : None                 ,
+    'ORIENTATION_LOCAL'            : None                 ,
+    'ORIENTATION_NORMAL'           : None                 ,
+    'ORIENTATION_VIEW'             : None                 ,
+    'OUTLINER_DATA_GREASEPENCIL'   : None                 ,
+    'OUTLINER_OB_IMAGE'            : None                 ,
+    'OUTLINER_OB_LIGHTPROBE'       : None                 ,
+    'OVERLAY'                      : None                 ,
+    'PRESET'                       : None                 ,
+    'PRESET_NEW'                   : None                 ,
+    'SEALED'                       : None                 ,
+    'SETTINGS'                     : None                 ,
+    'SHADERFX'                     : None                 ,
+    'SMALL_CAPS'                   : None                 ,
+    'SYSTEM'                       : None                 ,
+    'THREE_DOTS'                   : None                 ,
+    'TOOL_SETTINGS'                : None                 ,
+    'TRACKING'                     : None                 ,
+
+    # Other
+    #'ARROW_LEFTRIGHT'              : 'MAN_SCALE'         ,
+    #'FILE_FOLDER'                  : 'FILESEL'           ,
+    #'FILEBROWSER'                  : 'FILESEL'           ,
+    #'FILE_IMAGE'                   : 'IMAGE_COL'         ,
+    #'MOD_DATA_TRANSFER'            : 'RETOPO'            ,
+    #'BRUSH_SOFTEN'                 : 'MATCAP_19'         ,
+    #'CLIPUV_DEHLT'                 : 'MATCAP_24'         ,
+    #'MESH_CIRCLE'                  : 'MATCAP_24'         ,
+    #'VIS_SEL_01'                   : 'VISIBLE_IPO_OFF'   ,
+    #'VIS_SEL_11'                   : 'VISIBLE_IPO_ON'    ,
+    #'BRUSH_TEXFILL'                : 'MATCAP_05'         ,
+    #'NODE_MATERIAL'                : 'MATCAP_05'         ,
+    #'HOLDOUT_ON'                   : 'MATCAP_13'         ,
 }
+
+LEGACY_TO_BL28 = {
+    # Renamed in 2.80
+    'ZOOMIN'                       : 'ADD'                ,  
+    'ZOOMOUT'                      : 'REMOVE'             ,  
+    'NEW'                          : 'FILE_NEW'           ,  
+    'BBOX'                         : 'SHADING_BBOX'       ,  
+    'POTATO'                       : 'SHADING_TEXTURE'    , #'TEXTURE_SHADED',  
+    'SMOOTH'                       : 'SHADING_RENDERED'   ,  
+    'SOLID'                        : 'SHADING_SOLID'      ,  
+    'WIRE'                         : 'SHADING_WIRE'       ,  
+    'ORTHO'                        : 'XRAY'               ,  
+    'BUTS'                         : 'PROPERTIES'         ,  
+    'IMAGE_COL'                    : 'IMAGE'              ,  
+    'OOPS'                         : 'OUTLINER'           ,  
+    'IPO'                          : 'GRAPH'              ,  
+    'SCRIPTWIN'                    : 'PREFERENCES'        ,  
+    'CURSOR'                       : 'PIVOT_CURSOR'       ,  
+    'ROTATECOLLECTION'             : 'PIVOT_INDIVIDUAL'   ,  
+    'ROTATECENTER'                 : 'PIVOT_MEDIAN'       ,  
+    'ROTACTIVE'                    : 'PIVOT_ACTIVE'       ,  
+    'FULLSCREEN'                   : 'WINDOW'             ,  
+    'LAMP'                         : 'LIGHT'              ,  
+    'LAMP_DATA'                    : 'LIGHT_DATA'         ,  
+    'OUTLINER_OB_LAMP'             : 'OUTLINER_OB_LIGHT'  ,  
+    'OUTLINER_DATA_LAMP'           : 'OUTLINER_DATA_LIGHT',  
+    'LAMP_POINT'                   : 'LIGHT_POINT'        ,  
+    'LAMP_SUN'                     : 'LIGHT_SUN'          ,  
+    'LAMP_SPOT'                    : 'LIGHT_SPOT'         ,  
+    'LAMP_HEMI'                    : 'LIGHT_HEMI'         ,  
+    'LAMP_AREA'                    : 'LIGHT_AREA'         ,  
+    'VISIBLE_IPO_ON'               : 'HIDE_OFF'           ,  
+    'VISIBLE_IPO_OFF'              : 'HIDE_ON'            ,  
+                                                          
+    # Removed in 2.80              
+    'LINK_AREA'                    : 'LINKED'             ,
+    'PLUG'                         : 'PLUGIN'             ,
+    'EDIT'                         : None                 , 
+    'GAME'                         : None                 , 
+    'RADIO'                        : None                 ,
+    'DOTSUP'                       : 'DOT'                ,
+    'DOTSDOWN'                     : 'DOT'                ,
+    'LINK'                         : 'LAYER_USED'         , #(maybe use DOT, LAYER_ACTIVE or LAYER_USED)
+    'INLINK'                       : None                 ,  
+    'GO_LEFT'                      : None                 ,
+    'TEMPERATURE'                  : None                 ,
+    'SNAP_SURFACE'                 : None                 ,
+    'MANIPUL'                      : None                 ,
+    'BORDER_LASSO'                 : None                 ,
+    'MAN_TRANS'                    : None                 ,
+    'MAN_ROT'                      : None                 ,
+    'MAN_SCALE'                    : None                 ,
+    'RENDER_REGION'                : None                 ,
+    'RECOVER_AUTO'                 : None                 ,
+    'SAVE_COPY'                    : None                 ,
+    'OPEN_RECENT'                  : None                 ,
+    'LOAD_FACTORY'                 : None                 ,
+    'ALIGN'                        : None                 ,
+    'SPACE2'                       : None                 ,
+    'ROTATE'                       : None                 ,
+    'SAVE_AS'                      : None                 ,
+    'BORDER_RECT'                  : None                 ,
+}                                                          
 
 
 def icon(key):
     if IS_LEGACY:
         # 対応アイコンがdictにない場合はNONEとする
-        return LEGACY_ICONS.get(key, 'NONE')
-
+        return BL28_TO_LEGACY.get(key, key) or 'NONE'
+    else:
+        return LEGACY_TO_BL28.get(key, key) or 'NONE'
+        
     return key
 
 

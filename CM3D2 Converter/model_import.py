@@ -297,11 +297,12 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                     rot_mat = rot.to_matrix().to_4x4()
                     mat = compat.mul(co_mat, rot_mat)
 
-                    fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
-                    fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
-                    fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
+                    #fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
+                    #fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
+                    #fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
-                    compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
+                    #compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
+                    compat.set_bone_matrix(bone, compat.convert_opengl_y_up_to_blend_z_up_mat4(mat))
 
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:
@@ -336,14 +337,16 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                     mat = mathutils.Matrix()
                     for local_mat in parent_mats:
                         mat = compat.mul(mat, local_mat)
+
                     mat *= self.scale
 
-                    fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
-                    fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
-                    fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
+                    #fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
+                    #fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
+                    #fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
-                    compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
-
+                    #compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
+                    compat.set_bone_matrix(bone, compat.convert_opengl_y_up_to_blend_z_up_mat4(mat))
+                    
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:
                     child_data.append(data)
@@ -549,6 +552,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                 context.tool_settings.mesh_select_mode = pre_mesh_select_mode
             if self.is_seam or self.is_sharp:
                 bpy.ops.object.mode_set(mode='EDIT')
+                bpy.ops.mesh.select_all(action='SELECT')
                 bpy.ops.uv.select_all(action='SELECT')
                 bpy.ops.uv.seams_from_islands(mark_seams=self.is_seam, mark_sharp=self.is_sharp)
                 bpy.ops.object.mode_set(mode='OBJECT')

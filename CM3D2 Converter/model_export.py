@@ -345,7 +345,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         base_bone_candidate = None
         bone_data = []
         if self.bone_info_mode == 'ARMATURE':
-            bone_data = self.armature_bone_data_parser(arm_ob)
+            bone_data = self.armature_bone_data_parser(context, arm_ob)
             base_bone_candidate = arm_ob.data['BaseBone']
         elif self.bone_info_mode == 'TEXT':
             bone_data_text = context.blend_data.texts["BoneData"]
@@ -798,14 +798,20 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 vert.select = True
         bpy.ops.object.mode_set(mode='EDIT')
 
-    def armature_bone_data_parser(self, ob):
+    def armature_bone_data_parser(self, context, ob):
         """アーマチュアを解析してBoneDataを返す"""
         arm = ob.data
+        
+        pre_active = compat.get_active(context)
+        pre_mode = ob.mode
+
+        compat.set_active(context, ob)
+        bpy.ops.object.mode_set(mode='EDIT')
 
         bones = []
         bone_name_indices = {}
         already_bone_names = []
-        bones_queue = arm.bones[:]
+        bones_queue = arm.edit_bones[:]
         while len(bones_queue):
             bone = bones_queue.pop(0)
 
@@ -828,24 +834,43 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             unknown_flag = bone['UnknownFlag'] if 'UnknownFlag' in bone else 0
             parent_index = bone_name_indices[bone.parent.name] if bone.parent else -1
 
-            mat = bone.matrix_local.copy()
+            mat = bone.matrix.copy()
             if bone.parent:
-                mat = compat.mul(bone.parent.matrix_local.inverted(), mat)
-
+                mat = compat.mul(bone.parent.matrix.inverted(), mat)
+            
             co = mat.to_translation() * self.scale
             rot = mat.to_quaternion()
-
+            
+            #if bone.parent:
+            #    co.x, co.y, co.z = -co.y, -co.x, co.z
+            #    rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, rot.x, -rot.z
+            #else:
+            #    co.x, co.y, co.z = -co.x, co.z, -co.y
+            #
+            #    fix_quat  = compat.Z_UP_TO_Y_UP_QUAT    #mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
+            #    fix_quat2 = compat.BLEND_TO_OPENGL_QUAT #mathutils.Euler((math.radians(-90), 0, 0), 'XYZ').to_quaternion()
+            #    rot = compat.mul3(rot, fix_quat, fix_quat2)
+            #    #rot = compat.mul3(fix_quat2, rot, fix_quat)
+            #
+            #    rot.w, rot.x, rot.y, rot.z = -rot.y, -rot.z, -rot.x, rot.w
+            
+            # luvoid : I copied this from the Bone-Util Addon by trzr
             if bone.parent:
-                co.x, co.y, co.z = -co.y, -co.x, co.z
-                rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, rot.x, -rot.z
+                co.x, co.y, co.z = -co.y, co.z, co.x
+                rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, -rot.z, -rot.x
             else:
                 co.x, co.y, co.z = -co.x, co.z, -co.y
-
-                fix_quat = mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
-                fix_quat2 = mathutils.Euler((math.radians(-90), 0, 0), 'XYZ').to_quaternion()
-                rot = compat.mul3(rot, fix_quat, fix_quat2)
-
-                rot.w, rot.x, rot.y, rot.z = -rot.y, -rot.z, -rot.x, rot.w
+                
+                rot = compat.mul(rot, mathutils.Quaternion((0, 0, 1), math.radians(90)))
+                rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, rot.z, -rot.y
+            
+            #opengl_mat = compat.convert_blend_z_up_to_opengl_y_up_mat4(bone.matrix)
+            #
+            #if bone.parent:
+            #    opengl_mat = compat.mul(compat.convert_blend_z_up_to_opengl_y_up_mat4(bone.parent.matrix).inverted(), opengl_mat)
+            #
+            #co = opengl_mat.to_translation() * self.scale
+            #rot = opengl_mat.to_quaternion()
 
             bone_data.append({
                 'name': bone.name,
@@ -854,6 +879,9 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 'co': co.copy(),
                 'rot': rot.copy(),
             })
+        
+        compat.set_active(context, pre_active)
+        bpy.ops.object.mode_set(mode=pre_mode)
         return bone_data
 
     @staticmethod
