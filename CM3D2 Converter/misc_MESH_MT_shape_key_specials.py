@@ -1085,16 +1085,16 @@ class CNV_UL_vgroups_selector(bpy.types.UIList):
         return flt_flags, flt_neworder
 
 
-@compat.BlRegister()
-class CNV_BoolCollectionItem(bpy.types.PropertyGroup):
-    bl_label = "CNV_BoolCollectionItem"
-    bl_region_type = 'WINDOW'
-    bl_space_type = 'PROPERTIES'
-
-    name : bpy.props.StringProperty(name="Name", default="Unknown")
-    value: bpy.props.BoolProperty(name="Value", default=True)
-    index: bpy.props.IntProperty(name="Index", default=-1)
-    preferred: bpy.props.BoolProperty(name="Prefered", default=True)
+#@compat.BlRegister()
+#class CNV_BoolCollectionItem(bpy.types.PropertyGroup):
+#    bl_label = "CNV_BoolCollectionItem"
+#    bl_region_type = 'WINDOW'
+#    bl_space_type = 'PROPERTIES'
+#
+#    name : bpy.props.StringProperty(name="Name", default="Unknown")
+#    value: bpy.props.BoolProperty(name="Value", default=True)
+#    index: bpy.props.IntProperty(name="Index", default=-1)
+#    preferred: bpy.props.BoolProperty(name="Prefered", default=True)
 
 
 @compat.BlRegister()
@@ -1112,7 +1112,7 @@ class CNV_OT_weighted_shape_key_transfer(shape_key_transfer_op, bpy.types.Operat
     my_iter = None
 
     matched_vgroups = []
-    using_vgroups = bpy.props.CollectionProperty(type=CNV_BoolCollectionItem)
+    using_vgroups = bpy.props.CollectionProperty(type=common.CNV_SelectorItem)
     active_vgroup = bpy.props.IntProperty(name="Active Vertex Group")
     
     #armature = bpy.props.PointerProperty(type=bpy.types.ID)
@@ -1226,12 +1226,10 @@ class CNV_OT_weighted_shape_key_transfer(shape_key_transfer_op, bpy.types.Operat
 
         context.window_manager.progress_begin(0, len(source_me.shape_keys.key_blocks) * len(target_me.vertices))
         context.window_manager.progress_update(0)       
-    
-  
+      
     invoke = CNV_OT_precision_shape_key_transfer.invoke
     loop = CNV_OT_precision_shape_key_transfer.loop
     cleanup = CNV_OT_precision_shape_key_transfer.cleanup
-
 
 
 

@@ -212,7 +212,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                 compat.set_select(ob_source, False)
                 ob_main = self.copy_and_activate_ob(context, ob_source)
 
-                if prefs.is_apply_modifiers:
+                if prefs.is_apply_modifiers and bpy.ops.object.forced_modifier_apply.poll(context):
                     bpy.ops.object.forced_modifier_apply(is_applies=[True for i in range(32)])
             else:
                 selected_count = 0

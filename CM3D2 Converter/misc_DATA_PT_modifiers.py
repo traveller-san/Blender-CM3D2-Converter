@@ -23,13 +23,151 @@ def menu_func(self, context):
 
 
 @compat.BlRegister()
+class CNV_UL_modifier_selector(common.CNV_UL_generic_selector):
+    bl_label       = "CNV_UL_modifier_selector"
+    bl_options     = {'DEFAULT_CLOSED'}
+    bl_region_type = 'WINDOW'
+    bl_space_type  = 'PROPERTIES'
+
+    # Constants (flags)
+    # Be careful not to shadow FILTER_ITEM!
+    #bitflag_forced_true  = 1 << 0
+    #bitflag_forced_false = 1 << 1
+    #force_values = False
+    #did_force_values = False
+
+    force_values: bpy.props.BoolProperty(
+        name="force_values",
+        default=False,
+        options=set(),
+    )
+
+    did_force_values: bpy.props.BoolProperty(
+        name="force_values",
+        default=False,
+        options=set(),
+    )
+
+    # This allows us to have mutually exclusive options, which are also all disable-able!
+    def _gen_force_values(self, context):
+        setattr(self, "force_values", True)
+        setattr(self, "did_force_values", False)
+        print("SET TRUE force_values =", self.force_values)
+    
+    def _gen_visible_update(name1, name2):
+        def _u(self, context):
+            self._gen_force_values(context)
+            if (getattr(self, name1)):
+                setattr(self, name2, False)
+        return _u
+    use_filter_viewport_visible: bpy.props.BoolProperty(
+        name="Viewport",
+        default=False,
+        options=set(),
+        description="Only enable modifiers visible in viewport",
+        update=_gen_visible_update("use_filter_viewport_visible", "use_filter_renderer_visible"),
+    )
+    use_filter_renderer_visible: bpy.props.BoolProperty(
+        name="Renderer",
+        default=False,
+        options=set(),
+        description="Only enable modifiers visible in renderer",
+        update=_gen_visible_update("use_filter_renderer_visible", "use_filter_viewport_visible"),
+    )
+    use_filter_reversed_visible: bpy.props.BoolProperty(
+        name="Reverse Visible Filter",
+        default=False,
+        options=set(),
+        description="Reverse the selected visible-in filter",
+        update=_gen_force_values
+    )
+
+
+    use_filter_name_reverse: bpy.props.BoolProperty(
+        name="Reverse Name",
+        default=False,
+        options=set(),
+        description="Reverse name filtering",
+    )
+
+    def _gen_order_update(name1, name2):
+        def _u(self, ctxt):
+            if (getattr(self, name1)):
+                setattr(self, name2, False)
+        return _u
+    use_order_name: bpy.props.BoolProperty(
+        name="Name", default=False, options=set(),
+        description="Sort groups by their name (case-insensitive)",
+        update=_gen_order_update("use_order_name", "use_order_importance"),
+    )
+    use_filter_orderby_invert: bpy.props.BoolProperty(
+        name="Order by Invert",
+        default=False,
+        options=set(),
+        description="Invert the sort by order"
+    )
+
+
+    def draw_filter(self, context, layout):
+        row = layout.row()
+        row.label(text="Visible in:")
+        subrow = row.row(align=True)
+        subrow.prop(self, "use_filter_viewport_visible", toggle=True)
+        subrow.prop(self, "use_filter_renderer_visible", toggle=True)
+        icon = 'ZOOM_OUT' if self.use_filter_reversed_visible else 'ZOOM_IN'
+        icon = compat.icon(icon)
+        subrow.prop(self, "use_filter_reversed_visible", text="", icon=icon)
+
+        super(CNV_UL_modifier_selector, self).draw_filter(context, layout)
+
+    def filter_items(self, context, data, propname):
+        flt_flags, flt_neworder = super(CNV_UL_modifier_selector, self).filter_items(context, data, propname)
+        items = getattr(data, propname)
+
+        if getattr(self, 'did_force_values'):
+            setattr(self,'force_values', False)
+        setattr(self, 'did_force_values', getattr(self, 'force_values'))
+
+        print("CHECK force_values = ", getattr(self, 'force_values'))
+
+        if self.use_filter_viewport_visible or self.use_filter_renderer_visible or getattr(self, 'force_values'):
+
+            if not self.use_filter_reversed_visible:
+                in_flag  = self.bitflag_forced_true 
+                out_flag = ~(self.bitflag_forced_false | self.bitflag_soft_filter)
+            else:
+                in_flag  = self.bitflag_forced_false | self.bitflag_soft_filter
+                out_flag = ~self.bitflag_forced_true
+
+            for index, item in enumerate(items):
+                if getattr(self, 'force_values'):
+                    flt_flags[index] |= self.bitflag_forced_value
+
+                if self.use_filter_viewport_visible and item.filter0:
+                    flt_flags[index] |= in_flag
+                    flt_flags[index] &= out_flag
+                elif self.use_filter_renderer_visible and item.filter1:
+                    flt_flags[index] |= in_flag
+                    flt_flags[index] &= out_flag
+                elif not self.use_filter_viewport_visible and not self.use_filter_renderer_visible:
+                    pass
+                else:
+                    flt_flags[index] |= ~out_flag
+                    flt_flags[index] &= ~in_flag
+
+        return flt_flags, flt_neworder
+
+
+@compat.BlRegister()
 class CNV_OT_forced_modifier_apply(bpy.types.Operator):
     bl_idname = 'object.forced_modifier_apply'
     bl_label = "Force Modifiers"
     bl_description = "Will force any modifiers if the mesh has shape keys."
     bl_options = {'REGISTER', 'UNDO'}
     
-    is_applies = bpy.props.BoolVectorProperty(name="Apply Modifier", size=32, options={'SKIP_SAVE'})
+    #is_applies = bpy.props.BoolVectorProperty(name="Apply Modifier", size=32, options={'SKIP_SAVE'})
+    is_applies: bpy.props.CollectionProperty(type=common.CNV_SelectorItem)
+    active_modifier: bpy.props.IntProperty(name="Active Modifier")
 
     @classmethod
     def poll(cls, context):
@@ -41,12 +179,34 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         if len(ob.modifiers) == 0:
             return {'CANCELLED'}
 
+        self.ob_modifiers = ob.modifiers
         for index, mod in enumerate(ob.modifiers):
-            if index >= 32: # luvoid : can only apply 32 modifiers at once.
-                self.report(type={'WARNING'}, message="Can only apply the first 32 modifiers at once.")
-                break
-            if mod.show_viewport:
-                self.is_applies[index] = True
+            #if index >= 32: # luvoid : can only apply 32 modifiers at once.
+            #    self.report(type={'WARNING'}, message="Can only apply the first 32 modifiers at once.")
+            #    break
+            icon = 'MOD_%s' % mod.type.replace('DECIMATE','DECIM').replace('SOFT_BODY','SOFT').replace('PARTICLE_SYSTEM','PARTICLES').replace('_SPLIT','SPLIT').replace('_PROJECT','PROJECT').replace('_DEFORM','DEFORM').replace('_SIMULATION','SIM').replace('_EDIT','').replace('_MIX','').replace('_PROXIMITY','').replace('_PAINT','PAINT')
+            icon = compat.icon(icon)
+            
+            new_prop = None
+            if index < len(self.is_applies):
+                new_prop = self.is_applies[index]
+            else:
+                new_prop = self.is_applies.add()
+            
+            if new_prop.name == mod.name and new_prop.icon == icon:
+                # It's probably the same one, ignore it
+                pass
+            else:
+                new_prop.name      = mod.name
+                new_prop.index     = index
+                new_prop.value     = mod.show_viewport
+                new_prop.preferred = new_prop.value
+                new_prop.icon      = icon
+                new_prop.filter0   = mod.show_viewport
+                new_prop.filter1   = mod.show_render
+
+        while len(self.is_applies) > len(ob.modifiers):
+            self.is_applies.remove(len(self.is_applies)-1)
 
         return context.window_manager.invoke_props_dialog(self)
 
@@ -56,20 +216,28 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         self.layout.label(text="Apply")
         ob = context.active_object
 
-        for index, mod in enumerate(ob.modifiers):
-            if index >= 32: # luvoid : can only apply 32 modifiers at once.
-                break
-            icon = 'MOD_%s' % mod.type.replace('DECIMATE','DECIM').replace('SOFT_BODY','SOFT').replace('PARTICLE_SYSTEM','PARTICLES').replace('_SPLIT','SPLIT').replace('_PROJECT','PROJECT').replace('_DEFORM','DEFORM').replace('_SIMULATION','SIM').replace('_EDIT','').replace('_MIX','').replace('_PROXIMITY','').replace('_PAINT','PAINT')
-            try:
-                self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon=icon)
-            except:
-                self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon='MODIFIER')
+        #for index, mod in enumerate(ob.modifiers):
+        #    if index >= 32: # luvoid : can only apply 32 modifiers at once.
+        #        break
+        #    icon = 'MOD_%s' % mod.type.replace('DECIMATE','DECIM').replace('SOFT_BODY','SOFT').replace('PARTICLE_SYSTEM','PARTICLES').replace('_SPLIT','SPLIT').replace('_PROJECT','PROJECT').replace('_DEFORM','DEFORM').replace('_SIMULATION','SIM').replace('_EDIT','').replace('_MIX','').replace('_PROXIMITY','').replace('_PAINT','PAINT')
+        #    try:
+        #        self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon=icon)
+        #    except:
+        #        self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon='MODIFIER')
+
+        self.layout.template_list("CNV_UL_modifier_selector", "", self, "is_applies", self, "active_modifier")
+        self.layout.label(text="Show filters", icon='FILE_PARENT')
 
     def execute(self, context):
         ob = context.active_object
 
         # 対象が一つも無い場合はキャンセル扱いとする
-        if not any(self.is_applies):
+        is_any = False
+        for item in self.is_applies:
+            if item.value:
+                is_any = True
+                break
+        if not is_any:
             self.report(type={'INFO'}, message="There are no applicable modifiers, so cancel")
             return {'CANCELLED'}
 
@@ -109,7 +277,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                     override = context.copy()
                     override['object'] = temp_ob
                     for index, mod in enumerate(temp_ob.modifiers):
-                        if self.is_applies[index]:
+                        if self.is_applies[index].value:
                             try:
                                 bpy.ops.object.modifier_apply(override, modifier=mod.name)
                             except:
@@ -129,7 +297,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         for index, mod in enumerate(copy_modifiers):
             if index >= 32: # luvoid : can only apply 32 modifiers at once.
                 break
-            if self.is_applies[index] and mod.type != 'ARMATURE':
+            if self.is_applies[index].value and mod.type != 'ARMATURE':
 
                 if mod.type == 'MIRROR':
                     for vg in ob.vertex_groups[:]:
@@ -194,9 +362,9 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 custom_normals.append(no)
 
         for index, mod in enumerate(copy_modifiers):
-            if index >= 32: # luvoid : can only apply 32 modifiers at once.
-                break
-            if self.is_applies[index] and mod.type == 'ARMATURE':
+            #if index >= 32: # luvoid : can only apply 32 modifiers at once.
+            #    break
+            if self.is_applies[index].value and mod.type == 'ARMATURE':
                 try:
                     bpy.ops.object.modifier_apply(modifier=mod.name)
                 except:
