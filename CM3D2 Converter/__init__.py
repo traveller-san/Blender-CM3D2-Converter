@@ -4,7 +4,7 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz, @luvoid",
-    "version": ("luv", 2020, 12, "12a"),
+    "version": ("luv", 2020, 12, 18),
     "blender": (2, 80, 0),
     "location" : "File > Import/Export > CM3D2 Model (.model)",
     "description" : "A plugin dedicated to the editing, importing, and exporting of CM3D2 .Model Files.",
@@ -154,7 +154,7 @@ class AddonPreferences(bpy.types.AddonPreferences):
     new_mate_rimcolor = bpy.props.FloatVectorProperty(name="_RimColor", default=(0.5, 0.5, 0.5, 1), min=0, max=1, soft_min=0, soft_max=1, step=10, precision=2, subtype='COLOR', size=4)
     new_mate_outlinecolor = bpy.props.FloatVectorProperty(name="_OutlineColor", default=(0, 0, 0, 1), min=0, max=1, soft_min=0, soft_max=1, step=10, precision=2, subtype='COLOR', size=4)
 
-    new_mate_shininess = bpy.props.FloatProperty(name="_Shininess", default=0, min=-100, max=100, soft_min=-100, soft_max=100, step=1, precision=2)
+    new_mate_shininess  = bpy.props.FloatProperty(name="_Shininess", default=0, min=-100, max=100, soft_min=-100, soft_max=100, step=1, precision=2)
     new_mate_outlinewidth = bpy.props.FloatProperty(name="_OutlineWidth", default=0.0015, min=-100, max=100, soft_min=-100, soft_max=100, step=1, precision=2)
     new_mate_rimpower = bpy.props.FloatProperty(name="_RimPower", default=25, min=-100, max=100, soft_min=-100, soft_max=100, step=1, precision=2)
     new_mate_rimshift = bpy.props.FloatProperty(name="_RimShift", default=0, min=-100, max=100, soft_min=-100, soft_max=100, step=1, precision=2)
@@ -165,6 +165,23 @@ class AddonPreferences(bpy.types.AddonPreferences):
     new_mate_ztest = bpy.props.FloatProperty(name="_ZTest", default=4, min=0, max=8, soft_min=0, soft_max=8, step=1)
     new_mate_ztest2 = bpy.props.FloatProperty(name="_ZTest2", default=1, min=0, max=1, soft_min=0, soft_max=1, step=1)
     new_mate_ztest2alpha = bpy.props.FloatProperty(name="_ZTest2Alpha", default=0.8, min=0, max=1, soft_min=0, soft_max=1, step=1, precision=2)
+
+    bone_display_type = bpy.props.EnumProperty(
+        items=[
+            ('OCTAHEDRAL', "Octahedral", "Display bones as octahedral shape (default)."                            ),
+            ('STICK'     , "Stick"     , "Display bones as simple 2D lines with dots."                             ),
+            ('BBONE'     , "B-Bone"    , "Display bones as boxes, showing subdivision and B-Splines."              ),
+            ('ENVELOPE'  , "Envelope"  , "Display bones as extruded spheres, showing deformation influence volume."),
+            ('WIRE'      , "Wire"      , "Display bones as thin wires, showing subdivision and B-Splines."         ),
+        ],
+        name="Display Type",
+        default='STICK',
+    )
+    show_bone_names         = bpy.props.BoolProperty(name="Show Bone Names"       , default=False, description="Display bone names"                     )
+    show_bone_axes          = bpy.props.BoolProperty(name="Show Bone Axes"        , default=False, description="Display bone axes"                      )
+    show_bone_custom_shapes = bpy.props.BoolProperty(name="Show Bone Shapes"      , default=True , description="Display bones with their custom shapes" )
+    show_bone_group_colors  = bpy.props.BoolProperty(name="Show Bone Group Colors", default=True , description="Display bone group colors"              )
+    show_bone_in_front      = bpy.props.BoolProperty(name="Show Bones in Front"   , default=False, description="Make the object draw in front of others")
 
     def draw(self, context):
         if compat.IS_LEGACY:
@@ -228,7 +245,18 @@ class AddonPreferences(bpy.types.AddonPreferences):
         row.prop(self, 'new_mate_hipow')
 
         box = self.layout.box()
-        box.label(text="Default Settings", icon='MATERIAL')
+        box.label(text="Default Armature Settings", icon='ARMATURE_DATA')
+        box.use_property_split = True
+        box.prop(self, "bone_display_type", text="Display As")
+        flow = box.grid_flow(row_major=False, columns=0, even_columns=False, even_rows=False, align=True)
+        col = flow.column(); col.prop(self, "show_bone_names",         text="Names"       )
+        col = flow.column(); col.prop(self, "show_bone_axes",          text="Axes"        )
+        col = flow.column(); col.prop(self, "show_bone_custom_shapes", text="Shapes"      )
+        col = flow.column(); col.prop(self, "show_bone_group_colors",  text="Group Colors")
+        col = flow.column(); col.prop(self, "show_bone_in_front",      text="In Front"    )
+
+        box = self.layout.box()
+        box.label(text="Default Export Settings", icon='MATERIAL')
         row = box.row()  # export
         row.prop(self, 'custom_normal_blend', icon='SNAP_NORMAL')
         row.prop(self, 'skip_shapekey', icon='SHAPEKEY_DATA')

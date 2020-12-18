@@ -78,20 +78,34 @@ def menu_func(self, context):
             is_boxed = True
 
         col = box.column(align=True)
-        col.label(text="Pause", icon='POSE_HLT')
+        if arm['is T Stance']:
+            pose_text = "Armature State: Primed"
+        else:
+            pose_text = "Armature State: Normal"
+        col.label(text=pose_text, icon='POSE_HLT')
+        
         row = col.row(align=True)
 
         sub_row = row.row(align=True)
-        op = sub_row.operator('wm.context_set_int', icon='ARMATURE_DATA', text="Original")
-        op.data_path, op.value = 'scene.frame_current', 1
-        if context.scene.frame_current % 2:
+        op = sub_row.operator('wm.context_set_int', icon='ARMATURE_DATA', text="Original", depress=(context.scene.frame_current % 2 == arm['is T Stance']))
+        op.data_path = 'scene.frame_current'
+        op.value = arm['is T Stance']
+        if context.scene.frame_current % 2 == op.value:
             sub_row.enabled = False
 
         sub_row = row.row(align=True)
-        op = sub_row.operator('wm.context_set_int', icon='POSE_DATA', text="Pose data")
-        op.data_path, op.value = 'scene.frame_current', 0
-        if not context.scene.frame_current % 2:
+        op = sub_row.operator('wm.context_set_int', icon=compat.icon('OUTLINER_DATA_ARMATURE'), text="Pose data", depress=(context.scene.frame_current % 2 != arm['is T Stance']))
+        op.data_path = 'scene.frame_current'
+        op.value = not arm['is T Stance']
+        if context.scene.frame_current % 2 == op.value:
             sub_row.enabled = False
+        
+        row = col.row(align=True)
+
+        sub_row = row.row(align=True)
+        sub_row.operator_context = 'EXEC_DEFAULT'
+        op = sub_row.operator('pose.apply_prime_field', icon=compat.icon('FILE_REFRESH'), text="Swap Prime Field")
+        op.is_swap_prime_field = True
 
 
 @compat.BlRegister()

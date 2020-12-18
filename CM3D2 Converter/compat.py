@@ -269,17 +269,6 @@ def opengl_quat_to_mat3(q):
          (     2*x*z + 2*w*y,     2*y*z - 2*w*x, 1 - 2*x*x - 2*y*y)]
     )
 
-def convert_opengl_y_up_to_blend_z_up_mat4(x):
-    return mul3(OPENGL_TO_BLEND_MAT4, x, Y_UP_TO_Z_UP_MAT4)
-
-def convert_blend_z_up_to_opengl_y_up_mat4(x):
-    return mul3(BLEND_TO_OPENGL_MAT4, x, Z_UP_TO_Y_UP_MAT4)
-
-def convert_opengl_y_up_to_blend_z_up_quat(x):
-    return mul3(OPENGL_TO_BLEND_QUAT, x, Y_UP_TO_Z_UP_QUAT)
-
-def convert_blend_z_up_to_opengl_y_up_quat(x):
-    return mul3(BLEND_TO_OPENGL_QUAT, x, Z_UP_TO_Y_UP_QUAT)
 
 def convert_opengl_to_blend_mat4(x):
     return mul(OPENGL_TO_BLEND_MAT4, x)
@@ -292,7 +281,33 @@ def convert_y_up_to_z_up_mat4(x):
 
 def convert_z_up_to_y_up_mat4(x):
     return mul(x, Z_UP_TO_Y_UP_MAT4)
-    
+
+def convert_opengl_y_up_to_blend_z_up_mat4(x):
+    return convert_y_up_to_z_up_mat4(convert_opengl_to_blend_mat4(x))
+
+def convert_blend_z_up_to_opengl_y_up_mat4(x):
+    return convert_blend_to_opengl_mat4(convert_z_up_to_y_up_mat4(x))
+
+
+def convert_opengl_to_blend_quat(x):
+    return mul(OPENGL_TO_BLEND_QUAT, x)
+
+def convert_blend_to_opengl_quat(x):
+    return mul(BLEND_TO_OPENGL_QUAT, x)
+
+def convert_y_up_to_z_up_quat(x):
+    return mul(x, Y_UP_TO_Z_UP_QUAT)
+
+def convert_z_up_to_y_up_quat(x):
+    return mul(x, Z_UP_TO_Y_UP_QUAT)
+
+def convert_opengl_y_up_to_blend_z_up_quat(x):
+    return convert_y_up_to_z_up_quat(convert_opengl_to_blend_quat(x))
+
+def convert_blend_z_up_to_opengl_y_up_quat(x):
+    return convert_blend_to_opengl_quat(convert_z_up_to_y_up_quat(x))
+
+
 def set_bone_matrix(bone, mat):
     bone.matrix = mat
     if not IS_LEGACY and isinstance(bone, bpy.types.EditBone):

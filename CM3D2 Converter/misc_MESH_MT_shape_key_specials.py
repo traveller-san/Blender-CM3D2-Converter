@@ -857,7 +857,7 @@ class CNV_UL_vgroups_selector(bpy.types.UIList):
     )
     use_filter_deform: bpy.props.BoolProperty(
         name="Only Deform",
-        default=True,
+        default=False,
         options=set(),
         description="Only show deforming vertex groups",
     )

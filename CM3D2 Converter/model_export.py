@@ -228,7 +228,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                         if selected == ob_source:
                             ob_main = ob_created
                         if prefs.is_apply_modifiers:
-                            bpy.ops.object.forced_modifier_apply(is_applies=[True for i in range(32)])
+                            bpy.ops.object.forced_modifier_apply(apply_viewport_visible=True)
 
                         selected_count += 1
 

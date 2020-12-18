@@ -64,18 +64,22 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
     def draw(self, context):
         prefs = common.preferences()
         self.layout.prop(self, 'scale')
+
         box = self.layout.box()
         box.prop(self, 'is_mesh', icon='MESH_DATA')
+
         sub_box = box.box()
         sub_box.label(text="Mesh")
         sub_box.prop(self, 'is_remove_doubles', icon='STICKY_UVS_VERT')
         sub_box.prop(self, 'is_seam',  icon='KEY_DEHLT')
         sub_box.prop(self, 'is_sharp', icon='KEY_DEHLT')
+
         sub_box = box.box()
         sub_box.label(text="Vertex Group")
         sub_box.prop(self, 'is_vertex_group_sort', icon='SORTALPHA')
         sub_box.prop(self, 'is_remove_empty_vertex_group', icon='DISCLOSURE_TRI_DOWN')
         sub_box.prop(self, 'is_convert_bone_weight_names', icon='BLENDER')
+
         sub_box = box.box()
         sub_box.label(text="Material")
         sub_box.prop(prefs, 'is_replace_cm3d2_tex', icon='BORDERMOVE')
@@ -83,12 +87,16 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         if compat.IS_LEGACY:
             sub_box.prop(self, 'is_decorate', icon=compat.icon('SHADING_TEXTURE'))
         sub_box.prop(self, 'is_mate_data_text', icon='TEXT')
+
         box = self.layout.box()
         box.prop(self, 'is_armature', icon='ARMATURE_DATA')
+
         sub_box = box.box()
         sub_box.label(text="Armature")
         sub_box.prop(self, 'is_armature_clean', icon='X')
         sub_box.prop(self, 'is_convert_bone_weight_names', icon='BLENDER', text="Convert Bone Names for Blender.")
+        sub_box.prop(prefs, 'show_bone_in_front', icon='HIDE_OFF', text="Show Bones in Front")
+        
         box = self.layout.box()
         box.label(text="Bone Data Destination")
         box.prop(self, 'is_bone_data_text', icon='TEXT')
@@ -281,6 +289,13 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             compat.link(bpy.context.scene, arm_ob)
             compat.set_select(arm_ob, True)
             compat.set_active(context, arm_ob)
+
+            arm.show_names              = prefs.show_bone_names        
+            arm.show_axes               = prefs.show_bone_axes         
+            arm.show_bone_custom_shapes = prefs.show_bone_custom_shapes
+            arm.show_group_colors       = prefs.show_bone_group_colors 
+            arm_ob.show_in_front        = prefs.show_bone_in_front     
+
             bpy.ops.object.mode_set(mode='EDIT')
 
             # 基幹ボーンのみ作成

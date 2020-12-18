@@ -169,6 +169,9 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
     is_applies: bpy.props.CollectionProperty(type=common.CNV_SelectorItem)
     active_modifier: bpy.props.IntProperty(name="Active Modifier")
 
+    apply_viewport_visible: bpy.props.BoolProperty(name="Apply Viewport-Visible Modifiers", default=False)
+    apply_renderer_visible: bpy.props.BoolProperty(name="Apply Renderer-Visible Modifiers", default=False)
+
     @classmethod
     def poll(cls, context):
         ob = context.active_object
@@ -179,7 +182,6 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         if len(ob.modifiers) == 0:
             return {'CANCELLED'}
 
-        self.ob_modifiers = ob.modifiers
         for index, mod in enumerate(ob.modifiers):
             #if index >= 32: # luvoid : can only apply 32 modifiers at once.
             #    self.report(type={'WARNING'}, message="Can only apply the first 32 modifiers at once.")
@@ -231,6 +233,18 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
     def execute(self, context):
         ob = context.active_object
 
+        if self.apply_viewport_visible or self.apply_renderer_visible:
+            for index, mod in enumerate(ob.modifiers):
+                new_prop = None
+                if index < len(self.is_applies):
+                    new_prop = self.is_applies[index]
+                else:
+                    new_prop = self.is_applies.add()
+                
+                new_prop.name      = mod.name
+                new_prop.index     = index
+                new_prop.value     = (self.apply_viewport_visible and mod.show_viewport) or (self.apply_renderer_visible and mod.show_render)
+
         # 対象が一つも無い場合はキャンセル扱いとする
         is_any = False
         for item in self.is_applies:
@@ -281,7 +295,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                             try:
                                 bpy.ops.object.modifier_apply(override, modifier=mod.name)
                             except:
-                                ob.modifiers.remove(mod)
+                                temp_ob.modifiers.remove(mod)
 
                     new_shape_deforms.append([v.co.copy() for v in temp_me.vertices])
                 finally:
@@ -308,7 +322,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                                 ob.vertex_groups.new(name=mirrored_name)
 
                 try:
-                    bpy.ops.object.modifier_apply(modifier=mod.name)
+                    bpy.ops.object.modifier_apply(context, modifier=mod.name)
                 except:
                     #ob.modifiers.remove(mod)
                     self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\"" % (mod.type, mod.name) )
@@ -378,11 +392,11 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             for deforms in new_shape_deforms:
                 if len(me.vertices) != len(deforms):
                     self.report(type={'ERROR'}, message="Since the number of vertices has changed due to mirror etc, The shape key can not be stored. Please undo with Ctrl + Z or other.")
-                    return {'CANCELLED'}
+                    return {'FINISHED', 'CANCELLED'}
 
             for shape_index, deforms in enumerate(new_shape_deforms):
 
-                bpy.ops.object.shape_key_add(from_mix=False)
+                bpy.ops.object.shape_key_add(context.copy(), from_mix=False)
                 shape = ob.active_shape_key
                 shape.name = shape_names[shape_index]
 
