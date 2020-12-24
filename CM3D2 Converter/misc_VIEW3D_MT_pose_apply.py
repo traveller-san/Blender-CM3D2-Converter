@@ -8,6 +8,99 @@ from . import compat
 def menu_func(self, context):
     self.layout.separator()
     self.layout.operator('pose.apply_prime_field', icon_value=common.kiss_icon())
+    self.layout.operator('pose.copy_prime_field' , icon_value=common.kiss_icon())
+
+@compat.BlRegister()
+class CNV_OT_copy_prime_field(bpy.types.Operator):
+    bl_idname = 'pose.copy_prime_field'
+    bl_label = "Copy Prime Field"
+    bl_description = "Copies the visual pose of the selected object to the prime field of the active object"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    #is_apply_armature_modifier = bpy.props.BoolProperty(name="Apply Armature Modifier", default=True )
+    #is_deform_preserve_volume  = bpy.props.BoolProperty(name="Preserve Volume"        , default=True )
+    #is_keep_original           = bpy.props.BoolProperty(name="Keep Original"          , default=True )
+    #is_swap_prime_field        = bpy.props.BoolProperty(name="Swap Prime Field"       , default=False)
+    #is_bake_drivers            = bpy.props.BoolProperty(name="Bake Drivers"           , default=False, description="Enable keyframing of driven properties, locking sliders and twist bones for final apply")
+    
+    is_only_selected = bpy.props.BoolProperty(name="Only Selected", default=True )
+    is_key_location  = bpy.props.BoolProperty(name="Key Location" , default=True )
+    is_key_rotation  = bpy.props.BoolProperty(name="Key Rotation" , default=True )
+    is_key_scale     = bpy.props.BoolProperty(name="Key Scale"    , default=True )
+    is_apply_prime   = bpy.props.BoolProperty(name="Apply Prime"  , default=False, options={'HIDDEN'})
+    
+
+
+    @classmethod
+    def poll(cls, context):
+        target_ob, source_ob = common.get_target_and_source_ob(context)
+        if target_ob and source_ob:
+            return True
+        else:
+            return False
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        self.layout.prop(self, 'is_only_selected')
+        self.layout.prop(self, 'is_key_location' )
+        self.layout.prop(self, 'is_key_rotation' )
+        self.layout.prop(self, 'is_key_scale'    )
+
+    def execute(self, context):
+        ob, temp_ob = common.get_target_and_source_ob(context)
+        pose = ob.pose
+        arm = ob.data
+
+        pre_selected_pose_bones = context.selected_pose_bones
+        pre_mode = ob.mode
+        
+        bpy.ops.object.mode_set(mode='POSE')
+        bpy.ops.pose.select_all(action='SELECT')
+        bpy.ops.pose.constraints_clear()
+
+        consts = []
+        bones = pre_selected_pose_bones if self.is_only_selected else pose.bones
+        for bone in bones:
+            if bone.name in temp_ob.data.bones:
+                const = bone.constraints.new('COPY_TRANSFORMS')
+                const.target = temp_ob
+                const.subtarget = bone.name
+                consts.append(const)
+
+        for i in range(10):
+            is_prime_frame = not bool(i % 2) if arm.get("is T Stance") else bool(i % 2)
+            if self.is_apply_prime:
+                is_prime_frame = not is_prime_frame
+            for const in consts:
+                const.mute = not is_prime_frame
+
+            if is_prime_frame:
+                bpy.ops.pose.visual_transform_apply()
+            else:
+                bpy.ops.pose.transforms_clear()
+
+            for bone in pose.bones:
+                if self.is_key_location:
+                    bone.keyframe_insert(data_path='location'           , frame=i, group=bone.name)
+                if self.is_key_rotation:
+                    bone.keyframe_insert(data_path='rotation_euler'     , frame=i, group=bone.name)
+                    bone.keyframe_insert(data_path='rotation_quaternion', frame=i, group=bone.name)
+                if self.is_key_scale   :
+                    bone.keyframe_insert(data_path='scale'              , frame=i, group=bone.name)
+        
+        bpy.ops.pose.constraints_clear()
+
+        bpy.ops.pose.select_all(action='DESELECT')
+        if pre_selected_pose_bones:
+            for bone in pre_selected_pose_bones:
+                arm.bones[bone.name].select = True
+
+        if pre_mode: 
+            bpy.ops.object.mode_set(mode=pre_mode)
+        
+        return {'FINISHED'}
 
 
 @compat.BlRegister()
@@ -21,7 +114,9 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
     is_deform_preserve_volume  = bpy.props.BoolProperty(name="Preserve Volume"        , default=True )
     is_keep_original           = bpy.props.BoolProperty(name="Keep Original"          , default=True )
     is_swap_prime_field        = bpy.props.BoolProperty(name="Swap Prime Field"       , default=False)
-
+    is_bake_drivers            = bpy.props.BoolProperty(name="Bake Drivers"           , default=False, description="Enable keyframing of driven properties, locking sliders and twist bones for final apply")
+    
+    was_t_stance = False
 
     @classmethod
     def poll(cls, context):
@@ -36,6 +131,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
     def draw(self, context):
         self.layout.prop(self, 'is_apply_armature_modifier')
         self.layout.prop(self, 'is_deform_preserve_volume' )
+        self.layout.prop(self, 'is_bake_drivers'           )
         if context.active_object.data.get('is T Stance'):
             self.layout.prop(self, 'is_keep_original')
 
@@ -109,7 +205,12 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         ob.animation_data_clear()
         
         if arm.get("is T Stance") and self.is_keep_original and not self.is_swap_prime_field:
+            anim_data = temp_ob.animation_data
+            drivers = anim_data.drivers
+            for driver in drivers.values():
+                drivers.remove(driver)
             context.scene.frame_set(1)
+            bpy.ops.pose.transforms_clear()
         else:
             compat.set_active(context, temp_ob)
             bpy.ops.object.mode_set(mode='POSE')
@@ -118,49 +219,31 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
             bpy.ops.pose.transforms_clear()
             bpy.ops.object.mode_set(mode='OBJECT')
             compat.set_select(temp_ob, False)
-
-        compat.set_active(context, ob)
-        bpy.ops.object.mode_set(mode='POSE')
-        bpy.ops.pose.select_all(action='SELECT')
-
-        consts = []
-        for bone in pose.bones:
-            const = bone.constraints.new('COPY_TRANSFORMS')
-            const.target = temp_ob
-            const.subtarget = bone.name
-            consts.append(const)
-
-        for i in range(10):
-            for const in consts:
-                const.mute = not bool(i % 2)
-
-            if i % 2:
-                bpy.ops.pose.visual_transform_apply()
-            else:
-                bpy.ops.pose.transforms_clear()
-
-            for bone in pose.bones:
-                bone.keyframe_insert(data_path='location'           , frame=i, group=bone.name)
-                bone.keyframe_insert(data_path='rotation_euler'     , frame=i, group=bone.name)
-                bone.keyframe_insert(data_path='rotation_quaternion', frame=i, group=bone.name)
-                bone.keyframe_insert(data_path='scale'              , frame=i, group=bone.name)
         
-        bpy.ops.pose.constraints_clear()
+        if self.is_swap_prime_field and arm.get('is T Stance'):
+            arm['is T Stance'] = False
+        else:
+            arm['is T Stance'] = True
+
+        # CNV_OT_copy_prime_field.execute()
+        compat.set_select(temp_ob, True)
+        compat.set_active(context, ob)
+        response = bpy.ops.pose.copy_prime_field(is_only_selected=False, is_key_location=self.is_bake_drivers, is_key_scale=self.is_bake_drivers, is_apply_prime=True)
+
+        if not 'FINISHED' in response:
+            return response
+
         common.remove_data(temp_arm)
         try:
             common.remove_data(temp_ob)
         except:
             pass
-
+        
+        bpy.ops.object.mode_set(mode='POSE')
         bpy.ops.pose.select_all(action='DESELECT')
         if pre_selected_pose_bones:
             for bone in pre_selected_pose_bones:
                 arm.bones[bone.name].select = True
-
-        if self.is_swap_prime_field and arm.get('is T Stance'):
-            arm['is T Stance'] = False
-        else:
-            arm['is T Stance'] = True
 
         if pre_selected_objects:
             for o in pre_selected_objects:

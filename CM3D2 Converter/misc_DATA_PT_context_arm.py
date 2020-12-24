@@ -331,3 +331,9 @@ class CNV_OT_remove_armature_bone_data_property(bpy.types.Operator):
                 break
         self.report(type={'INFO'}, message="Bone data was removed, mission accomplished")
         return {'FINISHED'}
+
+
+
+
+
+

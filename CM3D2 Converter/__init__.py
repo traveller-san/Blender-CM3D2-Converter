@@ -341,6 +341,9 @@ def register():
     bpy.types.TEXT_HT_header.append(misc_TEXT_HT_header.menu_func)
     bpy.types.VIEW3D_MT_pose_apply.append(misc_VIEW3D_MT_pose_apply.menu_func)
 
+    setattr(bpy.types.Object, 'cm3d2_bone_morph',  bpy.props.PointerProperty(type=misc_OBJECT_PT_context_object.CNV_PG_cm3d2_bone_morph ))
+    setattr(bpy.types.Object, 'cm3d2_wide_slider', bpy.props.PointerProperty(type=misc_OBJECT_PT_context_object.CNV_PG_cm3d2_wide_slider))
+
     system = compat.get_system(bpy.context)
     if hasattr(system, 'use_international_fonts') and not system.use_international_fonts:
         system.use_international_fonts = True
@@ -421,6 +424,11 @@ def unregister():
     bpy.types.OBJECT_PT_transform.remove(misc_OBJECT_PT_transform.menu_func)
     bpy.types.TEXT_HT_header.remove(misc_TEXT_HT_header.menu_func)
     bpy.types.VIEW3D_MT_pose_apply.remove(misc_VIEW3D_MT_pose_apply.menu_func)
+
+    if hasattr(bpy.types.Object, 'cm3d2_bone_morph'):
+        delattr(bpy.types.Object, 'cm3d2_bone_morph')
+    if hasattr(bpy.types.Object, 'cm3d2_wide_slider'):
+        delattr(bpy.types.Object, 'cm3d2_wide_slider')
 
     for pcoll in common.preview_collections.values():
         bpy.utils.previews.remove(pcoll)

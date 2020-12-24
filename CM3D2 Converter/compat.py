@@ -315,7 +315,7 @@ def set_bone_matrix(bone, mat):
         bone.align_roll((mat[0][0],mat[1][0],mat[2][0]))
 
 
-BL28_TO_LEGACY = {
+BL28_TO_LEGACY_ICON = {
     # Renamed in 2.80               
     'ADD'                          : 'ZOOMIN'             ,  
     'REMOVE'                       : 'ZOOMOUT'            ,  
@@ -451,7 +451,7 @@ BL28_TO_LEGACY = {
     #'HOLDOUT_ON'                   : 'MATCAP_13'         ,
 }
 
-LEGACY_TO_BL28 = {
+LEGACY_TO_BL28_ICON = {
     # Renamed in 2.80
     'ZOOMIN'                       : 'ADD'                ,  
     'ZOOMOUT'                      : 'REMOVE'             ,  
@@ -514,13 +514,12 @@ LEGACY_TO_BL28 = {
     'BORDER_RECT'                  : None                 ,
 }                                                          
 
-
 def icon(key):
     if IS_LEGACY:
         # 対応アイコンがdictにない場合はNONEとする
-        return BL28_TO_LEGACY.get(key, key) or 'NONE'
+        return BL28_TO_LEGACY_ICON.get(key, key) or 'NONE'
     else:
-        return LEGACY_TO_BL28.get(key, key) or 'NONE'
+        return LEGACY_TO_BL28_ICON.get(key, key) or 'NONE'
         
     return key
 
@@ -567,3 +566,81 @@ def get_tex_image(context, node_name=None):
                 return node.image
 
     return None
+
+
+
+BL29_TO_LEGACY_SUBTYPE = {
+    # Scalar subtypes       
+    #'PIXEL'           : 'PIXEL'           ,
+    #'UNSIGNED'        : 'UNSIGNED'        ,
+    #'PERCENTAGE'      : 'PERCENTAGE'      ,
+    #'FACTOR'          : 'FACTOR'          ,
+    #'ANGLE'           : 'ANGLE'           ,
+    #'TIME'            : 'TIME'            ,
+    #'DISTANCE'        : 'DISTANCE'        ,
+    'DISTANCE_CAMERA' : 'DISTANCE'        ,
+    'TEMPERATURE'     : None              ,
+
+    # Vector subtypes
+    #'COLOR'           : 'COLOR'           ,
+    #'TRANSLATION'     : 'TRANSLATION'     ,
+    #'DIRECTION'       : 'DIRECTION'       ,
+    #'VELOCITY'        : 'VELOCITY'        ,
+    #'ACCELERATION'    : 'ACCELERATION'    ,
+    #'MATRIX'          : 'MATRIX'          ,
+    #'EULER'           : 'EULER'           ,
+    #'QUATERNION'      : 'QUATERNION'      ,
+    #'AXISANGLE'       : 'AXISANGLE'       ,
+    #'XYZ'             : 'XYZ'             ,
+    #'COLOR_GAMMA'     : 'COLOR_GAMMA'     ,
+    #'LAYER'           : 'LAYER'           ,
+    'LAYER_MEMBER'    : 'LAYER'           ,
+    'XYZ_LENGTH'      : 'XYZ'             ,
+    'COORDINATES'     : 'XYZ'             ,
+    
+    # Other
+    'POWER'           : None              ,
+    'NONE'            : None              ,
+}
+
+BL29_TO_BL28_SUBTYPE = {
+    # Scalar subtypes    
+    #'PIXEL'           : 'PIXEL'           ,
+    #'UNSIGNED'        : 'UNSIGNED'        ,
+    #'PERCENTAGE'      : 'PERCENTAGE'      ,
+    #'FACTOR'          : 'FACTOR'          ,
+    #'ANGLE'           : 'ANGLE'           ,
+    #'TIME'            : 'TIME'            ,
+    #'DISTANCE'        : 'DISTANCE'        ,
+    'DISTANCE_CAMERA' : 'DISTANCE'        ,
+    'TEMPERATURE'     : None              ,
+
+    # Vector subtypes
+    #'COLOR'           : 'COLOR'           ,
+    #'TRANSLATION'     : 'TRANSLATION'     ,
+    #'DIRECTION'       : 'DIRECTION'       ,
+    #'VELOCITY'        : 'VELOCITY'        ,
+    #'ACCELERATION'    : 'ACCELERATION'    ,
+    #'MATRIX'          : 'MATRIX'          ,
+    #'EULER'           : 'EULER'           ,
+    #'QUATERNION'      : 'QUATERNION'      ,
+    #'AXISANGLE'       : 'AXISANGLE'       ,
+    #'XYZ'             : 'XYZ'             ,
+    #'COLOR_GAMMA'     : 'COLOR_GAMMA'     ,
+    #'LAYER'           : 'LAYER'           ,
+    #'LAYER_MEMBER'    : 'LAYER_MEMBER'    ,
+    'XYZ_LENGTH'      : 'XYZ'             ,
+    'COORDINATES'     : 'XYZ'             ,
+    
+    # Other
+    'POWER'           : None              ,
+    'NONE'            : None              ,
+}
+
+def subtype(key):
+    if IS_LEGACY:
+        return BL29_TO_LEGACY_SUBTYPE.get(key, key) or 'NONE'
+    elif bpy.app.version < (2, 90):
+        return BL29_TO_BL28_SUBTYPE.get(key, key) or 'NONE'
+    return key
+

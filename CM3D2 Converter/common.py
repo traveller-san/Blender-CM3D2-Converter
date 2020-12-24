@@ -1268,6 +1268,8 @@ def values_of_matched_keys(dict1, dict2):
 def get_target_and_source_ob(context, copyTarget=False, copySource=False):
     target_ob = None
     source_ob = None
+    target_original_ob = None
+    source_original_ob = None
 
     target_original_ob = context.active_object
     if copyTarget:

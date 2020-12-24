@@ -120,7 +120,7 @@ def menu_func(self, context):
 
 
 @compat.BlRegister(only_latest=True)
-class Material_PT_properries(bpy.types.Panel):
+class MATERIAL_PT_cm3d2_properties(bpy.types.Panel):
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'material'
