@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import bpy
+import bpy_extras
 import re
 import struct
 import os
@@ -9,39 +10,6 @@ from typing import Any, Optional
 
 # LEGAY: version less than 2.80
 IS_LEGACY = not hasattr(bpy.app, 'version') or bpy.app.version < (2, 80)
-
-OPENGL_TO_BLEND_MAT4 = mathutils.Matrix(
-    [(-1,  0,  0,  0), 
-     ( 0,  0, -1,  0), 
-     ( 0,  1,  0,  0),
-     ( 0,  0,  0,  1)]
-)
-OPENGL_TO_BLEND_QUAT = OPENGL_TO_BLEND_MAT4.to_quaternion()
-
-BLEND_TO_OPENGL_MAT4 = mathutils.Matrix(
-    [( 1,  0,  0,  0), 
-     ( 0,  0,  1,  0), 
-     ( 0, -1,  0,  0),
-     ( 0,  0,  0,  1)]
-)
-BLEND_TO_OPENGL_QUAT = BLEND_TO_OPENGL_MAT4.to_quaternion()
-
-Y_UP_TO_Z_UP_MAT4 = mathutils.Matrix(
-    [( 0, -1,  0,  0), 
-     ( 1,  0,  0,  0), 
-     ( 0,  0,  1,  0),
-     ( 0,  0,  0,  1)]
-)
-Y_UP_TO_Z_UP_QUAT = Y_UP_TO_Z_UP_MAT4.to_quaternion()
-
-Z_UP_TO_Y_UP_MAT4 = Y_UP_TO_Z_UP_MAT4.inverted()
-#mathutils.Matrix(     
-#    [( 0,  1,  0,  0), 
-#     (-1,  0,  0,  0), 
-#     ( 0,  0,  1,  0),
-#     ( 0,  0,  0,  1)]
-#)                     
-Z_UP_TO_Y_UP_QUAT = Z_UP_TO_Y_UP_MAT4.to_quaternion()
 
 class BlRegister():
     idnames = set()
@@ -211,6 +179,8 @@ def set_hide(obj: bpy.types.Object, hide: bool):
 def link(scene: bpy.types.Scene, obj: bpy.types.Object):
     if IS_LEGACY:
         scene.objects.link(obj)
+    elif bpy.context.collection:
+        bpy.context.collection.objects.link(obj)
     else:
         scene.collection.objects.link(obj)
 
@@ -219,7 +189,8 @@ def unlink(scene: bpy.types.Scene, obj: bpy.types.Object):
     if IS_LEGACY:
         scene.objects.unlink(obj)
     else:
-        scene.collection.objects.unlink(obj)
+        for collection in obj.users_collection:
+            collection.objects.unlink(obj)
 
 
 def get_cursor_loc(context):
@@ -257,55 +228,81 @@ def mul4(w, x, y, z):
     return w @ x @ y @ z
 
 
-def opengl_quat_to_mat3(q):
-    w = q.w
-    x = q.x
-    y = q.y
-    z = q.z
-    
-    return mathutils.Matrix(
-        [( 1 - 2*y*y - 2*z*z,     2*x*y + 2*w*z,     2*x*z - 2*w*y), 
-         (     2*x*y - 2*w*z, 1 - 2*x*x - 2*z*z,     2*y*z + 2*w*x), 
-         (     2*x*z + 2*w*y,     2*y*z - 2*w*x, 1 - 2*x*x - 2*y*y)]
-    )
+CM_TO_BL_SPACE_MAT4 = mul(
+    bpy_extras.io_utils.axis_conversion(from_forward='Z', from_up='Y', to_forward='-Y', to_up='Z').to_4x4(),
+    mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
+)
+BL_TO_CM_SPACE_MAT4 = CM_TO_BL_SPACE_MAT4.inverted()
+CM_TO_BL_SPACE_QUAT = CM_TO_BL_SPACE_MAT4.to_quaternion()
+BL_TO_CM_SPACE_QUAT = CM_TO_BL_SPACE_QUAT.inverted()
+def convert_cm_to_bl_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(CM_TO_BL_SPACE_QUAT, x)
+    else:
+        return mul(CM_TO_BL_SPACE_MAT4, x)
+
+def convert_bl_to_cm_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(BL_TO_CM_SPACE_QUAT, x)
+    else:
+        return mul(BL_TO_CM_SPACE_MAT4, x)
+
+def convert_cm_to_bl_local_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(x, BL_TO_CM_SPACE_QUAT)
+    else:
+        return mul(x, BL_TO_CM_SPACE_MAT4)
+
+def convert_bl_to_cm_local_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(x, CM_TO_BL_SPACE_QUAT)
+    else:
+        return mul(x, CM_TO_BL_SPACE_MAT4)
 
 
-def convert_opengl_to_blend_mat4(x):
-    return mul(OPENGL_TO_BLEND_MAT4, x)
+#CM_TO_BL_BONE_SPACE_MAT4 = mul(
+#    bpy_extras.io_utils.axis_conversion(from_forward='-X', from_up='Z', to_forward='Y', to_up='Z').to_4x4(),
+#    mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
+#)
+CM_TO_BL_BONE_ROTATION_MAT4 = bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Z', to_forward='Y', to_up='Z').to_4x4()
+BL_TO_CM_BONE_ROTATION_MAT4 = CM_TO_BL_BONE_ROTATION_MAT4.inverted()
+CM_TO_BL_BONE_ROTATION_QUAT = CM_TO_BL_BONE_ROTATION_MAT4.to_quaternion()
+BL_TO_CM_BONE_ROTATION_QUAT = CM_TO_BL_BONE_ROTATION_QUAT.inverted()
 
-def convert_blend_to_opengl_mat4(x):
-    return mul(BLEND_TO_OPENGL_MAT4, x)
+def convert_cm_to_bl_bone_rotation(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(x, CM_TO_BL_BONE_ROTATION_QUAT)
+    else:
+        return mul(x, CM_TO_BL_BONE_ROTATION_MAT4)
 
-def convert_y_up_to_z_up_mat4(x):
-    return mul(x, Y_UP_TO_Z_UP_MAT4)
-
-def convert_z_up_to_y_up_mat4(x):
-    return mul(x, Z_UP_TO_Y_UP_MAT4)
-
-def convert_opengl_y_up_to_blend_z_up_mat4(x):
-    return convert_y_up_to_z_up_mat4(convert_opengl_to_blend_mat4(x))
-
-def convert_blend_z_up_to_opengl_y_up_mat4(x):
-    return convert_blend_to_opengl_mat4(convert_z_up_to_y_up_mat4(x))
+def convert_bl_to_cm_bone_rotation(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(x, BL_TO_CM_BONE_ROTATION_QUAT)
+    else:
+        return mul(x, BL_TO_CM_BONE_ROTATION_MAT4)
 
 
-def convert_opengl_to_blend_quat(x):
-    return mul(OPENGL_TO_BLEND_QUAT, x)
 
-def convert_blend_to_opengl_quat(x):
-    return mul(BLEND_TO_OPENGL_QUAT, x)
+CM_TO_BL_BONE_SPACE_MAT4 = mul(
+    bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Y', to_forward='Y', to_up='Z').to_4x4(),
+    mathutils.Matrix.Scale(-1, 4, (0, 1, 0))
+)
+BL_TO_CM_BONE_SPACE_MAT4 = CM_TO_BL_BONE_SPACE_MAT4.inverted()
+CM_TO_BL_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_MAT4.to_quaternion()
+BL_TO_CM_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_QUAT.inverted()
 
-def convert_y_up_to_z_up_quat(x):
-    return mul(x, Y_UP_TO_Z_UP_QUAT)
+def convert_cm_to_bl_bone_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(CM_TO_BL_BONE_SPACE_QUAT, x)
+    else:
+        return mul(CM_TO_BL_BONE_SPACE_MAT4, x)
 
-def convert_z_up_to_y_up_quat(x):
-    return mul(x, Z_UP_TO_Y_UP_QUAT)
+def convert_bl_to_cm_bone_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(BL_TO_CM_BONE_SPACE_QUAT, x)
+    else:
+        return mul(BL_TO_CM_BONE_SPACE_MAT4, x)
 
-def convert_opengl_y_up_to_blend_z_up_quat(x):
-    return convert_y_up_to_z_up_quat(convert_opengl_to_blend_quat(x))
-
-def convert_blend_z_up_to_opengl_y_up_quat(x):
-    return convert_blend_to_opengl_quat(convert_z_up_to_y_up_quat(x))
 
 
 def set_bone_matrix(bone, mat):

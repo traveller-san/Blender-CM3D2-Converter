@@ -3,6 +3,7 @@ import math
 import struct
 import time
 import bpy
+import bpy_extras
 import bmesh
 import mathutils
 from collections import Counter
@@ -13,7 +14,8 @@ from . import cm3d2_data
 
 # メインオペレーター
 @compat.BlRegister()
-class CNV_OT_import_cm3d2_model(bpy.types.Operator):
+#@bpy_extras.io_utils.orientation_helper(axis_forward='-Z', axis_up='Y')
+class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHelper):
     bl_idname = 'import_mesh.import_cm3d2_model'
     bl_label = "CM3D2 Model (.model)"
     bl_description = "Imports a model from the game CM3D2"
@@ -40,6 +42,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
     is_armature = bpy.props.BoolProperty(name="Load Armature", default=True, description="Loads in the armature that comes with the model.")
     is_armature_clean = bpy.props.BoolProperty(name="Clean Armature", default=False, description="Will delete any unneeded bones.")
+    is_custom_bones = bpy.props.BoolProperty(name="Use Custom Bones", default=False, description="Use the currently selected object for custom bone shapes.")
 
     is_bone_data_text = bpy.props.BoolProperty(name="Text", default=True, description="Read Bone data from the text")
     is_bone_data_obj_property = bpy.props.BoolProperty(name="Object Property", default=True, description="Will retrieve the bonedata from the object's properties")
@@ -93,9 +96,10 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
         sub_box = box.box()
         sub_box.label(text="Armature")
-        sub_box.prop(self, 'is_armature_clean', icon='X')
-        sub_box.prop(self, 'is_convert_bone_weight_names', icon='BLENDER', text="Convert Bone Names for Blender.")
-        sub_box.prop(prefs, 'show_bone_in_front', icon='HIDE_OFF', text="Show Bones in Front")
+        sub_box.prop(self , 'is_armature_clean'           , icon=compat.icon('X'        )                                        )
+        sub_box.prop(self , 'is_convert_bone_weight_names', icon=compat.icon('BLENDER'  ), text="Convert Bone Names for Blender.")
+        sub_box.prop(prefs, 'show_bone_in_front'          , icon=compat.icon('HIDE_OFF' ), text="Show Bones in Front"            )
+        sub_box.prop(self , 'is_custom_bones'             , icon=compat.icon('BONE_DATA'), text="Use Selected as Bone Shape"     )
         
         box = self.layout.box()
         box.label(text="Bone Data Destination")
@@ -111,6 +115,12 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
         prefs.scale = self.scale
         context.window_manager.progress_begin(0, 10)
         context.window_manager.progress_update(0)
+
+        custom_bone_ob = context.active_object
+        if not custom_bone_ob:
+            self.is_custom_bones = False
+
+        #global_matrix = bpy_extras.io_utils.axis_conversion(from_forward=self.axis_forward, from_up=self.axis_up).to_4x4()
 
         try:
             reader = open(self.filepath, 'rb')
@@ -284,8 +294,8 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
 
         # アーマチュア作成
         if self.is_armature:
-            arm = bpy.data.armatures.new(model_name1 + ".armature")
-            arm_ob = bpy.data.objects.new(model_name1 + ".armature", arm)
+            arm    = bpy.data.armatures.new(model_name1 + ".armature")
+            arm_ob = bpy.data.objects.new  (model_name1 + ".armature", arm)
             compat.link(bpy.context.scene, arm_ob)
             compat.set_select(arm_ob, True)
             compat.set_active(context, arm_ob)
@@ -293,8 +303,11 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             arm.show_names              = prefs.show_bone_names        
             arm.show_axes               = prefs.show_bone_axes         
             arm.show_bone_custom_shapes = prefs.show_bone_custom_shapes
-            arm.show_group_colors       = prefs.show_bone_group_colors 
-            arm_ob.show_in_front        = prefs.show_bone_in_front     
+            arm.show_group_colors       = prefs.show_bone_group_colors
+            if compat.IS_LEGACY:
+                arm_ob.show_x_ray = prefs.show_bone_in_front
+            else:
+                arm_ob.show_in_front = prefs.show_bone_in_front     
 
             bpy.ops.object.mode_set(mode='EDIT')
 
@@ -305,19 +318,36 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                     bone = arm.edit_bones.new(common.decode_bone_name(data['name'], self.is_convert_bone_weight_names))
                     bone.head, bone.tail = (0, 0, 0), (0, 1, 0)
 
-                    co = data['co'].copy() * self.scale
-                    rot = data['rot']
-
-                    co_mat = mathutils.Matrix.Translation(co)
+                    #co.x, co.y, co.z = -co.x, co.z, -co.y
+                    #rot = compat.mul(rot, mathutils.Quaternion((0, 0, 1), math.radians(90)))
+                    #rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, rot.z, -rot.y
+                    
+                    #co  = data['co' ].copy()
+                    #rot = data['rot'].copy()
+                    #co.x, co.y, co.z = -co.x, -co.z, co.y
+                    #rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, -rot.z, rot.y
+                    ##rot = compat.mul(rot, mathutils.Quaternion((0, 0, 1), math.radians(-90)))
+                    #rot = compat.convert_cm_to_bl_bone_rotation(rot)
+                    #mat = compat.mul(mathutils.Matrix.Translation(co), rot.to_matrix().to_4x4())
+                    
+                    co_mat  = mathutils.Matrix.Translation(data['co'].copy() * self.scale)
+                    rot     = mathutils.Quaternion(data['rot'].copy())
+                    #rot     = compat.convert_cm_to_bl_bone_rotation(rot)
                     rot_mat = rot.to_matrix().to_4x4()
+                    #rot_mat = compat.convert_cm_to_bl_bone_rotation(rot_mat)
                     mat = compat.mul(co_mat, rot_mat)
-
+                    mat = compat.convert_cm_to_bl_bone_rotation(mat)
+                    mat = compat.convert_cm_to_bl_space(mat)
+                    #mat = compat.mul(mat, compat.CM_TO_BL_LOCAL_BONE_MAT4)
+                    
+                    
                     #fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
                     #fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
                     #fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
                     #compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
-                    compat.set_bone_matrix(bone, compat.convert_opengl_y_up_to_blend_z_up_mat4(mat))
+                    compat.set_bone_matrix(bone, mat)
+
 
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:
@@ -327,9 +357,9 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             # 子ボーンを追加していく
             while len(child_data):
                 data = child_data.pop(0)
-                if common.decode_bone_name(data['parent_name'], self.is_convert_bone_weight_names) in arm.edit_bones:
+                parent = arm.edit_bones.get(common.decode_bone_name(data['parent_name'], self.is_convert_bone_weight_names))
+                if parent:
                     bone = arm.edit_bones.new(common.decode_bone_name(data['name'], self.is_convert_bone_weight_names))
-                    parent = arm.edit_bones[common.decode_bone_name(data['parent_name'], self.is_convert_bone_weight_names)]
                     bone.parent = parent
                     bone.head, bone.tail = (0, 0, 0), (0, 1, 0)
 
@@ -338,29 +368,71 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                     while current_bone:
                         for b in bone_data:
                             if common.decode_bone_name(b['name'], self.is_convert_bone_weight_names) == current_bone.name:
-                                local_co = b['co'].copy()
+                                local_co  = b['co' ].copy()
                                 local_rot = b['rot'].copy()
                                 break
-
-                        local_co_mat = mathutils.Matrix.Translation(local_co)
-                        local_rot_mat = local_rot.to_matrix().to_4x4()
+                    
+                        local_co_mat  = mathutils.Matrix.Translation(local_co)
+                        local_rot_mat = local_rot.to_matrix().to_4x4()        
                         parent_mats.append(compat.mul(local_co_mat, local_rot_mat))
-
+                    
                         current_bone = current_bone.parent
                     parent_mats.reverse()
-
+                    
                     mat = mathutils.Matrix()
                     for local_mat in parent_mats:
                         mat = compat.mul(mat, local_mat)
-
                     mat *= self.scale
+                     
+                    #parent_mat    = compat.mul(
+                    #    mathutils.Matrix.Translation(parent.matrix.to_translation()),
+                    #    parent.matrix.to_quaternion().to_matrix().to_4x4()
+                    #)
+
+                    #parent_mat = parent.matrix
+                    #
+                    #local_co      = data['co' ].copy() * self.scale
+                    #local_rot     = data['rot'].copy()
+                    ##local_rot     = compat.convert_cm_to_bl_bone_rotation(rot)
+                    #local_co_mat  = mathutils.Matrix.Translation(local_co)
+                    #local_rot_mat = local_rot.to_matrix().to_4x4()
+                    #local_mat     = compat.mul(local_co_mat, local_rot_mat)
+                    ##local_mat     = compat.convert_cm_to_bl_local_bone(local_mat)
+                    #
+                    #mat = compat.mul(parent_mat, local_mat)
+                    mat = compat.convert_cm_to_bl_space(mat)
+                    mat = compat.convert_cm_to_bl_bone_rotation(mat)
+
+                    
+                    #co_mat        = compat.mul( parent.matrix.inverted(), compat.convert_cm_to_bl_local_bone_mat4(local_co_mat) )
+                    #rot_mat       = compat.mul( local_rot_mat, compat.CM_TO_BL_LOCAL_BONE_MAT4 )
+                    #mat           = compat.ul(co_mat, rot_mat)
+                    #local_mat = compat.mul(local_co_mat, local_rot_mat)
+                    #local_mat *= self.scale
+                    #mat = compat.mul( parent.matrix, compat.convert_cm_to_bl_local_bone(local_mat) )
+                    #mat *= self.scale
+
+                    #mat *= self.scale
+
+                    #co.x, co.y, co.z = -co.y, co.z, co.x
+                    #rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, -rot.z, -rot.x
+
+                    #co  = data['co' ].copy() * self.scale
+                    #rot = data['rot'].copy()
+                    #co.x, co.y, co.z = co.z, -co.x, co.y
+                    ##co = compat.convert_cm_to_bl_local_bone(co)
+                    ##rot.w, rot.x, rot.y, rot.z = rot.w, -rot.z, rot.x, -rot.y 
+                    ##rot.w, rot.x, rot.y, rot.z = rot.w, -rot.z, rot.x, -rot.y
+                    #local_mat = compat.mul(mathutils.Matrix.Translation(co), rot.to_matrix().to_4x4())
+                    #mat = compat.mul( parent.matrix, local_mat )
+                    ##mat *= self.scale
 
                     #fix_mat_scale = mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
                     #fix_mat_before = mathutils.Euler((math.radians(90), 0, 0), 'XYZ').to_matrix().to_4x4()
                     #fix_mat_after = mathutils.Euler((0, 0, math.radians(90)), 'XYZ').to_matrix().to_4x4()
 
                     #compat.set_bone_matrix(bone, compat.mul4(fix_mat_scale, fix_mat_before, mat, fix_mat_after))
-                    compat.set_bone_matrix(bone, compat.convert_opengl_y_up_to_blend_z_up_mat4(mat))
+                    compat.set_bone_matrix(bone, mat)
                     
                     bone["UnknownFlag"] = 1 if data['unknown'] else 0
                 else:
@@ -403,12 +475,13 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                         arm.edit_bones.remove(bone)
 
             arm.layers[16] = True
-            compat.set_display_type(arm, 'STICK')
-            if compat.IS_LEGACY:
-                # TODO 2.8の代替処理
-                arm_ob.show_x_ray = True
+            compat.set_display_type(arm, prefs.bone_display_type)
             bpy.ops.armature.select_all(action='DESELECT')
             bpy.ops.object.mode_set(mode='OBJECT')
+            if self.is_custom_bones:
+                print("Set custom bones")
+                for pose_bone in arm_ob.pose.bones:
+                    pose_bone.custom_shape = custom_bone_ob
         context.window_manager.progress_update(2)
 
         if self.is_mesh:
@@ -416,11 +489,13 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             me = context.blend_data.meshes.new(model_name1)
             verts, faces = [], []
             for data in vertex_data:
-                co = list(data['co'][:])
-                co[0] = -co[0]
-                co[0] *= self.scale
-                co[1] *= self.scale
-                co[2] *= self.scale
+                #co = list(data['co'][:])
+                #co[0] = -co[0]
+                #co[0] *= self.scale
+                #co[1] *= self.scale
+                #co[2] *= self.scale
+                co = compat.convert_cm_to_bl_space( mathutils.Vector(data['co']) * self.scale )
+                #co = mathutils.Vector(data['co']) * self.scale
                 verts.append(co)
             context.window_manager.progress_update(2.25)
             for data in face_data:
@@ -429,6 +504,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             me.from_pydata(verts, [], faces)
             # オブジェクト化
             ob = context.blend_data.objects.new(model_name1, me)
+            ob.rotation_mode = 'QUATERNION'
             compat.link(context.scene, ob)
             compat.set_select(ob, True)
             compat.set_active(context, ob)
@@ -437,16 +513,39 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
             # オブジェクト変形
             for bone in bone_data:
                 if bone['name'] == model_name2:
-                    co = bone['co'].copy()
-                    co.x, co.y, co.z = -co.x, -co.z, co.y
-                    co *= self.scale
-                    ob.location = co
+                    #co = bone['co'].copy()
+                    #co.x, co.y, co.z = -co.x, -co.z, co.y
+                    #co *= self.scale
+                    #ob.location = co
+                    #
+                    #rot = bone['rot'].copy()
+                    #eul = mathutils.Euler((math.radians(90), 0, 0), 'XYZ')
+                    #rot.rotate(eul)
+                    #ob.rotation_mode = 'QUATERNION'
+                    #ob.rotation_quaternion = rot
 
-                    rot = bone['rot'].copy()
-                    eul = mathutils.Euler((math.radians(90), 0, 0), 'XYZ')
-                    rot.rotate(eul)
-                    ob.rotation_mode = 'QUATERNION'
-                    ob.rotation_quaternion = rot
+                    parent_mats = []
+                    current_bone = bone
+                    while current_bone:
+                        local_co_mat  = mathutils.Matrix.Translation(current_bone['co'] * self.scale)
+                        local_rot_mat = current_bone['rot'].to_matrix().to_4x4()        
+                        parent_mats.append(compat.mul(local_co_mat, local_rot_mat))
+                        if current_bone['parent_name']:
+                            for b in bone_data:
+                                if b['name'] == current_bone['parent_name']:
+                                    current_bone = b
+                                    break
+                        else:
+                            current_bone = None
+                                
+                    parent_mats.reverse()
+                    mat = mathutils.Matrix()
+                    for local_mat in parent_mats:
+                        mat = compat.mul(mat, local_mat)
+
+                    mat = compat.convert_cm_to_bl_space(mat)
+                    mat = compat.convert_cm_to_bl_local_space(mat)
+                    ob.matrix_basis = mat
 
                     break
             context.window_manager.progress_update(3)
@@ -498,9 +597,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator):
                         me.shape_keys.name = model_name1
                     shape_key = ob.shape_key_add(name=data['name'], from_mix=False)
                     for vert in data['data']:
-                        co = vert['co']
-                        co.x = -co.x
-                        co *= self.scale
+                        co = compat.convert_cm_to_bl_space( mathutils.Vector(vert['co']) * self.scale )
                         shape_key.data[vert['index']].co = shape_key.data[vert['index']].co + co
                     morph_count += 1
             context.window_manager.progress_update(6)

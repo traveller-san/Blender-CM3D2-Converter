@@ -1,6 +1,7 @@
 # 「プロパティ」エリア → 「オブジェクト」タブ
 import re
 import bpy
+import mathutils
 from . import common
 from . import compat
 
@@ -467,8 +468,12 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
         #z = (1-z)+1
 
         #loc.x, loc.y, loc.z = loc.z, -loc.x, loc.y
-        x, y, z = z, x, y
-            
+        #x, y, z = z, x, y
+
+        mat = mathutils.Matrix.Translation((x, y, z)).to_4x4()
+        mat = compat.convert_cm_to_bl_bone_space(mat)
+        x, y, z = mat.to_translation()
+        
         bone = self.GetPoseBone(boneName)
         if bone:
             bone.bone.use_local_location = False
@@ -497,8 +502,12 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
         #    if ONLY_FIX_SETTINGS:
         #        return
 
-        x, y, z = z, abs(-x), y
-        
+        #x, y, z = z, abs(-x), y
+
+        mat = mathutils.Matrix.Diagonal((x, y, z)).to_4x4()
+        mat = compat.convert_cm_to_bl_bone_rotation(mat)
+        x, y, z = mat.to_scale()
+
         bone = self.GetPoseBone(boneName)
         if bone:
             drivers = self.GetDrivers(bone.name,'scale')
@@ -523,6 +532,10 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
 @compat.BlRegister()
 class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
     bl_idname = 'CNV_PG_cm3d2_wide_slider'
+
+    scale = bpy.props.FloatProperty(name="Scale", default=5, min=0.1, max=100, soft_min=0.1, soft_max=100, step=100, precision=1, description="The amount by which the mesh is scaled when imported. Recommended that you use the same when at the time of export.")
+
+    empty : bpy.props.EnumProperty(items=[('EMPTY','-',"This property never has a value")], name="Empty", description="This property never has a value")
 
     HIPPOS    : bpy.props.FloatVectorProperty(name="HIPPOS"    , description="Hips Position"         , default=(0,0,0), min=-100, max= 200, precision=2, subtype=compat.subtype('XYZ'        ), unit='NONE')
     THIPOS    : bpy.props.FloatVectorProperty(name="THIPOS"    , description="Legs Position"         , default=(0,0,0), min=-100, max= 200, precision=2, subtype=compat.subtype('XYZ'        ), unit='NONE')
@@ -631,13 +644,17 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
         #    self.AddVectorProperty(bpy.context.object, prop)
         #    if ONLY_FIX_SETTINGS:
         #        return
+        
+        mat = mathutils.Matrix.Translation((ux, uy, uz)).to_4x4() * self.scale
+        mat = compat.convert_cm_to_bl_bone_space(mat)
+        ux, uy, uz = mat.to_translation()
 
-        ux, uy, uz = uz*5, ux*5, -uy*5
+        #ux, uy, uz = uz*5, ux*5, -uy*5
         #axisFlip = axisOrder[axisFlip] if axisFlip else None
-        axisFlip = 2 if axisFlip == 0 else  0 if axisFlip == 1 else  1 if axisFlip == 2 else  None
+        axisFlip = 1 if axisFlip == 0 else ( 2 if axisFlip == 1 else (0 if axisFlip == 2 else None) )
         #axisFlip = axisOrder[axisFlip] if axisFlip else None
         axisOrder[0], axisOrder[1], axisOrder[2] = axisOrder[2], axisOrder[0], axisOrder[1]
-        axisFlip = axisOrder[axisFlip] if axisFlip != None else None
+        #axisFlip = axisOrder[axisFlip] if axisFlip != None else None
         
         bone = self.GetPoseBone(boneName)
         if bone:
@@ -707,10 +724,11 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
     bl_description = "Adds drivers to armature to enable body sliders."
     bl_options     = {'REGISTER', 'UNDO'}
 
-    is_fix_thigh       : bpy.props.BoolProperty(name="Fix Thigh"       , default=True, description="Fix twist bone values for the thighs in motor-cycle pose")
+    scale = bpy.props.FloatProperty(name="Scale", default=5, min=0.1, max=100, soft_min=0.1, soft_max=100, step=100, precision=1, description="The amount by which the mesh is scaled when imported. Recommended that you use the same when at the time of export.")
+
+    is_fix_thigh       : bpy.props.BoolProperty(name="Fix Thigh"       , default=False, description="Fix twist bone values for the thighs in motor-cycle pose")
     is_drive_shape_keys: bpy.props.BoolProperty(name="Drive Shape Keys", default=True, description="Connect sliders to mesh children's shape keys"           )
     
-
     @classmethod
     def poll(cls, context):
         if context.area.type == 'PROPERTIES':
@@ -724,10 +742,12 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
         return has_arm and can_edit
 
     def invoke(self, context, event):
+        self.scale = common.preferences().scale
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        self.layout.prop(self, 'is_fix_thigh'       )
+        self.layout.prop(self, 'scale'              )
+        #self.layout.prop(self, 'is_fix_thigh'       )
         self.layout.prop(self, 'is_drive_shape_keys')
 
     def driveShapeKey(self, shapekey, data, prop, expression, set_min=None, set_max=None):
@@ -778,6 +798,8 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
 
         morph   = ob.cm3d2_bone_morph
         sliders = ob.cm3d2_wide_slider
+
+        sliders.scale = self.scale
 
 
 
@@ -882,11 +904,11 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
         morph.SetScale   ("west"   , "Skirt"              , 1   , 1.08, 1.12)
         
         # WideSlider functions MUST be called AFTER all BoneMorph calls
-        sliders.SetPosition("THIPOS"    , "Bip01 ? Thigh"     ,  0    ,  0.001,  0.001, axisFlip=0, axisOrder=[1, 2, 0]) #axisFlip=2 #axisFlip=0
-        sliders.SetPosition("THI2POS"   , "Bip01 ? Thigh_SCL_",  0.001,  0.001,  0.001, axisFlip=0, axisOrder=[1, 2, 0]) #axisFlip=2 #axisFlip=0
-        sliders.SetPosition("HIPPOS"    , "Hip_?"             ,  0.001,  0.001,  0.001, axisFlip=0, axisOrder=[1, 2, 0]) #axisFlip=2 #axisFlip=0
+        sliders.SetPosition("THIPOS"    , "Bip01 ? Thigh"     ,  0    ,  0.001,  0.001, axisFlip=2, axisOrder=[1, 2, 0]) #axisFlip=2 #axisFlip=0
+        sliders.SetPosition("THI2POS"   , "Bip01 ? Thigh_SCL_",  0.001,  0.001,  0.001, axisFlip=2, axisOrder=[1, 2, 0]) #axisFlip=2 #axisFlip=0
+        sliders.SetPosition("HIPPOS"    , "Hip_?"             ,  0.001,  0.001,  0.001, axisFlip=2, axisOrder=[1, 2, 0]) #axisFlip=2 #axisFlip=0
         sliders.SetPosition("MTWPOS"    , "momotwist_?"       ,  0.1  ,  0.1  , -0.1  , axisFlip=2                     ) #axisFlip=2 #axisFlip=2
-        sliders.SetPosition("MMNPOS"    , "momoniku_?"        ,  0.1  , -0.1  ,  0.1  , axisFlip=1                     ) #axisFlip=1 #axisFlip=1
+        sliders.SetPosition("MMNPOS"    , "momoniku_?"        ,  0.1  ,  0.1  , -0.1  , axisFlip=1                     ) #axisFlip=1 #axisFlip=1
         sliders.SetPosition("SKTPOS"    , "Skirt"             , -0.1  , -0.1  ,  0.1  ,             axisOrder=[2, 1, 0]) #           #          
         sliders.SetPosition("SPIPOS"    , "Bip01 Spine"       , -0.1  ,  0.1  ,  0.1                                   ) #           #          
         sliders.SetPosition("S0APOS"    , "Bip01 Spine0a"     , -0.1  ,  0.1  ,  0.1                                   ) #           #          
@@ -894,32 +916,32 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
         sliders.SetPosition("S1APOS"    , "Bip01 Spine1a"     , -0.1  ,  0.1  ,  0.1                                   ) #           #          
         sliders.SetPosition("NECKPOS"   , "Bip01 Neck"        , -0.1  ,  0.1  ,  0.1                                   ) #           #          
         sliders.SetPosition("CLVPOS"    , "Bip01 ? Clavicle"  , -0.1  ,  0.1  , -0.1  , axisFlip=2                     ) #axisFlip=2 #axisFlip=2
-        sliders.SetPosition("MUNESUBPOS", "Mune_?_sub"        , -0.1  , -0.1  , -0.1  , axisFlip=2, axisOrder=[1, 2, 0]) #axisFlip=1 #axisFlip=2
-        sliders.SetPosition("MUNEPOS"   , "Mune_?"            ,  0.1  , -0.1  , -0.1  , axisFlip=0, axisOrder=[2, 1, 0]) #axisFlip=2 #axisFlip=0
+        sliders.SetPosition("MUNESUBPOS", "Mune_?_sub"        , -0.1  ,  0.1  ,  0.1  , axisFlip=1, axisOrder=[2, 1, 0]) #axisFlip=1 #axisFlip=2
+        sliders.SetPosition("MUNEPOS"   , "Mune_?"            ,  0.1  , -0.1  , -0.1  , axisFlip=2, axisOrder=[1, 2, 0]) #axisFlip=2 #axisFlip=0
                                                                                                                                      
-        sliders.SetScale   ("THISCL",     "Bip01 ? Thigh"     , axisOrder=[0, 1, -1])
-        sliders.SetScale   ("MTWSCL",     "momotwist_?"       )
-        sliders.SetScale   ("MMNSCL",     "momoniku_?"        )
-        sliders.SetScale   ("PELSCL",     "Bip01 Pelvis_SCL_" )
-        sliders.SetScale   ("THISCL2",    "Bip01 ? Thigh_SCL_")
-        sliders.SetScale   ("CALFSCL",    "Bip01 ? Calf"      )
-        sliders.SetScale   ("FOOTSCL",    "Bip01 ? Foot"      )
-        sliders.SetScale   ("SKTSCL",     "Skirt"             )
-        sliders.SetScale   ("SPISCL",     "Bip01 Spine_SCL_"  )
-        sliders.SetScale   ("S0ASCL",     "Bip01 Spine0a_SCL_")
-        sliders.SetScale   ("S1_SCL",     "Bip01 Spine1_SCL_" )
-        sliders.SetScale   ("S1ASCL",     "Bip01 Spine1a_SCL_")
-        sliders.SetScale   ("S1ABASESCL", "Bip01 Spine1a"     )
-        sliders.SetScale   ("KATASCL",    "Kata_?"            )
-        sliders.SetScale   ("UPARMSCL",   "Bip01 ? UpperArm"  )
-        sliders.SetScale   ("FARMSCL",    "Bip01 ? Forearm"   )
-        sliders.SetScale   ("HANDSCL",    "Bip01 ? Hand"      )
-        sliders.SetScale   ("CLVSCL",     "Bip01 ? Clavicle"  )
-        sliders.SetScale   ("MUNESCL",    "Mune_?"            )
+        sliders.SetScale   ("THISCL"    , "Bip01 ? Thigh"     , axisOrder=[0, 1, -1])
+        sliders.SetScale   ("MTWSCL"    , "momotwist_?"       )
+        sliders.SetScale   ("MMNSCL"    , "momoniku_?"        )
+        sliders.SetScale   ("PELSCL"    , "Bip01 Pelvis_SCL_" )
+        sliders.SetScale   ("THISCL2"   , "Bip01 ? Thigh_SCL_")#, axisOrder=[0, 1, -1])
+        sliders.SetScale   ("CALFSCL"   , "Bip01 ? Calf"      )#, axisOrder=[0, 1, -1])
+        sliders.SetScale   ("FOOTSCL"   , "Bip01 ? Foot"      )
+        sliders.SetScale   ("SKTSCL"    , "Skirt"             )
+        sliders.SetScale   ("SPISCL"    , "Bip01 Spine_SCL_"  )
+        sliders.SetScale   ("S0ASCL"    , "Bip01 Spine0a_SCL_")
+        sliders.SetScale   ("S1_SCL"    , "Bip01 Spine1_SCL_" )
+        sliders.SetScale   ("S1ASCL"    , "Bip01 Spine1a_SCL_")
+        sliders.SetScale   ("S1ABASESCL", "Bip01 Spine1a"     )#, axisOrder=[0, 1, -1]))
+        sliders.SetScale   ("KATASCL"   , "Kata_?"            )
+        sliders.SetScale   ("UPARMSCL"  , "Bip01 ? UpperArm"  )
+        sliders.SetScale   ("FARMSCL"   , "Bip01 ? Forearm"   )
+        sliders.SetScale   ("HANDSCL"   , "Bip01 ? Hand"      )
+        sliders.SetScale   ("CLVSCL"    , "Bip01 ? Clavicle"  )
+        sliders.SetScale   ("MUNESCL"   , "Mune_?"            )
         sliders.SetScale   ("MUNESUBSCL", "Mune_?_sub"        )
-        sliders.SetScale   ("NECKSCL",    "Bip01 Neck_SCL_"   )
-        sliders.SetScale   ("HIPSCL",     "Hip_?"             )
-        sliders.SetScale   ("PELSCL",     "Hip_?"             ) # hips are also scaled with pelvis
+        sliders.SetScale   ("NECKSCL"   , "Bip01 Neck_SCL_"   )
+        sliders.SetScale   ("HIPSCL"    , "Hip_?"             )
+        sliders.SetScale   ("PELSCL"    , "Hip_?"             ) # hips are also scaled with pelvis
         
         if self.is_fix_thigh:
             bone = morph.GetPoseBone("momoniku_?")
@@ -992,6 +1014,7 @@ class OBJECT_PT_cm3d2_sliders(bpy.types.Panel):
             arm = ob.data
 
         morph = ob.cm3d2_bone_morph
+        self.layout.alignment = 'RIGHT'
         flow = self.layout.grid_flow(row_major=True, columns=2, even_columns=False, even_rows=False, align=True)
         flow.use_property_split    = True
         flow.use_property_decorate = False
@@ -1026,7 +1049,8 @@ class OBJECT_PT_cm3d2_body_sliders(bpy.types.Panel):
 
         self.layout.use_property_split = True
 
-        flow = self.layout.grid_flow(row_major=False, columns=0, even_columns=False, even_rows=False, align=False)
+        flow = self.layout.column_flow()
+        flow.scale_x = 0.5
         col = flow.column(align=True); col.prop(morph, 'HeadX'     , text="Face Width"  , slider=True)
         pass;                          col.prop(morph, 'HeadY'     , text="Face Height" , slider=True)
         col = flow.column(align=True); col.prop(morph, 'DouPer'    , text="Leg Length"  , slider=True)
@@ -1065,44 +1089,57 @@ class OBJECT_PT_cm3d2_wide_sliders(bpy.types.Panel):
         
         self.layout.use_property_split = True
 
-        flow = self.layout.grid_flow(row_major=False, columns=0, even_columns=False, even_rows=False, align=False)
+        flow = self.layout.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=False)
+        flow.scale_x = 0.5
         #col = flow
-        col = flow.column();           col.prop(sliders, "PELSCL"    , text="Pelvis Scale"            , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "HIPPOS"    , text="Hips Position"           , slider=True)
-        pass;                          col.prop(sliders, "HIPSCL"    , text="Hips Scale"              , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "THIPOS"    , text="Legs Position"           , slider=True)
-        pass;                          col.prop(sliders, "THISCL"    , text="Legs Scale"              , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "MTWPOS"    , text="Thigh Position"          , slider=True)
-        pass;                          col.prop(sliders, "MTWSCL"    , text="Thigh Scale"             , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "MMNPOS"    , text="Rear Thigh Position"     , slider=True)
-        pass;                          col.prop(sliders, "MMNSCL"    , text="Rear Thigh Scale"        , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "THI2POS"   , text="Knee Position"           , slider=True)
-        pass;                          col.prop(sliders, "THISCL2"   , text="Knee Scale"              , slider=True)
-        col = flow.column();           col.prop(sliders, "CALFSCL"   , text="Calf Scale"              , slider=True)
-        col = flow.column();           col.prop(sliders, "FOOTSCL"   , text="Foot Scale"              , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "SKTPOS"    , text="Skirt Position"          , slider=True)
-        pass;                          col.prop(sliders, "SKTSCL"    , text="Skirt Scale"             , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "SPIPOS"    , text="Lower Abdomen Position"  , slider=True)
-        pass;                          col.prop(sliders, "SPISCL"    , text="Lower Abdomen Scale"     , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "S0APOS"    , text="Upper Abdomen Position"  , slider=True)
-        pass;                          col.prop(sliders, "S0ASCL"    , text="Upper Abdomen Scale"     , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "S1POS"     , text="Lower Chest Position"    , slider=True)
-        pass;                          col.prop(sliders, "S1_SCL"    , text="Lower Chest Scale"       , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "S1APOS"    , text="Upper Chest Position"    , slider=True)
-        pass;                          col.prop(sliders, "S1ASCL"    , text="Upper Chest Scale"       , slider=True)
-        col = flow.column();           col.prop(sliders, "S1ABASESCL", text="Upper Torso Scale"       , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "MUNEPOS"   , text="Breasts Position"        , slider=True)
-        pass;                          col.prop(sliders, "MUNESCL"   , text="Breasts Scale"           , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "MUNESUBPOS", text="Breasts Sub-Position"    , slider=True)
-        pass;                          col.prop(sliders, "MUNESUBSCL", text="Breasts Sub-Scale"       , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "NECKPOS"   , text="Neck Position"           , slider=True)
-        pass;                          col.prop(sliders, "NECKSCL"   , text="Neck Scale"              , slider=True)
-        col = flow.column(align=True); col.prop(sliders, "CLVPOS"    , text="Clavicle Position"       , slider=True)
-        pass;                          col.prop(sliders, "CLVSCL"    , text="Clavicle Scale"          , slider=True)
-        col = flow.column();           col.prop(sliders, "KATASCL"   , text="Shoulders Scale"         , slider=True)
-        col = flow.column();           col.prop(sliders, "UPARMSCL"  , text="Upper Arm Scale"         , slider=True)
-        col = flow.column();           col.prop(sliders, "FARMSCL"   , text="Forearm Scale"           , slider=True)
-        col = flow.column();           col.prop(sliders, "HANDSCL"   , text="Hand Scale"              , slider=True)
+        col = flow.column();           col.prop(sliders, "PELSCL"    , text="Pelvis Scale"            , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "HIPPOS"    , text="Hips Position"           , slider=True         )
+        pass;                          col.prop(sliders, "HIPSCL"    , text="Hips Scale"              , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "THIPOS"    , text="Legs Position X"         , slider=True, index=0)                     
+        row = col.row(align=True);     row.prop(sliders, "empty"     , text=              "Y"         , emboss=False        ); row.enabled = False
+        pass;                          col.prop(sliders, "THIPOS"    , text=              "Z"         , slider=True, index=2)                     
+        pass;                          col.prop(sliders, "THISCL"    , text="Legs Scale X"            , slider=True, index=0)                      
+        pass;                          col.prop(sliders, "THISCL"    , text=           "Y"            , slider=True, index=1)
+        row = col.row(align=True);     row.prop(sliders, "empty"     , text=           "Z"            , emboss=False        ); row.enabled = False
+        col = flow.column(align=True); col.prop(sliders, "MTWPOS"    , text="Thigh Position"          , slider=True         )
+        pass;                          col.prop(sliders, "MTWSCL"    , text="Thigh Scale"             , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "MMNPOS"    , text="Rear Thigh Position"     , slider=True         )
+        pass;                          col.prop(sliders, "MMNSCL"    , text="Rear Thigh Scale"        , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "THI2POS"   , text="Knee Position"           , slider=True         )
+        pass;                          col.prop(sliders, "THISCL2"   , text="Knee Scale X"            , slider=True, index=0)                      
+        pass;                          col.prop(sliders, "THISCL2"   , text=           "Y"            , slider=True, index=1)                      
+        row = col.row(align=True);     row.prop(sliders, "THISCL2"   , text=           "Z"            , slider=True, index=2); row.enabled = False 
+        col = flow.column()
+        col = col.column(align=True);  col.prop(sliders, "CALFSCL"   , text="Calf Scale X"            , slider=True, index=0)                     
+        pass;                          col.prop(sliders, "CALFSCL"   , text=           "Y"            , slider=True, index=1)                     
+        row = col.row(align=True);     row.prop(sliders, "CALFSCL"   , text=           "Z"            , slider=True, index=2); row.enabled = False
+        col = flow.column();           col.prop(sliders, "FOOTSCL"   , text="Foot Scale"              , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "SKTPOS"    , text="Skirt Position"          , slider=True         )
+        pass;                          col.prop(sliders, "SKTSCL"    , text="Skirt Scale"             , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "SPIPOS"    , text="Lower Abdomen Position"  , slider=True         )
+        pass;                          col.prop(sliders, "SPISCL"    , text="Lower Abdomen Scale"     , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "S0APOS"    , text="Upper Abdomen Position"  , slider=True         )
+        pass;                          col.prop(sliders, "S0ASCL"    , text="Upper Abdomen Scale"     , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "S1POS"     , text="Lower Chest Position"    , slider=True         )
+        pass;                          col.prop(sliders, "S1_SCL"    , text="Lower Chest Scale"       , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "S1APOS"    , text="Upper Chest Position"    , slider=True         )
+        pass;                          col.prop(sliders, "S1ASCL"    , text="Upper Chest Scale"       , slider=True         )
+        col = flow.column()
+        col = col.column(align=True);  col.prop(sliders, "S1ABASESCL", text="Upper Torso Scale X"     , slider=True, index=0)                       
+        pass;                          col.prop(sliders, "S1ABASESCL", text=                  "Y"     , slider=True, index=1)                       
+        row = col.row(align=True);     row.prop(sliders, "S1ABASESCL", text=                  "Z"     , slider=True, index=2); row.enabled = False  
+        col = flow.column(align=True); col.prop(sliders, "MUNEPOS"   , text="Breasts Position"        , slider=True         )
+        pass;                          col.prop(sliders, "MUNESCL"   , text="Breasts Scale"           , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "MUNESUBPOS", text="Breasts Sub-Position"    , slider=True         )
+        pass;                          col.prop(sliders, "MUNESUBSCL", text="Breasts Sub-Scale"       , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "NECKPOS"   , text="Neck Position"           , slider=True         )
+        pass;                          col.prop(sliders, "NECKSCL"   , text="Neck Scale"              , slider=True         )
+        col = flow.column(align=True); col.prop(sliders, "CLVPOS"    , text="Clavicle Position"       , slider=True         )
+        pass;                          col.prop(sliders, "CLVSCL"    , text="Clavicle Scale"          , slider=True         )
+        col = flow.column();           col.prop(sliders, "KATASCL"   , text="Shoulders Scale"         , slider=True         )
+        col = flow.column();           col.prop(sliders, "UPARMSCL"  , text="Upper Arm Scale"         , slider=True         )
+        col = flow.column();           col.prop(sliders, "FARMSCL"   , text="Forearm Scale"           , slider=True         )
+        col = flow.column();           col.prop(sliders, "HANDSCL"   , text="Hand Scale"              , slider=True         )
                                                            
                                                            
                                                 

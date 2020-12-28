@@ -561,17 +561,18 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         cm_uvs = []
         # 頂点情報を書き出し
         for i, vert in enumerate(bm.verts):
-            co = vert.co * self.scale
+            co = compat.convert_bl_to_cm_space( vert.co * self.scale )
             if me.has_custom_normals:
                 no = custom_normals[vert.index]
             else:
                 no = vert.normal.copy()
+            no = compat.convert_bl_to_cm_space( no )
             for uv in vert_uvs[i]:
                 cm_verts.append(co)
                 cm_norms.append(no)
                 cm_uvs.append(uv)
-                writer.write(struct.pack('<3f', -co.x, co.y, co.z))
-                writer.write(struct.pack('<3f', -no.x, no.y, no.z))
+                writer.write(struct.pack('<3f', co.x, co.y, co.z))
+                writer.write(struct.pack('<3f', no.x, no.y, no.z))
                 writer.write(struct.pack('<2f', uv.x, uv.y))
         context.window_manager.progress_update(6)
 
@@ -649,9 +650,11 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
                         common.write_str(writer, shape_key.name)
                         writer.write(struct.pack('<i', len(morph)))
                         for v_index, vec, normal in morph:
+                            vec    = compat.convert_bl_to_cm_space(vec   )
+                            normal = compat.convert_bl_to_cm_space(normal)
                             writer.write(struct.pack('<H', v_index))
-                            writer.write(struct.pack('<3f', -vec.x, vec.y, vec.z))
-                            writer.write(struct.pack('<3f', -normal.x, normal.y, normal.z))
+                            writer.write(struct.pack('<3f', vec.x, vec.y, vec.z))
+                            writer.write(struct.pack('<3f', normal.x, normal.y, normal.z))
             finally:
                 context.blend_data.meshes.remove(temp_me)
         common.write_str(writer, 'end')

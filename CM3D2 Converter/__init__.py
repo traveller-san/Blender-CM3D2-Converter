@@ -4,7 +4,7 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz, @luvoid",
-    "version": ("luv", 2020, 12, 18),
+    "version": ("luv", 2020, 12, 28),
     "blender": (2, 80, 0),
     "location" : "File > Import/Export > CM3D2 Model (.model)",
     "description" : "A plugin dedicated to the editing, importing, and exporting of CM3D2 .Model Files.",
@@ -181,7 +181,7 @@ class AddonPreferences(bpy.types.AddonPreferences):
     show_bone_axes          = bpy.props.BoolProperty(name="Show Bone Axes"        , default=False, description="Display bone axes"                      )
     show_bone_custom_shapes = bpy.props.BoolProperty(name="Show Bone Shapes"      , default=True , description="Display bones with their custom shapes" )
     show_bone_group_colors  = bpy.props.BoolProperty(name="Show Bone Group Colors", default=True , description="Display bone group colors"              )
-    show_bone_in_front      = bpy.props.BoolProperty(name="Show Bones in Front"   , default=False, description="Make the object draw in front of others")
+    show_bone_in_front      = bpy.props.BoolProperty(name="Show Bones in Front"   , default=True , description="Make the object draw in front of others")
 
     def draw(self, context):
         if compat.IS_LEGACY:
