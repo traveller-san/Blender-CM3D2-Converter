@@ -838,9 +838,15 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             parent_index = bone_name_indices[bone.parent.name] if bone.parent else -1
 
             mat = bone.matrix.copy()
-            if bone.parent:
-                mat = compat.mul(bone.parent.matrix.inverted(), mat)
             
+            if bone.parent:
+                mat = compat.convert_bl_to_cm_bone_rotation(mat)
+                mat = compat.mul(bone.parent.matrix.inverted(), mat)
+                mat = compat.convert_bl_to_cm_bone_space(mat)
+            else:
+                mat = compat.convert_bl_to_cm_space(mat)
+                mat = compat.convert_bl_to_cm_bone_rotation(mat)
+
             co = mat.to_translation() * self.scale
             rot = mat.to_quaternion()
             
@@ -858,14 +864,14 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             #    rot.w, rot.x, rot.y, rot.z = -rot.y, -rot.z, -rot.x, rot.w
             
             # luvoid : I copied this from the Bone-Util Addon by trzr
-            if bone.parent:
-                co.x, co.y, co.z = -co.y, co.z, co.x
-                rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, -rot.z, -rot.x
-            else:
-                co.x, co.y, co.z = -co.x, co.z, -co.y
-                
-                rot = compat.mul(rot, mathutils.Quaternion((0, 0, 1), math.radians(90)))
-                rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, rot.z, -rot.y
+            #if bone.parent:
+            #    co.x, co.y, co.z = -co.y, co.z, co.x
+            #    rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, -rot.z, -rot.x
+            #else:
+            #    co.x, co.y, co.z = -co.x, co.z, -co.y
+            #    
+            #    rot = compat.mul(rot, mathutils.Quaternion((0, 0, 1), math.radians(90)))
+            #    rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, rot.z, -rot.y
             
             #opengl_mat = compat.convert_blend_z_up_to_opengl_y_up_mat4(bone.matrix)
             #

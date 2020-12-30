@@ -363,44 +363,45 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
                     bone.parent = parent
                     bone.head, bone.tail = (0, 0, 0), (0, 1, 0)
 
-                    parent_mats = []
-                    current_bone = bone
-                    while current_bone:
-                        for b in bone_data:
-                            if common.decode_bone_name(b['name'], self.is_convert_bone_weight_names) == current_bone.name:
-                                local_co  = b['co' ].copy()
-                                local_rot = b['rot'].copy()
-                                break
-                    
-                        local_co_mat  = mathutils.Matrix.Translation(local_co)
-                        local_rot_mat = local_rot.to_matrix().to_4x4()        
-                        parent_mats.append(compat.mul(local_co_mat, local_rot_mat))
-                    
-                        current_bone = current_bone.parent
-                    parent_mats.reverse()
-                    
-                    mat = mathutils.Matrix()
-                    for local_mat in parent_mats:
-                        mat = compat.mul(mat, local_mat)
-                    mat *= self.scale
+                    #parent_mats = []
+                    #current_bone = bone
+                    #while current_bone:
+                    #    for b in bone_data:
+                    #        if common.decode_bone_name(b['name'], self.is_convert_bone_weight_names) == current_bone.name:
+                    #            local_co  = b['co' ].copy()
+                    #            local_rot = b['rot'].copy()
+                    #            break
+                    #
+                    #    local_co_mat  = mathutils.Matrix.Translation(local_co)
+                    #    local_rot_mat = local_rot.to_matrix().to_4x4()        
+                    #    parent_mats.append(compat.mul(local_co_mat, local_rot_mat))
+                    #
+                    #    current_bone = current_bone.parent
+                    #parent_mats.reverse()
+                    #
+                    #mat = mathutils.Matrix()
+                    #for local_mat in parent_mats:
+                    #    mat = compat.mul(mat, local_mat)
+                    #mat *= self.scale
+                    #mat = compat.convert_cm_to_bl_space(mat)
+                    #mat = compat.convert_cm_to_bl_bone_rotation(mat)
                      
                     #parent_mat    = compat.mul(
                     #    mathutils.Matrix.Translation(parent.matrix.to_translation()),
                     #    parent.matrix.to_quaternion().to_matrix().to_4x4()
                     #)
 
-                    #parent_mat = parent.matrix
-                    #
-                    #local_co      = data['co' ].copy() * self.scale
-                    #local_rot     = data['rot'].copy()
-                    ##local_rot     = compat.convert_cm_to_bl_bone_rotation(rot)
-                    #local_co_mat  = mathutils.Matrix.Translation(local_co)
-                    #local_rot_mat = local_rot.to_matrix().to_4x4()
-                    #local_mat     = compat.mul(local_co_mat, local_rot_mat)
-                    ##local_mat     = compat.convert_cm_to_bl_local_bone(local_mat)
-                    #
-                    #mat = compat.mul(parent_mat, local_mat)
-                    mat = compat.convert_cm_to_bl_space(mat)
+                    parent_mat = parent.matrix
+                    
+                    local_co      = data['co' ].copy() * self.scale
+                    local_rot     = data['rot'].copy()
+                    #local_rot     = compat.convert_cm_to_bl_bone_rotation(rot)
+                    local_co_mat  = mathutils.Matrix.Translation(local_co)
+                    local_rot_mat = local_rot.to_matrix().to_4x4()
+                    local_mat     = compat.mul(local_co_mat, local_rot_mat)
+                    local_mat     = compat.convert_cm_to_bl_bone_space(local_mat)
+                    #local_mat     = compat.mul(local_mat, mathutils.Matrix.Diagonal((1,1,1)).to_4x4())
+                    mat = compat.mul(parent_mat, local_mat)
                     mat = compat.convert_cm_to_bl_bone_rotation(mat)
 
                     

@@ -471,7 +471,7 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
         #x, y, z = z, x, y
 
         mat = mathutils.Matrix.Translation((x, y, z)).to_4x4()
-        mat = compat.convert_cm_to_bl_bone_space(mat)
+        mat = compat.convert_cm_to_bl_slider_space(mat)
         x, y, z = mat.to_translation()
         
         bone = self.GetPoseBone(boneName)
@@ -646,7 +646,7 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
         #        return
         
         mat = mathutils.Matrix.Translation((ux, uy, uz)).to_4x4() * self.scale
-        mat = compat.convert_cm_to_bl_bone_space(mat)
+        mat = compat.convert_cm_to_bl_wide_slider_space(mat)
         ux, uy, uz = mat.to_translation()
 
         #ux, uy, uz = uz*5, ux*5, -uy*5

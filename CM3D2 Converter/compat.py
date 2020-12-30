@@ -240,19 +240,16 @@ def convert_cm_to_bl_space(x):
         return mul(CM_TO_BL_SPACE_QUAT, x)
     else:
         return mul(CM_TO_BL_SPACE_MAT4, x)
-
 def convert_bl_to_cm_space(x):
     if type(x) == mathutils.Quaternion:
         return mul(BL_TO_CM_SPACE_QUAT, x)
     else:
         return mul(BL_TO_CM_SPACE_MAT4, x)
-
 def convert_cm_to_bl_local_space(x):
     if type(x) == mathutils.Quaternion:
         return mul(x, BL_TO_CM_SPACE_QUAT)
     else:
         return mul(x, BL_TO_CM_SPACE_MAT4)
-
 def convert_bl_to_cm_local_space(x):
     if type(x) == mathutils.Quaternion:
         return mul(x, CM_TO_BL_SPACE_QUAT)
@@ -260,21 +257,15 @@ def convert_bl_to_cm_local_space(x):
         return mul(x, CM_TO_BL_SPACE_MAT4)
 
 
-#CM_TO_BL_BONE_SPACE_MAT4 = mul(
-#    bpy_extras.io_utils.axis_conversion(from_forward='-X', from_up='Z', to_forward='Y', to_up='Z').to_4x4(),
-#    mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
-#)
 CM_TO_BL_BONE_ROTATION_MAT4 = bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Z', to_forward='Y', to_up='Z').to_4x4()
 BL_TO_CM_BONE_ROTATION_MAT4 = CM_TO_BL_BONE_ROTATION_MAT4.inverted()
 CM_TO_BL_BONE_ROTATION_QUAT = CM_TO_BL_BONE_ROTATION_MAT4.to_quaternion()
 BL_TO_CM_BONE_ROTATION_QUAT = CM_TO_BL_BONE_ROTATION_QUAT.inverted()
-
 def convert_cm_to_bl_bone_rotation(x):
     if type(x) == mathutils.Quaternion:
         return mul(x, CM_TO_BL_BONE_ROTATION_QUAT)
     else:
         return mul(x, CM_TO_BL_BONE_ROTATION_MAT4)
-
 def convert_bl_to_cm_bone_rotation(x):
     if type(x) == mathutils.Quaternion:
         return mul(x, BL_TO_CM_BONE_ROTATION_QUAT)
@@ -282,26 +273,58 @@ def convert_bl_to_cm_bone_rotation(x):
         return mul(x, BL_TO_CM_BONE_ROTATION_MAT4)
 
 
-
 CM_TO_BL_BONE_SPACE_MAT4 = mul(
-    bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Y', to_forward='Y', to_up='Z').to_4x4(),
-    mathutils.Matrix.Scale(-1, 4, (0, 1, 0))
+    bpy_extras.io_utils.axis_conversion(from_forward='-X', from_up='Y', to_forward='Y', to_up='Z').to_4x4(),
+    mathutils.Matrix.Scale(-1, 4, (0, 0, 1))
 )
 BL_TO_CM_BONE_SPACE_MAT4 = CM_TO_BL_BONE_SPACE_MAT4.inverted()
 CM_TO_BL_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_MAT4.to_quaternion()
 BL_TO_CM_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_QUAT.inverted()
-
 def convert_cm_to_bl_bone_space(x):
     if type(x) == mathutils.Quaternion:
         return mul(CM_TO_BL_BONE_SPACE_QUAT, x)
     else:
         return mul(CM_TO_BL_BONE_SPACE_MAT4, x)
-
 def convert_bl_to_cm_bone_space(x):
     if type(x) == mathutils.Quaternion:
         return mul(BL_TO_CM_BONE_SPACE_QUAT, x)
     else:
         return mul(BL_TO_CM_BONE_SPACE_MAT4, x)
+
+
+CM_TO_BL_WIDE_SLIDER_SPACE_MAT4 = mul(
+    bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Y', to_forward='Y', to_up='Z').to_4x4(),
+    mathutils.Matrix.Scale(-1, 4, (0, 1, 0))
+)
+BL_TO_CM_WIDE_SLIDER_SPACE_MAT4 = CM_TO_BL_WIDE_SLIDER_SPACE_MAT4.inverted()
+CM_TO_BL_WIDE_SLIDER_SPACE_QUAT = CM_TO_BL_WIDE_SLIDER_SPACE_MAT4.to_quaternion()
+BL_TO_CM_WIDE_SLIDER_SPACE_QUAT = CM_TO_BL_WIDE_SLIDER_SPACE_QUAT.inverted()
+def convert_cm_to_bl_wide_slider_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(CM_TO_BL_WIDE_SLIDER_SPACE_QUAT, x)
+    else:
+        return mul(CM_TO_BL_WIDE_SLIDER_SPACE_MAT4, x)
+def convert_bl_to_cm_wide_slider_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(BL_TO_CM_WIDE_SLIDER_SPACE_QUAT, x)
+    else:
+        return mul(BL_TO_CM_WIDE_SLIDER_SPACE_MAT4, x)
+
+
+CM_TO_BL_SLIDER_SPACE_MAT4 = bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Y', to_forward='Y', to_up='Z').to_4x4()
+BL_TO_CM_SLIDER_SPACE_MAT4 = CM_TO_BL_SLIDER_SPACE_MAT4.inverted()
+CM_TO_BL_SLIDER_SPACE_QUAT = CM_TO_BL_SLIDER_SPACE_MAT4.to_quaternion()
+BL_TO_CM_SLIDER_SPACE_QUAT = CM_TO_BL_SLIDER_SPACE_QUAT.inverted()
+def convert_cm_to_bl_slider_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(CM_TO_BL_SLIDER_SPACE_QUAT, x)
+    else:
+        return mul(CM_TO_BL_SLIDER_SPACE_MAT4, x)
+def convert_bl_to_cm_slider_space(x):
+    if type(x) == mathutils.Quaternion:
+        return mul(BL_TO_CM_SLIDER_SPACE_QUAT, x)
+    else:
+        return mul(BL_TO_CM_SLIDER_SPACE_MAT4, x)
 
 
 
