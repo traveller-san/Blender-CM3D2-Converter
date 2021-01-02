@@ -1178,8 +1178,11 @@ class DATA_PT_cm3d2_sliders(bpy.types.Panel):
         flow.prop(morph, 'hip'   , text="Hip"   , emboss=False)
                                 
         row = self.layout.row()
-        row.enabled = bpy.ops.object.add_cm3d2_body_sliders.poll(context.copy())
+        #row.enabled = bpy.ops.object.add_cm3d2_body_sliders.poll(context.copy())
         op = row.operator("object.add_cm3d2_body_sliders", text="Connect Sliders"    , icon=compat.icon('CONSTRAINT_BONE'))
+        
+        row = self.layout.row()
+        #row.enabled = bpy.ops.object.cleanup_scale_bones.poll(context.copy())
         op = row.operator("object.cleanup_scale_bones"   , text="Cleanup Scale Bones", icon=compat.icon('X'              ))
 
 
