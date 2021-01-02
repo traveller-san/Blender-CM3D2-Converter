@@ -10,6 +10,7 @@ from collections import Counter
 from . import common
 from . import compat
 from . import cm3d2_data
+from .misc_OBJECT_PT_transform import CNV_OT_align_to_base_bone
 
 
 # メインオペレーター
@@ -29,8 +30,8 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
 
     is_mesh = bpy.props.BoolProperty(name="Load Mesh", default=True, description="Leaving this on will load in the mesh.")
     is_remove_doubles = bpy.props.BoolProperty(name="Remove Doubles", default=True, description="Doubles will be removed in both the uv and the mesh at the time of import.")
-    is_seam  = bpy.props.BoolProperty(name="Mark Seams", default=True,  description="This will mark the UV seams on your mesh.")
-    is_sharp = bpy.props.BoolProperty(name="Mark Sharp", default=False, description="This will mark removed doubles on your mesh as sharp (based on UV).")
+    is_seam  = bpy.props.BoolProperty(name="Mark Seams", default=True, description="This will mark the UV seams on your mesh.")
+    is_sharp = bpy.props.BoolProperty(name="Mark Sharp", default=True, description="This will mark removed doubles on your mesh as sharp (or all free edges if not removing doubles).")
 
     is_convert_bone_weight_names = bpy.props.BoolProperty(name="Convert Bone Weight Names to Blender", default=False, description="This will convert bone and vertex group names for use with blender mirroring.")
     is_vertex_group_sort = bpy.props.BoolProperty(name="Sort Vertex Groups", default=True, description="This will sort your vertex groups so they are easier to work with.")
@@ -96,10 +97,12 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
 
         sub_box = box.box()
         sub_box.label(text="Armature")
-        sub_box.prop(self , 'is_armature_clean'           , icon=compat.icon('X'        )                                        )
-        sub_box.prop(self , 'is_convert_bone_weight_names', icon=compat.icon('BLENDER'  ), text="Convert Bone Names for Blender.")
-        sub_box.prop(prefs, 'show_bone_in_front'          , icon=compat.icon('HIDE_OFF' ), text="Show Bones in Front"            )
-        sub_box.prop(self , 'is_custom_bones'             , icon=compat.icon('BONE_DATA'), text="Use Selected as Bone Shape"     )
+        sub_box.prop(self , 'is_armature_clean'           , icon=compat.icon('X'       )                                         )
+        sub_box.prop(self , 'is_convert_bone_weight_names', icon=compat.icon('BLENDER' ) , text="Convert Bone Names for Blender.")
+        sub_box.prop(prefs, 'show_bone_in_front'          , icon=compat.icon('HIDE_OFF') , text="Show Bones in Front"            )
+        row = sub_box.row()
+        row.prop    (self , 'is_custom_bones'             , icon=compat.icon('BONE_DATA'), text="Use Selected as Bone Shape"     )
+        row.enabled = bool(context.object)
         
         box = self.layout.box()
         box.label(text="Bone Data Destination")
@@ -512,43 +515,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
             bpy.ops.object.shade_smooth()
             context.window_manager.progress_update(2.75)
             # オブジェクト変形
-            for bone in bone_data:
-                if bone['name'] == model_name2:
-                    #co = bone['co'].copy()
-                    #co.x, co.y, co.z = -co.x, -co.z, co.y
-                    #co *= self.scale
-                    #ob.location = co
-                    #
-                    #rot = bone['rot'].copy()
-                    #eul = mathutils.Euler((math.radians(90), 0, 0), 'XYZ')
-                    #rot.rotate(eul)
-                    #ob.rotation_mode = 'QUATERNION'
-                    #ob.rotation_quaternion = rot
-
-                    parent_mats = []
-                    current_bone = bone
-                    while current_bone:
-                        local_co_mat  = mathutils.Matrix.Translation(current_bone['co'] * self.scale)
-                        local_rot_mat = current_bone['rot'].to_matrix().to_4x4()        
-                        parent_mats.append(compat.mul(local_co_mat, local_rot_mat))
-                        if current_bone['parent_name']:
-                            for b in bone_data:
-                                if b['name'] == current_bone['parent_name']:
-                                    current_bone = b
-                                    break
-                        else:
-                            current_bone = None
-                                
-                    parent_mats.reverse()
-                    mat = mathutils.Matrix()
-                    for local_mat in parent_mats:
-                        mat = compat.mul(mat, local_mat)
-
-                    mat = compat.convert_cm_to_bl_space(mat)
-                    mat = compat.convert_cm_to_bl_local_space(mat)
-                    ob.matrix_basis = mat
-
-                    break
+            CNV_OT_align_to_base_bone.from_bone_data(ob=ob, bone_data=bone_data, base_bone_name=model_name2, scale=self.scale)
             context.window_manager.progress_update(3)
 
             # 頂点グループ作成
@@ -647,10 +614,19 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
             context.window_manager.progress_update(7)
 
             # メッシュ整頓
+            pre_mesh_select_mode = context.tool_settings.mesh_select_mode[:]
+            if self.is_sharp:
+                context.tool_settings.mesh_select_mode = (False, True, False)
+                bpy.ops.object.mode_set(mode='EDIT')
+
+                bpy.ops.mesh.select_non_manifold(extend=False, use_wire=True, use_boundary=True, use_multi_face=False, use_non_contiguous=False, use_verts=False)
+                bpy.ops.mesh.mark_sharp(use_verts=False)
+
+                bpy.ops.object.mode_set(mode='OBJECT')
+                context.tool_settings.mesh_select_mode = pre_mesh_select_mode
             if self.is_remove_doubles:
                 pre_mesh_select_mode = context.tool_settings.mesh_select_mode[:]
                 context.tool_settings.mesh_select_mode = (True, False, False)
-
                 bpy.ops.object.mode_set(mode='EDIT')
                 bpy.ops.mesh.select_all(action='DESELECT')
                 bpy.ops.object.mode_set(mode='OBJECT')
@@ -660,14 +636,19 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
                         vert.select = True
                 bpy.ops.object.mode_set(mode='EDIT')
                 bpy.ops.mesh.remove_doubles(threshold=0.000001)
-                bpy.ops.object.mode_set(mode='OBJECT')
 
-                context.tool_settings.mesh_select_mode = pre_mesh_select_mode
-            if self.is_seam or self.is_sharp:
+                if self.is_sharp:
+                    context.tool_settings.mesh_select_mode = (False, True, False)
+                    bpy.ops.mesh.select_non_manifold(extend=False, use_wire=True, use_boundary=True, use_multi_face=False, use_non_contiguous=False, use_verts=False)
+                    bpy.ops.mesh.mark_sharp(clear=True, use_verts=False)
+
+                bpy.ops.object.mode_set(mode='OBJECT')
+            context.tool_settings.mesh_select_mode = pre_mesh_select_mode
+            if self.is_seam:
                 bpy.ops.object.mode_set(mode='EDIT')
                 bpy.ops.mesh.select_all(action='SELECT')
                 bpy.ops.uv.select_all(action='SELECT')
-                bpy.ops.uv.seams_from_islands(mark_seams=self.is_seam, mark_sharp=self.is_sharp)
+                bpy.ops.uv.seams_from_islands()
                 bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.mesh.select_all(action='DESELECT')

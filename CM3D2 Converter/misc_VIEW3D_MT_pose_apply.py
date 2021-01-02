@@ -1,5 +1,6 @@
 # 「3Dビュー」エリア → ポーズモード → Ctrl+A (ポーズ → 適用)
 import bpy
+import mathutils
 from . import common
 from . import compat
 
@@ -49,48 +50,98 @@ class CNV_OT_copy_prime_field(bpy.types.Operator):
         self.layout.prop(self, 'is_key_scale'    )
 
     def execute(self, context):
-        ob, temp_ob = common.get_target_and_source_ob(context)
-        pose = ob.pose
-        arm = ob.data
+        target_ob, source_ob = common.get_target_and_source_ob(context)
+        pose = target_ob.pose
+        arm = target_ob.data
 
         pre_selected_pose_bones = context.selected_pose_bones
-        pre_mode = ob.mode
+        pre_mode = target_ob.mode
         
         bpy.ops.object.mode_set(mode='POSE')
         bpy.ops.pose.select_all(action='SELECT')
         bpy.ops.pose.constraints_clear()
 
+        if not target_ob.pose_library:
+             bpy.ops.poselib.new()
+             poselib = target_ob.pose_library
+
         consts = []
         bones = pre_selected_pose_bones if self.is_only_selected else pose.bones
         for bone in bones:
-            if bone.name in temp_ob.data.bones:
-                const = bone.constraints.new('COPY_TRANSFORMS')
-                const.target = temp_ob
-                const.subtarget = bone.name
-                consts.append(const)
+            source_bone = source_ob.pose.bones.get(bone.name)
+            if source_bone:
+                if self.is_key_location or self.is_key_rotation:
+                    const = bone.constraints.new('COPY_TRANSFORMS')
+                    const.target = source_ob
+                    const.subtarget = source_bone.name
+                    consts.append(const)
+                if self.is_key_scale:
+                    const = bone.constraints.new('LIMIT_SCALE')
+                    const.owner_space = 'LOCAL'
+                    const.use_transform_limit = True
+                    const.use_min_x = True
+                    const.use_min_y = True
+                    const.use_min_z = True
+                    const.use_max_x = True
+                    const.use_max_y = True
+                    const.use_max_z = True
+                    const.min_x = source_bone.scale.x
+                    const.min_y = source_bone.scale.y
+                    const.min_z = source_bone.scale.z
+                    if source_ob.data.get("is T Stance"):
+                        source_prime_scale = mathutils.Vector(source_bone.get('prime_scale',(1,1,1)))
+                        const.min_x *= source_prime_scale.x
+                        const.min_y *= source_prime_scale.y
+                        const.min_z *= source_prime_scale.x
+                    if arm.get("is T Stance"):
+                        target_prime_scale = mathutils.Vector(bone.get('prime_scale', (1,1,1)))
+                        const.min_x /= target_prime_scale.x
+                        const.min_y /= target_prime_scale.y
+                        const.min_z /= target_prime_scale.z
+                    const.max_x = const.min_x
+                    const.max_y = const.min_y
+                    const.max_z = const.min_z
+                    consts.append(const)
 
-        for i in range(10):
+        #if True:
+        #    return {'CANCELLED'}
+
+        for i in range(2):
             is_prime_frame = not bool(i % 2) if arm.get("is T Stance") else bool(i % 2)
+            pose_name = '__prime_field_pose' if is_prime_frame else '__base_field_pose'
             if self.is_apply_prime:
                 is_prime_frame = not is_prime_frame
+            
+            #if self.is_key_scale and is_prime_frame:
+            #    for const in consts:
+            #        if const.type == 'LIMIT_SCALE':
+            #            const.mute = not is_prime_frame
+            #    bpy.ops.pose.visual_transform_apply()
+            #    for bone in pose.bones:
+            #        bone.keyframe_insert(data_path='scale', frame=i, group=bone.name)
+            #    for const in consts:
+            #        if const.type == 'LIMIT_SCALE':
+            #            const.mute = is_prime_frame
+            
             for const in consts:
                 const.mute = not is_prime_frame
-
             if is_prime_frame:
                 bpy.ops.pose.visual_transform_apply()
             else:
                 bpy.ops.pose.transforms_clear()
-
             for bone in pose.bones:
                 if self.is_key_location:
                     bone.keyframe_insert(data_path='location'           , frame=i, group=bone.name)
                 if self.is_key_rotation:
                     bone.keyframe_insert(data_path='rotation_euler'     , frame=i, group=bone.name)
                     bone.keyframe_insert(data_path='rotation_quaternion', frame=i, group=bone.name)
-                if self.is_key_scale   :
+                if self.is_key_scale: # and not is_prime_frame:
                     bone.keyframe_insert(data_path='scale'              , frame=i, group=bone.name)
-        
+                bpy.ops.poselib.pose_add(frame=i, name=pose_name)
+
         bpy.ops.pose.constraints_clear()
+        bpy.ops.pose.transforms_clear()
+        target_ob.animation_data_clear()
 
         bpy.ops.pose.select_all(action='DESELECT')
         if pre_selected_pose_bones:
@@ -110,11 +161,13 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
     bl_description = "A body will be created that makes custom modeling easy with the current pose."
     bl_options = {'REGISTER', 'UNDO'}
 
-    is_apply_armature_modifier = bpy.props.BoolProperty(name="Apply Armature Modifier", default=True )
-    is_deform_preserve_volume  = bpy.props.BoolProperty(name="Preserve Volume"        , default=True )
-    is_keep_original           = bpy.props.BoolProperty(name="Keep Original"          , default=True )
-    is_swap_prime_field        = bpy.props.BoolProperty(name="Swap Prime Field"       , default=False)
-    is_bake_drivers            = bpy.props.BoolProperty(name="Bake Drivers"           , default=False, description="Enable keyframing of driven properties, locking sliders and twist bones for final apply")
+    is_apply_armature_modifier   = bpy.props.BoolProperty(name="Apply Armature Modifier"  , default=True , description="Apply Armature Modifier of the child mesh objects")
+    is_preserve_shape_key_values = bpy.props.BoolProperty(name="Preserve Shape Key Values", default=True , description="Ensure shape key values of child mesh objects are not changed")
+    is_deform_preserve_volume    = bpy.props.BoolProperty(name="Preserve Volume"          , default=False, description="Enabling this will increase distortion")
+    is_keep_original             = bpy.props.BoolProperty(name="Keep Original"            , default=True , description="If the armature is already primed, don't replace the base pose with the current rest pose")
+    is_swap_prime_field          = bpy.props.BoolProperty(name="Swap Prime Field"         , default=False)
+    #is_bake_drivers              = bpy.props.BoolProperty(name="Bake Drivers"             , default=False, description="Enable keyframing of driven properties, locking sliders and twist bones for final apply")
+    
     
     was_t_stance = False
 
@@ -126,13 +179,15 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         return False
 
     def invoke(self, context, event):
+        self.was_t_stance = context.object.data.get('is T Stance')
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        self.layout.prop(self, 'is_apply_armature_modifier')
+        self.layout.prop(self, 'is_apply_armature_modifier'  )
+        self.layout.prop(self, 'is_preserve_shape_key_values')
+        #self.layout.prop(self, 'is_bake_drivers'           )
         self.layout.prop(self, 'is_deform_preserve_volume' )
-        self.layout.prop(self, 'is_bake_drivers'           )
-        if context.active_object.data.get('is T Stance'):
+        if self.was_t_stance:
             self.layout.prop(self, 'is_keep_original')
 
     def execute(self, context):
@@ -150,7 +205,8 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         compat.set_select(ob, True)
 
         if self.is_swap_prime_field:
-            context.scene.frame_set(1)
+            #context.scene.frame_set(1)
+            bpy.ops.poselib.apply_pose(pose_index=1)
 
         if self.is_apply_armature_modifier:
             override = context.copy()
@@ -176,7 +232,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
                                 #old_use_multi_modifier  = mod.use_multi_modifier        
                                 old_use_vertex_groups   = mod.use_vertex_groups         
                                 old_vertex_group        = mod.vertex_group        
-                    apply_results = bpy.ops.object.forced_modifier_apply(override, apply_viewport_visible=True)
+                    apply_results = bpy.ops.object.forced_modifier_apply(override, apply_viewport_visible=True, is_preserve_shape_key_values=self.is_preserve_shape_key_values)
                     if ('FINISHED' in apply_results) and had_armature:
                         new_mod = o.modifiers.new(name=old_name, type='ARMATURE')
                         new_mod.use_deform_preserve_volume = self.is_deform_preserve_volume
@@ -200,17 +256,27 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         compat.set_active(context, ob)
         bpy.ops.object.mode_set(mode='POSE')
         bpy.ops.pose.select_all(action='SELECT')
+        for bone in ob.pose.bones:
+            prime_scale = mathutils.Vector(bone.get('prime_scale', (1.0,1.0,1.0)))
+            bone_scale = bone.scale #bone.matrix.to_scale()
+            prime_scale.x *= bone_scale.x
+            prime_scale.y *= bone_scale.y
+            prime_scale.z *= bone_scale.z
+            bone['prime_scale'] = prime_scale
+            #bone['_RNA_UI']['prime_scale']['subtype'] = 'XYZ'
         bpy.ops.pose.armature_apply()
         bpy.ops.pose.constraints_clear()
         ob.animation_data_clear()
         
         if arm.get("is T Stance") and self.is_keep_original and not self.is_swap_prime_field:
             anim_data = temp_ob.animation_data
-            drivers = anim_data.drivers
-            for driver in drivers.values():
-                drivers.remove(driver)
-            context.scene.frame_set(1)
-            bpy.ops.pose.transforms_clear()
+            if anim_data and anim_data.drivers:
+                drivers = anim_data.drivers
+                for driver in drivers.values():
+                    drivers.remove(driver)
+            #context.scene.frame_set(1)
+            bpy.ops.pose.user_transforms_clear()
+            bpy.ops.poselib.apply_pose(pose_index=1)
         else:
             compat.set_active(context, temp_ob)
             bpy.ops.object.mode_set(mode='POSE')
@@ -228,7 +294,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         # CNV_OT_copy_prime_field.execute()
         compat.set_select(temp_ob, True)
         compat.set_active(context, ob)
-        response = bpy.ops.pose.copy_prime_field(is_only_selected=False, is_key_location=self.is_bake_drivers, is_key_scale=self.is_bake_drivers, is_apply_prime=True)
+        response = bpy.ops.pose.copy_prime_field(is_only_selected=False, is_key_location=True, is_key_scale=True, is_apply_prime=(not self.is_swap_prime_field))#is_key_location=self.is_bake_drivers, is_key_scale=self.is_bake_drivers, is_apply_prime=True)
 
         if not 'FINISHED' in response:
             return response

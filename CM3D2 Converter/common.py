@@ -1271,7 +1271,7 @@ def get_target_and_source_ob(context, copyTarget=False, copySource=False):
     target_original_ob = None
     source_original_ob = None
 
-    target_original_ob = context.active_object
+    target_original_ob = context.object
     if copyTarget:
         target_ob = target_original_ob.copy()
         target_ob.data = target_original_ob.data.copy()

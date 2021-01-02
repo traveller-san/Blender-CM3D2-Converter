@@ -49,7 +49,7 @@ class transfer_shape_key_iter:
     def __init__(self, target_ob, source_ob, binded_shape_key=None):
         self.target_ob = target_ob
         self.source_ob = source_ob
-        self.binded_shape_key = self.binded_shape_key or self.source_ob.data.shape_keys.key_blocks[0]
+        self.binded_shape_key = binded_shape_key or self.source_ob.data.shape_keys.key_blocks[0]
 
     def __iter__(self):
         self.index = -1
@@ -123,6 +123,7 @@ class transfer_shape_key_iter:
 
         self.source_shape_key_data = source_shape_key.data
         self.target_shape_key_data = target_shape_key.data
+
 
         return self.index, target_shape_key, self.binded_shape_key_data, self.source_shape_key_data, self.target_shape_key_data
 
@@ -444,7 +445,7 @@ class CNV_OT_quick_shape_key_transfer(shape_key_transfer_op, bpy.types.Operator)
         self.near_vert_indexs = list( range(len(target_me.vertices)) )
 
         for v in target_me.vertices:
-            near_co = v.co #compat.mul(self.target_ob.matrix_world, v.co)
+            near_co = compat.mul(self.target_ob.matrix_world, v.co) #v.co
             self.near_vert_indexs[v.index] = self.kd.find(near_co)[1]
         
         self.my_iter = iter( transfer_shape_key_iter(self.target_ob, self.source_ob, self.binded_shape_key) )
@@ -453,6 +454,7 @@ class CNV_OT_quick_shape_key_transfer(shape_key_transfer_op, bpy.types.Operator)
     
     def loop(self, context):
         source_shape_key_index, target_shape_key, binded_shape_key_data, source_shape_key_data, target_shape_key_data = next(self.my_iter, (-1, None, None, None, None))
+        #print(source_shape_key_index, target_shape_key, binded_shape_key_data, source_shape_key_data, target_shape_key_data)
         if not target_shape_key:
             context.window_manager.progress_end()
             return True
@@ -465,7 +467,7 @@ class CNV_OT_quick_shape_key_transfer(shape_key_transfer_op, bpy.types.Operator)
 
             context.window_manager.progress_update( progress + index )
             
-            if near_shape_co.length > 2e-126: # 2e-126 is the smallest float != 0
+            if abs(near_shape_co.length) > 2e-126: # 2e-126 is the smallest float != 0
                 target_shape_key_data[index].co += near_shape_co
                 return True
 
@@ -487,10 +489,11 @@ class CNV_OT_quick_shape_key_transfer(shape_key_transfer_op, bpy.types.Operator)
                 just_changed = True
             else:
                 just_changed = False
-
-        self.is_shapeds[target_shape_key.name] = is_changed
+        
+        if not self.is_shapeds.get(target_shape_key.name):
+            self.is_shapeds[target_shape_key.name] = is_changed
         self.my_iter.update() # only call this when done with current iteration.
-    
+
     def cleanup(self, context):
         self.near_vert_indexs = []
         self.my_iter.free()
@@ -640,7 +643,7 @@ class CNV_OT_precision_shape_key_transfer(shape_key_transfer_op, bpy.types.Opera
             self.near_vert_data.append(new_vert_data)
             self.near_vert_data_append = new_vert_data.append
 
-            target_co = vert.co
+            target_co = compat.mul(self.target_ob.matrix_world, vert.co) #vert.co
             mini_co, mini_index, mini_dist = self.kd.find(target_co)
             radius = mini_dist * self.extend_range
             diff_radius = radius - mini_dist
@@ -747,7 +750,7 @@ class CNV_OT_precision_shape_key_transfer(shape_key_transfer_op, bpy.types.Opera
             else:
                 context.window_manager.progress_update( progress + len(target_shape_key_data) )
 
-        self.is_shapeds[target_shape_key.name] = is_changed
+        self.is_shapeds[target_shape_key.name] = self.is_shapeds.get(target_shape_key.name) or is_changed
         self.my_iter.update() # only call this when done with current iteration.
         #bpy.ops.object.mode_set(mode='SCULPT') # Preview shape keys while transfering
 
@@ -1176,7 +1179,7 @@ class CNV_OT_weighted_shape_key_transfer(shape_key_transfer_op, bpy.types.Operat
             self.near_vert_data.append(new_vert_data)
             self.near_vert_data_append = new_vert_data.append
 
-            target_co = vert.co
+            target_co = compat.mul(self.target_ob.matrix_world, vert.co) #vert.co
             mini_co, mini_index, mini_dist = self.kd.find(target_co)
             radius = mini_dist * self.extend_range
             diff_radius = radius - mini_dist

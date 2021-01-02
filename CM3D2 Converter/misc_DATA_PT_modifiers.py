@@ -165,13 +165,16 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
     bl_description = "Will force any modifiers if the mesh has shape keys."
     bl_options = {'REGISTER', 'UNDO'}
     
+    is_preserve_shape_key_values: bpy.props.BoolProperty(name="Preserve Shape Key Values", default=True , description="Ensure shape key values are not changed")
+
     #is_applies = bpy.props.BoolVectorProperty(name="Apply Modifier", size=32, options={'SKIP_SAVE'})
     is_applies: bpy.props.CollectionProperty(type=common.CNV_SelectorItem)
     active_modifier: bpy.props.IntProperty(name="Active Modifier")
 
     apply_viewport_visible: bpy.props.BoolProperty(name="Apply Viewport-Visible Modifiers", default=False)
     apply_renderer_visible: bpy.props.BoolProperty(name="Apply Renderer-Visible Modifiers", default=False)
-
+    
+    
     @classmethod
     def poll(cls, context):
         ob = context.active_object
@@ -214,7 +217,8 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
 
     def draw(self, context):
         prefs = common.preferences()
-        self.layout.prop(prefs, 'custom_normal_blend', icon='SNAP_NORMAL', slider=True)
+        self.layout.prop(prefs, 'custom_normal_blend'         , icon=compat.icon('SNAP_NORMAL'  ), slider=True)
+        self.layout.prop(self , 'is_preserve_shape_key_values', icon=compat.icon('SHAPEKEY_DATA'), slider=True)
         self.layout.label(text="Apply")
         ob = context.active_object
 
@@ -231,7 +235,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         self.layout.label(text="Show filters", icon='FILE_PARENT')
 
     def execute(self, context):
-        ob = context.active_object
+        ob = context.object
 
         if self.apply_viewport_visible or self.apply_renderer_visible:
             for index, mod in enumerate(ob.modifiers):
@@ -266,6 +270,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
 
         if is_shaped:
             pre_relative_keys = [s.relative_key.name for s in me.shape_keys.key_blocks]
+            pre_shape_key_values = [s.value for s in me.shape_keys.key_blocks]
             pre_active_shape_key_index = ob.active_shape_key_index
 
             shape_names = [s.name for s in me.shape_keys.key_blocks]
@@ -309,8 +314,8 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         copy_modifiers = ob.modifiers[:]
 
         for index, mod in enumerate(copy_modifiers):
-            if index >= 32: # luvoid : can only apply 32 modifiers at once.
-                break
+            #if index >= 32: # luvoid : can only apply 32 modifiers at once.
+            #    break
             if self.is_applies[index].value and mod.type != 'ARMATURE':
 
                 if mod.type == 'MIRROR':
@@ -405,6 +410,8 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
 
             for shape_index, shape in enumerate(me.shape_keys.key_blocks):
                 shape.relative_key = me.shape_keys.key_blocks[pre_relative_keys[shape_index]]
+                if self.is_preserve_shape_key_values:
+                    shape.value = pre_shape_key_values[shape_index]
 
             ob.active_shape_key_index = pre_active_shape_key_index
 

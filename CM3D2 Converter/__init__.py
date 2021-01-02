@@ -4,10 +4,10 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz, @luvoid",
-    "version": ("luv", 2020, 12, "28c"),
+    "version": ("luv", 2021, 1, 2),
     "blender": (2, 80, 0),
     "location" : "File > Import/Export > CM3D2 Model (.model)",
-    "description" : "A plugin dedicated to the editing, importing, and exporting of CM3D2 .Model Files.",
+    "description" : "A plugin dedicated to the editing, importing, and exporting of CM3D2 .model Files.",
     "warning": "",
     "wiki_url": "https://github.com/luvoid/Blender-CM3D2-Converter/blob/en_US/README.md",
     "tracker_url": "https://github.com/luvoid/Blender-CM3D2-Converter",
@@ -341,8 +341,8 @@ def register():
     bpy.types.TEXT_HT_header.append(misc_TEXT_HT_header.menu_func)
     bpy.types.VIEW3D_MT_pose_apply.append(misc_VIEW3D_MT_pose_apply.menu_func)
 
-    setattr(bpy.types.Object, 'cm3d2_bone_morph',  bpy.props.PointerProperty(type=misc_OBJECT_PT_context_object.CNV_PG_cm3d2_bone_morph ))
-    setattr(bpy.types.Object, 'cm3d2_wide_slider', bpy.props.PointerProperty(type=misc_OBJECT_PT_context_object.CNV_PG_cm3d2_wide_slider))
+    setattr(bpy.types.Object, 'cm3d2_bone_morph',  bpy.props.PointerProperty(type=misc_DATA_PT_context_arm.CNV_PG_cm3d2_bone_morph ))
+    setattr(bpy.types.Object, 'cm3d2_wide_slider', bpy.props.PointerProperty(type=misc_DATA_PT_context_arm.CNV_PG_cm3d2_wide_slider))
 
     system = compat.get_system(bpy.context)
     if hasattr(system, 'use_international_fonts') and not system.use_international_fonts:

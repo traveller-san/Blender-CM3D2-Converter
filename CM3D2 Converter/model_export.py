@@ -37,13 +37,13 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
     base_bone_name = bpy.props.StringProperty(name="Base Bone", default="*")
 
     items = [
-        ('ARMATURE', "Armature", "", 'OUTLINER_OB_ARMATURE', 1),
-        ('TEXT', "Text", "", 'FILE_TEXT', 2),
-        ('OBJECT_PROPERTY', "Object Data", "", 'OBJECT_DATAMODE', 3),
-        ('ARMATURE_PROPERTY', "Armature Data", "", 'ARMATURE_DATA', 4),
+        ('ARMATURE'         , "Armature"     , "", 'OUTLINER_OB_ARMATURE', 1),
+        ('TEXT'             , "Text"         , "", 'FILE_TEXT'           , 2),
+        ('OBJECT_PROPERTY'  , "Object Data"  , "", 'OBJECT_DATAMODE'     , 3),
+        ('ARMATURE_PROPERTY', "Armature Data", "", 'ARMATURE_DATA'       , 4),
     ]
     bone_info_mode = bpy.props.EnumProperty(items=items, name="Bone Data Source", default='OBJECT_PROPERTY', description="This will decide from where the Bone Data is gathered from.")
-
+    
     items = [
         ('TEXT', "Text", "", 'FILE_TEXT', 1),
         ('MATERIAL', "Material", "", 'MATERIAL', 2),
