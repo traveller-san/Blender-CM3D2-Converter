@@ -660,7 +660,7 @@ BL29_TO_BL28_SUBTYPE = {
 def subtype(key):
     if IS_LEGACY:
         return BL29_TO_LEGACY_SUBTYPE.get(key, key) or 'NONE'
-    elif bpy.app.version < (2, 90):
+    elif bpy.app.version < (2, 91):
         return BL29_TO_BL28_SUBTYPE.get(key, key) or 'NONE'
     return key
 
