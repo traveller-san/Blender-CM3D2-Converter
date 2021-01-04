@@ -9,6 +9,7 @@ import bmesh
 import mathutils
 from . import fileutil
 from . import compat
+from . import cm3d2_data
 
 # アドオン情報
 bl_info = {}
@@ -98,7 +99,7 @@ def decode_bone_name(name, enable=True):
 
 
 # CM3D2用マテリアルを設定に合わせて装飾
-def decorate_material(mate, enable=True, me=None, mate_index=-1):
+def decorate_material_old(mate, enable=True, me=None, mate_index=-1):
     if not compat.IS_LEGACY or not enable or 'shader1' not in mate:
         return
 
@@ -299,6 +300,56 @@ def decorate_material(mate, enable=True, me=None, mate_index=-1):
     else:
         mate.use_nodes = False
         mate.use_shadeless = False
+
+# CM3D2用マテリアルを設定に合わせて装飾
+def decorate_material(mate, enable=True, me=None, mate_index=-1):
+    if not enable or 'shader1' not in mate:
+        return
+    if compat.IS_LEGACY:
+        return decorate_material_old(mate, enable=enable, me=me, mate_index=mate_index)
+
+    # luvoid : set properties of the mate
+    shader = mate['shader1']
+    mate.preview_render_type  = 'FLAT'
+    mate.blend_method         = 'BLEND' if 'Trans' in shader else 'OPAQUE'
+    mate.use_backface_culling = 'Outline' not in shader
+
+    # luvoid : create cm3d2 shader node group and material output node
+    cmnode = None
+    if not compat.IS_LEGACY:
+        mate.use_nodes = True
+        #cm3d2_data.clear_nodes(mate.node_tree.nodes)
+        cmtree = bpy.data.node_groups.get('CM3D2 Shader')
+        if not cmtree:
+            blend_path = os.path.join(os.path.dirname(__file__), "append_data.blend")
+            with bpy.data.libraries.load(blend_path) as (data_from, data_to):
+                data_to.node_groups = ['CM3D2 Shader']
+            cmtree = data_to.node_groups[0]
+        cmnode = mate.node_tree.nodes.new('ShaderNodeGroup')
+        cmnode.node_tree = cmtree
+        matout = mate.node_tree.nodes.new('ShaderNodeOutputMaterial')
+        matout.location = (300,0)
+        mate.node_tree.links.new(matout.inputs.get('Surface'), cmnode.outputs.get('Surface'))
+
+    for key, node in mate.node_tree.nodes.items():
+        if not key.startswith('_'):
+            continue
+        if type(node) == bpy.types.ShaderNodeTexImage:
+            # luvoid : attatch tex node to cmnode sockets
+            socket = cmnode.inputs.get(key+" Color")
+            if socket:
+                mate.node_tree.links.new(socket, node.outputs.get('Color'))
+            socket = cmnode.inputs.get(key+" Alpha")
+            if socket:
+                mate.node_tree.links.new(socket, node.outputs.get('Alpha'))
+        else:
+            # luvoid : attatch color/float node to cmnode socket
+            input_socket = cmnode.inputs.get(key)
+            output_socket = node.outputs.get('Color') or node.outputs.get('Value')
+            if input_socket and output_socket:
+                mate.node_tree.links.new(input_socket, output_socket)
+
+    
 
 
 # 画像のおおよその平均色を取得

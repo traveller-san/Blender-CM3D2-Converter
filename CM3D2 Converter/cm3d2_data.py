@@ -687,22 +687,22 @@ class MaterialHandler:
                     f_item = cls.parse_f_node(node, remove_serial)
                     mat_data.f_list.append(f_item)
 
-        for node in nodes:
-            if not node.name.startswith('_'):
-                continue
-
-            node_type = node.type
-            if node_type == 'TEX_IMAGE':
-                tex_item = cls.parse_tex_node(node, remove_serial)
-                mat_data.tex_list.append(tex_item)
-            elif node_type == 'RGB':
-                col_item = cls.parse_col_node(node, remove_serial)
-                mat_data.col_list.append(col_item)
-
-            elif node_type == 'VALUE':
-                f_item = cls.parse_f_node(node, remove_serial)
-                mat_data.f_list.append(f_item)
-
+        #for node in nodes:
+        #    if not node.name.startswith('_'):
+        #        continue
+        #
+        #    node_type = node.type
+        #    if node_type == 'TEX_IMAGE':
+        #        tex_item = cls.parse_tex_node(node, remove_serial)
+        #        mat_data.tex_list.append(tex_item)
+        #    elif node_type == 'RGB':
+        #        col_item = cls.parse_col_node(node, remove_serial)
+        #        mat_data.col_list.append(col_item)
+        #
+        #    elif node_type == 'VALUE':
+        #        f_item = cls.parse_f_node(node, remove_serial)
+        #        mat_data.f_list.append(f_item)
+        
         return mat_data
 
     @classmethod
@@ -827,10 +827,10 @@ class MaterialHandler:
             mate.use_nodes = True
 
         nodes = mate.node_tree.nodes
-        # nodes.clear()
+        nodes.clear()
         # OUTPUT_MATERIAL, BSDF_PRINCIPLEDは消さない
-        if len(nodes) > 2:
-            clear_nodes(nodes)
+        #if len(nodes) > 2:
+        #    clear_nodes(nodes)
 
         for tex_item in mat_data.tex_list:
             prop_name = tex_item[0]

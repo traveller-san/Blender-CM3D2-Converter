@@ -587,7 +587,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
                 if prefs.mate_unread_same_value and data.name in mates_set:
                     continue
                 mates_set.add(data.name)
-                common.preferences().mate_unread_same_value
+                #common.preferences().mate_unread_same_value
                 bpy.ops.object.material_slot_add(override)
                 mate = context.blend_data.materials.new(data.name)#['name1'])
                 #mate['shader1'] = data['name2']
@@ -607,7 +607,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
                 else:
                     #self.create_mateprop(context, me, texes_set, mate, index, data)
                     cm3d2_data.MaterialHandler.apply_to(override, mate, data)
-                    #common.decorate_material(mate, self.is_decorate, me, index)
+                    common.decorate_material(mate, self.is_decorate, me, index)
                 common.setup_material(mate)
 
             ob.active_material_index = 0
