@@ -1342,7 +1342,7 @@ class CNV_OT_cleanup_scale_bones(bpy.types.Operator):
         for bone in edit_bones:
             if not '_SCL_' in bone.name:
                 continue
-            if self.is_keep_bones_with_children and len(bone.children > 0):
+            if self.is_keep_bones_with_children and len(bone.children) > 0:
                 continue
             parent = edit_bones.get(bone.name.replace("_SCL_","")) or bone.parent
             if parent:
@@ -1353,10 +1353,9 @@ class CNV_OT_cleanup_scale_bones(bpy.types.Operator):
         for child in ob.children:
             vgroups = child.vertex_groups
             if vgroups and len(vgroups) > 0:
-                for old_name, new_name in deleted_bones:
+                for old_name, new_name in deleted_bones.items():
                     old_vgroup = vgroups.get(old_name)
                     if old_vgroup:
                         old_vgroup.name = new_name
 
         return {'FINISHED'}
-
