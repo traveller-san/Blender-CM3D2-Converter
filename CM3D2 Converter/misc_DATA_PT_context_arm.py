@@ -883,12 +883,11 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        if context.area.type == 'PROPERTIES':
-            ob = context.object
+        ob = context.object
+        if ob:
             arm = ob.data
         else:
-            ob = context.active_object
-            arm = ob.data
+            arm = None
         has_arm  = arm and isinstance(arm, bpy.types.Armature) and ("Bip01" in arm.bones)
         can_edit = (ob and ob.data == arm) or (arm and arm.is_editmode)
         return has_arm and can_edit
@@ -1149,21 +1148,19 @@ class DATA_PT_cm3d2_sliders(bpy.types.Panel):
 
     @classmethod
     def poll(cls, context):
-        if context.area.type == 'PROPERTIES':
-            ob = context.object
+        ob = context.object
+        if ob:
             arm = ob.data
         else:
-            ob = context.active_object
-            arm = ob.data
+            arm = None
         return arm and isinstance(arm, bpy.types.Armature) and ("Bip01" in arm.bones)
 
     def draw(self, context):
-        if context.area.type == 'PROPERTIES':
-            ob = context.object
+        ob = context.object
+        if ob:
             arm = ob.data
         else:
-            ob = context.active_object
-            arm = ob.data
+            arm = None
 
         morph = ob.cm3d2_bone_morph
         self.layout.alignment = 'RIGHT'
@@ -1317,7 +1314,10 @@ class CNV_OT_cleanup_scale_bones(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         ob = context.object
-        arm = ob.data
+        if ob:
+            arm = ob.data
+        else:
+            arm = None
         has_arm  = arm and isinstance(arm, bpy.types.Armature)
         has_scl = False
         if has_arm:
