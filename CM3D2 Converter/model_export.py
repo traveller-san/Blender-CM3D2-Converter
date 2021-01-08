@@ -203,8 +203,9 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         prev_mode = None
         try:
             ob_source = context.active_object
-            selected_objs.append(ob_source)
-            ob_name = ob_source.name # luvoid : Fix error where object is active but not selected
+            if ob_source not in selected_objs:
+                selected_objs.append(ob_source) # luvoid : Fix error where object is active but not selected
+            ob_name = ob_source.name
             ob_main = None
             if self.is_batch:
                 # アクティブオブジェクトを１つコピーするだけでjoinしない

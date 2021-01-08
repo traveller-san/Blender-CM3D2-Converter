@@ -303,6 +303,10 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                                 temp_ob.modifiers.remove(mod)
 
                     new_shape_deforms.append([v.co.copy() for v in temp_me.vertices])
+                except Exception as e:
+                    #ob.modifiers.remove(mod)
+                    self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\" to shapekey %i" % (mod.type, mod.name, shape_index))
+                    print("Error applying '{type}' modifier \"{name}\":\n\t".format(type=mod.type, name=mod.name), e)
                 finally:
                     common.remove_data(temp_ob)
                     common.remove_data(temp_me)
@@ -312,13 +316,15 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             me.update()
 
         copy_modifiers = ob.modifiers[:]
-
+        override = context.copy()
+        override['object'] = ob
         for index, mod in enumerate(copy_modifiers):
             #if index >= 32: # luvoid : can only apply 32 modifiers at once.
             #    break
             if self.is_applies[index].value and mod.type != 'ARMATURE':
 
-                if mod.type == 'MIRROR':
+                if mod.type == 'MIRROR' and mod.use_mirror_vertex_groups:
+                    mod.use_mirror_vertex_groups = False
                     for vg in ob.vertex_groups[:]:
                         replace_list = ((r'\.L$', ".R"), (r'\.R$', ".L"), (r'\.l$', ".r"), (r'\.r$', ".l"), (r'_L$', "_R"), (r'_R$', "_L"), (r'_l$', "_r"), (r'_r$', "_l"))
                         for before, after in replace_list:
@@ -327,10 +333,11 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                                 ob.vertex_groups.new(name=mirrored_name)
 
                 try:
-                    bpy.ops.object.modifier_apply(context, modifier=mod.name)
-                except:
+                    bpy.ops.object.modifier_apply(override, modifier=mod.name)
+                except Exception as e:
                     #ob.modifiers.remove(mod)
-                    self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\"" % (mod.type, mod.name) )
+                    self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\"" % (mod.type, mod.name))
+                    print("Error applying '{type}' modifier \"{name}\":\n\t".format(type=mod.type, name=mod.name), e)
                     
 
         arm_ob = None
