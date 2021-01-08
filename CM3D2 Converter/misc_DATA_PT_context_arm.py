@@ -74,8 +74,8 @@ def menu_func(self, context):
     if bone_data_count:
         col = box.column(align=True)
         col.label(text="Armature Operators", icon=compat.icon('OUTLINER_OB_ARMATURE'))
-        row = col.row()
-        row.operator("object.cleanup_scale_bones", text="Cleanup Scale Bones", icon=compat.icon('X'))
+        col.operator("object.add_cm3d2_twist_bones", text="Connect Twist Bones", icon=compat.icon('CONSTRAINT_BONE'))
+        col.operator("object.cleanup_scale_bones"  , text="Cleanup Scale Bones", icon=compat.icon('X'              ))
         
     if 'is T Stance' in arm:
         if not is_boxed:
@@ -339,6 +339,317 @@ class CNV_OT_remove_armature_bone_data_property(bpy.types.Operator):
 
 
 
+
+
+
+"""
+- - - - - - For Twist Bones - - - - - - 
+"""
+@compat.BlRegister()
+class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
+    bl_idname      = 'object.add_cm3d2_twist_bones'
+    bl_label       = "Add CM3D2 Twist Bones"
+    bl_description = "Adds drivers to armature to automatically set twist-bone positions."
+    bl_options     = {'REGISTER', 'UNDO'}
+
+    scale = bpy.props.FloatProperty(name="Scale", default=5, min=0.1, max=100, soft_min=0.1, soft_max=100, step=100, precision=1, description="The amount by which the mesh is scaled when imported. Recommended that you use the same when at the time of export.")
+
+    #is_fix_thigh       : bpy.props.BoolProperty(name="Fix Thigh"       , default=False, description="Fix twist bone values for the thighs in motor-cycle pose")
+    #is_drive_shape_keys: bpy.props.BoolProperty(name="Drive Shape Keys", default=True, description="Connect sliders to mesh children's shape keys"           )
+    
+    fDegPer  = 1.1
+    fDegPer1 = 0.2 
+    fRota    = 0.5 
+                                            
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        if ob:
+            arm = ob.data
+        else:
+            arm = None
+        has_arm  = arm and isinstance(arm, bpy.types.Armature) and ("Bip01" in arm.bones)
+        can_edit = (ob and ob.data == arm) or (arm and arm.is_editmode)
+        return has_arm and can_edit
+
+    def invoke(self, context, event):
+        self.scale = common.preferences().scale
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        self.layout.prop(self, 'scale'              )
+        #self.layout.prop(self, 'is_fix_thigh'       )
+        #self.layout.prop(self, 'is_drive_shape_keys')
+
+    def getPoseBone(self, ob, boneName, flip=False):
+        side = "R" if flip else "L"
+        
+        poseBoneList = ob.pose.bones
+        poseBone = poseBoneList.get(boneName.replace("?",side)) or poseBoneList.get(boneName.replace("?","*")+"."+side)
+        
+        if not poseBone:
+            print("WARNING: Could not find bone \""+boneName+"\"")
+            return
+
+        return poseBone
+
+    def driveShapeKey(self, shapekey, data, prop, expression, set_min=None, set_max=None):
+        if not shapekey:
+            return
+        driver = shapekey.driver_add('value').driver
+        driver.type = 'SCRIPTED'
+
+        driver_var = driver.variables.new() if len(driver.variables) < 1 else driver.variables[0]
+        driver_var.type = 'SINGLE_PROP'
+        driver_var.name = prop
+
+        driver_target = driver_var.targets[0]
+        driver_target.id_type = 'OBJECT'
+        driver_target.id = data.id_data
+        driver_target.data_path = data.path_from_id(prop)
+
+        driver.expression = expression
+
+        if set_min:
+            shapekey.slider_min = set_min
+        if set_max:
+            shapekey.slider_max = set_max
+
+    def driveTwistBone(self, ob, boneName, flip=False, prop='rotation_euler', axes=(1,2,0), expression=("", "", ""), infulencers=()):
+        bone = self.getPoseBone(ob, boneName, flip=flip)
+        if not bone:
+            return
+        if 'euler' in prop:
+            bone.rotation_mode = 'XYZ'
+
+        args = []
+        for name in infulencers:
+            if type(infulencers) == str:
+                name = infulencers
+            arg_bone = self.getPoseBone(ob, name, flip=flip)
+            if arg_bone:
+                args.append(arg_bone.name)
+            else:
+                args.append(name)
+            if type(infulencers) == str:
+                break
+
+        for i, index in enumerate(axes):
+            driver = bone.driver_add(prop, index).driver
+            driver.type = 'SCRIPTED'
+            driver.use_self = True
+            if type(expression) == str:
+                expr = expression
+            else:
+                expr = expression[i]
+            driver.expression = expr.format(*args, axis=['x','y','z'][index], index=index, i=i)
+
+    def constrainTwistBone(self, ob, boneName, targetName, flip='BOTH', type='COPY_ROTATION', space=None, map=None, **kwargs):
+        if flip == 'BOTH':
+            const_l = self.constrainTwistBone(ob, boneName, targetName, flip=False, type=type, space=space, map=map, **kwargs)
+            const_r = self.constrainTwistBone(ob, boneName, targetName, flip=True , type=type, space=space, map=map, **kwargs)
+            return const_l, const_r
+
+        bone   = self.getPoseBone(ob, boneName  , flip=flip)
+        target = self.getPoseBone(ob, targetName, flip=flip)
+        if not bone or not target:
+            return None
+
+        const = bone.constraints.new(type)
+        const.target = ob
+        const.subtarget = target.name
+        if space:
+            const.target_space = space
+            const.owner_space  = space
+        if map:
+            const.map_from = map
+            const.map_to   = map
+        for key, val in kwargs.items():
+            setattr(const, key, val)
+
+        return const
+
+    def execute(self, context):
+        ob = context.object
+        arm = ob.data
+        pre_mode = ob.mode
+        if pre_mode != 'POSE':
+            bpy.ops.object.mode_set(mode='POSE')
+                         
+        # AutoTwist() ... Shoulder : 'TBody.cs' line 2775
+        self.constrainTwistBone(ob, 'Uppertwist_?', 'Bip01 ? UpperArm',
+            type  = 'TRANSFORM'                 ,
+            space = 'LOCAL'                     ,
+            map   = 'ROTATION'                  ,
+            use_motion_extrapolate = True       ,
+            from_rotation_mode = 'SWING_TWIST_Y',
+            mix_mode_rot       = 'REPLACE'      ,
+            from_max_y_rot =  1                 ,
+            to_max_y_rot   = -self.fDegPer
+        )
+        self.constrainTwistBone(ob, 'Uppertwist1_?', 'Bip01 ? UpperArm', 
+            type  = 'TRANSFORM'                 ,
+            space = 'LOCAL'                     ,
+            map   = 'ROTATION'                  ,
+            use_motion_extrapolate = True       ,
+            from_rotation_mode = 'SWING_TWIST_Y',
+            mix_mode_rot       = 'REPLACE'      ,
+            from_max_y_rot = 1                  ,
+            to_max_y_rot   = 1                  ,
+            influence      = self.fDegPer1
+        )
+        self.constrainTwistBone(ob, 'Kata_?', 'Bip01 ? UpperArm', 
+            space = 'WORLD',
+            influence = self.fRota
+        )
+
+        # AutoTwist() ... Wrist : 'TBody.cs' line 2793
+        self.constrainTwistBone(ob, 'Foretwist_?', 'Bip01 ? Hand',
+            type  = 'TRANSFORM'                 ,
+            space = 'LOCAL'                     ,
+            map   = 'ROTATION'                  ,
+            use_motion_extrapolate = True       ,
+            from_rotation_mode = 'SWING_TWIST_Y',
+            mix_mode_rot       = 'REPLACE'      ,
+            from_max_y_rot = 1                  ,
+            to_max_y_rot   = 1
+        )
+        self.constrainTwistBone(ob, 'Foretwist1_?', 'Bip01 ? Hand', 
+            type  = 'TRANSFORM'                 ,
+            space = 'LOCAL'                     ,
+            map   = 'ROTATION'                  ,
+            use_motion_extrapolate = True       ,
+            from_rotation_mode = 'SWING_TWIST_Y',
+            mix_mode_rot       = 'REPLACE'      ,
+            from_max_y_rot = 1                  ,
+            to_max_y_rot   = 1                  ,
+            influence      = 0.5
+        )
+
+
+        # AutoTwist() ... Thigh : 'TBody.cs' line 2813
+        self.constrainTwistBone(ob, 'momotwist_?', 'Bip01 ? Thigh',
+            type  = 'TRANSFORM'                 ,
+            space = 'LOCAL'                     ,
+            map   = 'ROTATION'                  ,
+            use_motion_extrapolate = True       ,
+            from_rotation_mode = 'SWING_TWIST_Y',
+            mix_mode_rot       = 'REPLACE'      ,
+            from_max_y_rot =  1                 ,
+            to_max_y_rot   = -self.fDegPer
+        )
+        self.constrainTwistBone(ob, 'momotwist2_?', 'Bip01 ? Thigh',
+            type  = 'TRANSFORM'                 ,
+            space = 'LOCAL'                     ,
+            map   = 'ROTATION'                  ,
+            use_motion_extrapolate = True       ,
+            from_rotation_mode = 'SWING_TWIST_Y',
+            mix_mode_rot       = 'REPLACE'      ,
+            from_max_y_rot = 1                  ,
+            to_max_y_rot   = 1                  ,
+            influence      = 0.7
+        )
+
+
+        # MoveMomoniku() : 'TBody.cs' line 2841
+        self.driveTwistBone(ob, 'momoniku_?', flip=False, expression=("", "", "min(0,max(-8, self.id_data.pose.bones['{0}'].matrix.col[2].xyz.dot( (0,0,-1) ) *  10 * (pi/180) ))"), infulencers=('Bip01 ? Thigh'))
+        self.driveTwistBone(ob, 'momoniku_?', flip=True , expression=("", "", "min(8,max( 0, self.id_data.pose.bones['{0}'].matrix.col[2].xyz.dot( (0,0,-1) ) * -10 * (pi/180) ))"), infulencers=('Bip01 ? Thigh'))
+        self.constrainTwistBone(ob, 'Hip_?', 'Bip01 ? Thigh', 
+            space = 'LOCAL_WITH_PARENT', 
+            influence = 0.67
+        )
+        
+        
+
+        bpy.ops.object.mode_set(mode=pre_mode)
+        
+        return {'FINISHED'}
+
+'''
+    public void AutoTwist()
+	{
+		if (this.boAutoTwistShoulderL && this.Uppertwist_L != null)
+		{
+			Quaternion localRotation = this.UpperArmL.localRotation;
+			float x = (Quaternion.Inverse(this.quaUpperArmL) * localRotation).eulerAngles.x;
+			this.Uppertwist_L.localRotation = Quaternion.Euler(-0.0174532924f * this.DegPer(x, this.fDegPer), 0f, 0f);
+			this.Uppertwist1_L.localRotation = Quaternion.Euler(-0.0174532924f * this.DegPer(x, this.fDegPer1), 0f, 0f);
+			this.Kata_L.localRotation = this.quaKata_L;
+			this.Kata_L.rotation = Quaternion.Slerp(this.Kata_L.rotation, this.UpperArmL.rotation, this.fRota);
+		}
+		if (this.boAutoTwistShoulderR && this.Uppertwist_R != null)
+		{
+			Quaternion localRotation2 = this.UpperArmR.localRotation;
+			float x2 = (Quaternion.Inverse(this.quaUpperArmR) * localRotation2).eulerAngles.x;
+			this.Uppertwist_R.localRotation = Quaternion.Euler(-0.0174532924f * this.DegPer(x2, this.fDegPer), 0f, 0f);
+			this.Uppertwist1_R.localRotation = Quaternion.Euler(-0.0174532924f * this.DegPer(x2, 0.2f), 0f, 0f);
+			this.Kata_R.localRotation = this.quaKata_R;
+			this.Kata_R.rotation = Quaternion.Slerp(this.Kata_R.rotation, this.Uppertwist_R.rotation, 0.5f);
+		}
+		if (this.boAutoTwistWristL && this.Foretwist_L != null)
+		{
+			Vector3 fromDirection = this.HandL_MR.localRotation * Vector3.up;
+			fromDirection.Normalize();
+			Vector3 toDirection = this.HandL.localRotation * Vector3.up;
+			toDirection.Normalize();
+			this.m_fAngleHandL = this.AxisAngleOnAxisPlane(fromDirection, toDirection, new Vector3(1f, 0f, 0f)) * -1f;
+			this.Foretwist_L.localRotation = Quaternion.AngleAxis(this.m_fAngleHandL, this.Foretwist_L_MR.localRotation * Vector3.left) * this.Foretwist_L_MR.localRotation;
+			this.Foretwist1_L.localRotation = Quaternion.AngleAxis(this.m_fAngleHandL * 0.5f, this.Foretwist1_L_MR.localRotation * Vector3.left) * this.Foretwist1_L_MR.localRotation;
+		}
+		if (this.boAutoTwistWristR && this.Foretwist_R != null)
+		{
+			Vector3 fromDirection2 = this.HandR_MR.localRotation * Vector3.up;
+			fromDirection2.Normalize();
+			Vector3 toDirection2 = this.HandR.localRotation * Vector3.up;
+			toDirection2.Normalize();
+			float num = this.AxisAngleOnAxisPlane(fromDirection2, toDirection2, new Vector3(1f, 0f, 0f)) * -1f;
+			this.Foretwist_R.localRotation = Quaternion.AngleAxis(num, this.Foretwist_R_MR.localRotation * Vector3.left) * this.Foretwist_R_MR.localRotation;
+			this.Foretwist1_R.localRotation = Quaternion.AngleAxis(num * 0.5f, this.Foretwist1_R_MR.localRotation * Vector3.left) * this.Foretwist1_R_MR.localRotation;
+		}
+		if (this.boAutoTwistThighL && this.momotwist_L != null)
+		{
+			Quaternion quaternion = this.Thigh_L.localRotation;
+			quaternion = Quaternion.Inverse(this.quaThigh_L) * quaternion;
+			Vector3 vector = quaternion * Vector3.forward;
+			float num2 = quaternion.eulerAngles.x;
+			if (vector.z < 0f)
+			{
+				num2 = 180f - num2;
+			}
+			this.momotwist_L.localRotation = Quaternion.Euler(-0.0174532924f * this.DegPer(num2, this.fDegPer), 0f, 0f) * this.q_momotwist_L;
+			this.momotwist2_L.localRotation = Quaternion.Euler(0.0174532924f * this.DegPer(num2, 0.7f), 0f, 0f) * this.q_momotwist2_L;
+		}
+		if (this.boAutoTwistThighR & this.momotwist_R != null)
+		{
+			Quaternion quaternion2 = this.Thigh_R.localRotation;
+			quaternion2 = Quaternion.Inverse(this.quaThigh_R) * quaternion2;
+			Vector3 vector2 = quaternion2 * Vector3.forward;
+			float num3 = quaternion2.eulerAngles.x;
+			if (vector2.z < 0f)
+			{
+				num3 = 180f - num3;
+			}
+			this.momotwist_R.localRotation = Quaternion.Euler(-0.0174532924f * this.DegPer(num3, this.fDegPer), 0f, 0f) * this.q_momotwist_R;
+			this.momotwist2_R.localRotation = Quaternion.Euler(0.0174532924f * this.DegPer(num3, 0.7f), 0f, 0f) * this.q_momotwist2_R;
+		}
+	}
+
+	public void MoveMomoniku()
+	{
+		if (!TBody.boMoveMomoniku || this.momoniku_L == null || this.momoniku_R == null)
+		{
+			return;
+		}
+		float num = Mathf.Clamp(Vector3.Dot(Vector3.up, this.Thigh_L.up), 0f, 0.8f);
+		float num2 = Mathf.Clamp(Vector3.Dot(Vector3.up, this.Thigh_R.up), 0f, 0.8f);
+		this.momoniku_L.localRotation = this.momoniku_L_MR.localRotation;
+		this.momoniku_R.localRotation = this.momoniku_R_MR.localRotation;
+		this.momoniku_L.Rotate(0f, 0f, num * 10f);
+		this.momoniku_R.Rotate(0f, 0f, -num2 * 10f);
+		this.Hip_L.localRotation = Quaternion.Slerp(this.Hip_L_MR.localRotation, this.Thigh_L.localRotation, 0.67f);
+		this.Hip_R.localRotation = Quaternion.Slerp(this.Hip_R_MR.localRotation, this.Thigh_R.localRotation, 0.67f);
+	}
+'''
 
 
 
@@ -933,13 +1244,7 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
         driver.expression = expression
 
     def execute(self, context):
-        try:
-            ob = context.object
-        except:
-            try:
-                ob = context.active_object
-            except:
-                pass
+        ob = context.object
         arm = ob.data
         pre_mode = ob.mode
         #if pre_mode != 'EDIT':
