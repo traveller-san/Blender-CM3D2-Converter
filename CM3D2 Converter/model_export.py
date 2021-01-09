@@ -52,12 +52,12 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
     is_arrange_name = bpy.props.BoolProperty(name="Delete Duplicate Name Numbers", default=True, description="This will delete the numbers that are added to duplicate names such as [.001]")
 
+    is_align_to_base_bone = bpy.props.BoolProperty(name="Align to Base Bone", default=False, description="Align the object to it's base bone")
     is_convert_tris = bpy.props.BoolProperty(name="Triangulate", default=True, description="Will triangulate any none triangular faces.")
     is_normalize_weight = bpy.props.BoolProperty(name="Normalize Weights", default=True, description="Will normalize all Vertex Weights so that the sum of the weights on a single vertex is equal to 1.")
     is_clean_vertex_groups = bpy.props.BoolProperty(name="Clean Vertex Groups", default=True, description="Will remove Verticies from Vertex Groups where their weight is zero.")
     is_convert_bone_weight_names = bpy.props.BoolProperty(name="Convert Vertex Groups for CM3D2", default=True, description="This will change the vertex group names to CM3D2's format if it is in Blenders format.")
     
-
     is_batch = bpy.props.BoolProperty(name="Batch Mode", default=False, description="Does not switch modes or select incorrect locations")
 
     export_tangent = bpy.props.BoolProperty(name="Export Tangents", default=False, description="Outputs tangent info.")
@@ -162,6 +162,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             row.enabled = False
 
         prefs = common.preferences()
+        
         box = self.layout.box()
         col = box.column(align=True)
         col.label(text="Bone Data Source", icon='BONE_DATA')
@@ -169,11 +170,13 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
         col = box.column(align=True)
         col.label(text="Material Source", icon='MATERIAL')
         col.prop(self, 'mate_info_mode', icon='MATERIAL', expand=True)
+        
         box = self.layout.box()
-        box.label(text="Triangulate")
-        box.prop(self, 'is_convert_tris', icon='MESH_DATA')
-        box.prop(prefs, 'skip_shapekey', icon='SHAPEKEY_DATA')
-        box.prop(self, 'export_tangent', icon='CURVE_BEZCIRCLE')
+        box.label(text="Mesh Options")
+        box.prop(self , 'is_align_to_base_bone', icon=compat.icon('OBJECT_ORIGIN'  ))
+        box.prop(self , 'is_convert_tris'      , icon=compat.icon('MESH_DATA'      ))
+        box.prop(prefs, 'skip_shapekey'        , icon=compat.icon('SHAPEKEY_DATA'  ))
+        box.prop(self , 'export_tangent'       , icon=compat.icon('CURVE_BEZCIRCLE'))
 
         sub_box = box.box()
         sub_box.prop(self, 'is_normalize_weight', icon='MOD_VERTEX_WEIGHT')
@@ -289,6 +292,10 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
 
         if ob.active_shape_key_index != 0:
             ob.active_shape_key_index = 0
+            me.update()
+
+        if self.is_align_to_base_bone:
+            bpy.ops.object.align_to_base_bone(scale=1.0/self.scale, preserve_mesh=True, bone_info_mode=self.bone_info_mode)
             me.update()
 
         # データの成否チェック
