@@ -322,9 +322,9 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             #if index >= 32: # luvoid : can only apply 32 modifiers at once.
             #    break
             if self.is_applies[index].value and mod.type != 'ARMATURE':
-
                 if mod.type == 'MIRROR' and mod.use_mirror_vertex_groups:
-                    mod.use_mirror_vertex_groups = False
+                    if bpy.ops.object.decode_cm3d2_vertex_group_names.poll():
+                        self.report(type={'WARNING'}, message="Vertex groups are not in blender naming style. Mirror modifier results may not be as expected")
                     for vg in ob.vertex_groups[:]:
                         replace_list = ((r'\.L$', ".R"), (r'\.R$', ".L"), (r'\.l$', ".r"), (r'\.r$', ".l"), (r'_L$', "_R"), (r'_R$', "_L"), (r'_l$', "_r"), (r'_r$', "_l"))
                         for before, after in replace_list:
@@ -336,7 +336,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                     bpy.ops.object.modifier_apply(override, modifier=mod.name)
                 except Exception as e:
                     #ob.modifiers.remove(mod)
-                    self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\"" % (mod.type, mod.name))
+                    self.report(type={'WARNING'}, message="Could not apply '{type}' modifier \"{name}\"".format(type=mod.type, name=mod.name))
                     print("Error applying '{type}' modifier \"{name}\":\n\t".format(type=mod.type, name=mod.name), e)
                     
 
