@@ -257,10 +257,13 @@ def convert_bl_to_cm_local_space(x):
         return mul(x, CM_TO_BL_SPACE_MAT4)
 
 
-CM_TO_BL_BONE_ROTATION_MAT4 = bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Z', to_forward='Y', to_up='Z').to_4x4()
+CM_TO_BL_BONE_ROTATION_MAT4 = mul(
+    bpy_extras.io_utils.axis_conversion(from_forward='Z', from_up='-X', to_forward='Y', to_up='Z').to_4x4(),
+    mathutils.Matrix.Scale(-1, 4, (1, 0, 0))
+)
 BL_TO_CM_BONE_ROTATION_MAT4 = CM_TO_BL_BONE_ROTATION_MAT4.inverted()
 CM_TO_BL_BONE_ROTATION_QUAT = CM_TO_BL_BONE_ROTATION_MAT4.to_quaternion()
-BL_TO_CM_BONE_ROTATION_QUAT = CM_TO_BL_BONE_ROTATION_QUAT.inverted()
+BL_TO_CM_BONE_ROTATION_QUAT = BL_TO_CM_BONE_ROTATION_MAT4.to_quaternion()
 def convert_cm_to_bl_bone_rotation(x):
     if type(x) == mathutils.Quaternion:
         return mul(x, CM_TO_BL_BONE_ROTATION_QUAT)
@@ -273,10 +276,11 @@ def convert_bl_to_cm_bone_rotation(x):
         return mul(x, BL_TO_CM_BONE_ROTATION_MAT4)
 
 
-CM_TO_BL_BONE_SPACE_MAT4 = mul(
-    bpy_extras.io_utils.axis_conversion(from_forward='-X', from_up='Y', to_forward='Y', to_up='Z').to_4x4(),
-    mathutils.Matrix.Scale(-1, 4, (0, 0, 1))
-)
+#CM_TO_BL_BONE_SPACE_MAT4 = mul(
+#    bpy_extras.io_utils.axis_conversion(from_forward='-X', from_up='Y', to_forward='Y', to_up='Z').to_4x4(),
+#    mathutils.Matrix.Scale(-1, 4, (0, 0, 1))
+#)
+CM_TO_BL_BONE_SPACE_MAT4 = CM_TO_BL_BONE_ROTATION_MAT4.inverted()
 BL_TO_CM_BONE_SPACE_MAT4 = CM_TO_BL_BONE_SPACE_MAT4.inverted()
 CM_TO_BL_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_MAT4.to_quaternion()
 BL_TO_CM_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_QUAT.inverted()
@@ -329,10 +333,14 @@ def convert_bl_to_cm_slider_space(x):
 
 
 def set_bone_matrix(bone, mat):
-    bone.matrix = mat
+    bone.matrix = mat.copy()
+    #axis, angle = mat.to_quaternion().to_axis_angle()
+    #bone.roll = angle
     if not IS_LEGACY and isinstance(bone, bpy.types.EditBone):
         #print("Bone align_roll: ", (mat[0][0],mat[1][0],mat[2][0]))
-        bone.align_roll((mat[0][0],mat[1][0],mat[2][0]))
+        bone.align_roll((mat[0][2],mat[1][2],mat[2][2]))
+    print("bone: ", bone.matrix)
+    print("mat:  ", mat)
 
 
 BL28_TO_LEGACY_ICON = {
