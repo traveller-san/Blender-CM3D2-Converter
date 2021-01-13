@@ -26,8 +26,6 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
     scale = bpy.props.FloatProperty(name="Scale", default=5, min=0.1, max=100, soft_min=0.1, soft_max=100, step=100, precision=1, description="The scale at the time of import.")
     set_frame_rate = bpy.props.BoolProperty(name="Set Framerate", default=True, description="Change the scene's render settings to 60 fps")
 
-    is_anm_data_text = bpy.props.BoolProperty(name="Anm Text", default=True, description="Output Data to a JSON file")
-
     remove_pre_animation = bpy.props.BoolProperty(name="Remove previous Animation", default=True)
     set_frame = bpy.props.BoolProperty(name="Set Frame", default=True)
     ignore_automatic_bone = bpy.props.BoolProperty(name="Exclude Twister Bones", default=True)
@@ -56,8 +54,7 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
     def draw(self, context):
 
         self.layout.prop(self, 'scale')
-        self.layout.prop(self, 'set_frame_rate'  , icon='RENDER_ANIMATION')
-        self.layout.prop(self, 'is_anm_data_text', icon='TEXT'            )
+        self.layout.prop(self, 'set_frame_rate', icon='RENDER_ANIMATION')
 
         box = self.layout.box()
         box.prop(self, 'remove_pre_animation', icon='DISCLOSURE_TRI_DOWN')
@@ -95,7 +92,7 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
 
         for anm_data_index in range(9**9):
             path = common.read_str(file)
-            
+
             base_bone_name = path.split('/')[-1]
             if base_bone_name not in anm_data:
                 anm_data[base_bone_name] = {'path': path}
@@ -117,15 +114,6 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
             if channel_id == 0:
                 break
         
-        if self.is_anm_data_text:
-            if "AnmData" in context.blend_data.texts:
-                txt = context.blend_data.texts["AnmData"]
-                txt.clear()
-            else:
-                txt = context.blend_data.texts.new("AnmData")
-            import json
-            txt.write( json.dumps(anm_data, ensure_ascii=False, indent=2) )
-
         if self.set_frame_rate:
             context.scene.render.fps = 60
         fps = context.scene.render.fps
@@ -133,9 +121,6 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
         ob = context.active_object
         arm = ob.data
         pose = ob.pose
-        base_bone = arm.get('BaseBone')
-        if base_bone:
-            base_bone = arm.bones.get(base_bone)
 
         if self.remove_pre_animation:
             anim = ob.animation_data
@@ -196,93 +181,45 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
                         elif channel_id == 106:
                             locs[frame][2] = data['f0']
 
-            '''
-            for frame, (loc, quat) in enumerate(zip(locs.values(), quats.values())):
-                loc  = mathutils.Vector(loc) * self.scale
-                quat = mathutils.Quaternion(quat)
-            
-                loc_mat = mathutils.Matrix.Translation(loc).to_4x4()
-                rot_mat = quat.to_matrix().to_4x4()
-                mat     = compat.mul(loc_mat, rot_mat)
-                
-                bone_loc  = bone.head_local.copy()
-                bone_quat = bone.matrix.to_quaternion()
-            
-                if bone.parent:
-                    parent = bone.parent
-                else:
-                    parent = base_bone
-                    
-                if parent:
-                    mat = compat.convert_cm_to_bl_bone_space(mat)
-                    mat = compat.mul(parent.matrix_local, mat)
-                    mat = compat.convert_cm_to_bl_bone_rotation(mat)
-                    pose_mat = bone.convert_local_to_pose(
-                        matrix              = mat, 
-                        matrix_local        = bone.matrix_local,
-                        parent_matrix       = mathutils.Matrix.Identity(4),
-                        parent_matrix_local = parent.matrix_local
-                    )
-                else:
-                    mat = compat.convert_cm_to_bl_bone_rotation(mat)
-                    mat = compat.convert_cm_to_bl_space(mat)
-                    pose_mat = bone.convert_local_to_pose(
-                        matrix       = mat, 
-                        matrix_local = bone.matrix_local
-                    )
-            
-                if self.is_location:
-                    pose_bone.location = pose_mat.to_translation()
-                    pose_bone.keyframe_insert('location'           , frame=frame * fps, group=pose_bone.name)
-                if self.is_rotation:
-                    pose_bone.rotation_quaternion = pose_mat.to_quaternion()
-                    pose_bone.keyframe_insert('rotation_quaternion', frame=frame * fps, group=pose_bone.name)
-                if max_frame < frame * fps:
-                    max_frame = frame * fps
-            '''
-                    
-            
             if self.is_location:
                 for frame, loc in locs.items():
                     loc = mathutils.Vector(loc) * self.scale
                     bone_loc = bone.head_local.copy()
-            
+
                     if bone.parent:
                         #loc.x, loc.y, loc.z = -loc.y, -loc.x, loc.z
-                    
+
                         #co.x, co.y, co.z = -co.y, co.z, co.x
                         #loc.x, loc.y, loc.z = loc.z, -loc.x, loc.y
-                        #mat = mathutils.Matrix(
-                        #    [( 0,  0,  1,  0), 
-                        #     (-1,  0,  0,  0), 
-                        #     ( 0,  1,  0,  0),
-                        #     ( 0,  0,  0,  1)]
-                        #)
-                        #loc = compat.mul(mat, loc)
+                        mat = mathutils.Matrix(
+                            [( 0,  0,  1,  0), 
+                             (-1,  0,  0,  0), 
+                             ( 0,  1,  0,  0),
+                             ( 0,  0,  0,  1)]
+                        )
 
-                        loc = compat.convert_cm_to_bl_bone_space(loc)
-                    
+                        loc = compat.mul(mat, loc)
+
                         bone_loc = bone_loc - bone.parent.head_local
                         bone_loc.rotate(bone.parent.matrix_local.to_quaternion().inverted())
                     else:
-                        #loc.x, loc.y, loc.z = loc.x, loc.z, loc.y
-                        loc = compat.convert_cm_to_bl_space(loc)
-            
+                        loc.x, loc.y, loc.z = loc.x, loc.z, loc.y
+
                     result_loc = loc - bone_loc
                     pose_bone.location = result_loc.copy()
-            
+
                     pose_bone.keyframe_insert('location', frame=frame * fps, group=pose_bone.name)
                     if max_frame < frame * fps:
                         max_frame = frame * fps
-            
+
             if self.is_rotation:
                 for frame, quat in quats.items():
                     quat = mathutils.Quaternion(quat)
                     bone_quat = bone.matrix.to_quaternion()
-            
+
                     if bone.parent:
                         #quat.w, quat.x, quat.y, quat.z = quat.w, quat.y, quat.x, -quat.z
-            
+
                         ##rot.w, rot.y, -rot.z, -rot.x = rot.w, rot.x, rot.y, rot.z
                         quat.w, quat.x, quat.y, quat.z = quat.w, -quat.z, quat.x, -quat.y
                         
@@ -297,42 +234,26 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
                         #p.make_compatible(I)
                         #print(p.to_euler())
                         #quat = pq
-            
+
                         #quat = compat.convert_opengl_to_blend_quat(quat)
-            
+
                         #quat = compat.mul(quat, mat.to_quaternion())
-                        
-                        #quat = compat.convert_cm_to_bl_space(quat)
-                        #quat = compat.convert_cm_to_bl_bone_space(quat)
-                        #quat = compat.mul(bone.parent.matrix_local.to_quaternion(), quat)
-                        #quat = compat.convert_cm_to_bl_bone_rotation(quat)
-                        #quat = compat.convert_cm_to_bl_bone_space(quat)
-                        #quat = compat.mul(bone.parent.matrix_local.to_quaternion().inverted(), quat)
                     else:
-                        ##quat = compat.convert_opengl_y_up_to_blend_z_up_quat(quat)
-                        #quat.w, quat.x, quat.y, quat.z = quat.w, quat.y, quat.x, -quat.z
-                        #
-                        ##fix_quat = mathutils.Euler((math.radians(90), math.radians(90), 0.0), 'XYZ').to_quaternion()
-                        ##fix_quat2 = mathutils.Euler((0.0, math.radians(-90), 0.0), 'XYZ').to_quaternion()
-                        #fix_quat = mathutils.Euler((math.radians(90), math.radians(90), 0.0), 'XYZ').to_quaternion()
-                        #fix_quat2 = mathutils.Euler((0.0, 0.0, 0.0), 'XYZ').to_quaternion()
-                        #quat = compat.mul(fix_quat, quat)
+                        #quat = compat.convert_opengl_y_up_to_blend_z_up_quat(quat)
+                        quat.w, quat.x, quat.y, quat.z = quat.w, quat.y, quat.x, -quat.z
                         
-                        #base_quat = base_bone.matrix_local.to_quaternion()
-                        #base_quat = compat.convert_bl_to_cm_bone_rotation(base_quat)
-                        #base_quat = compat.convert_bl_to_cm_space(base_quat)
-                        #quat = compat.mul(base_quat.inverted(), quat)
-                        quat = compat.convert_cm_to_bl_slider_space(quat)
-                        #quat = compat.convert_cm_to_bl_bone_rotation(quat)
-                        pass
-            
+                        #fix_quat = mathutils.Euler((math.radians(90), math.radians(90), 0.0), 'XYZ').to_quaternion()
+                        #fix_quat2 = mathutils.Euler((0.0, math.radians(-90), 0.0), 'XYZ').to_quaternion()
+                        fix_quat = mathutils.Euler((math.radians(90), math.radians(90), 0.0), 'XYZ').to_quaternion()
+                        fix_quat2 = mathutils.Euler((0.0, 0.0, 0.0), 'XYZ').to_quaternion()
+                        quat = compat.mul(fix_quat, quat)
+
                     result_quat = compat.mul(bone_quat.inverted(), quat)
                     pose_bone.rotation_quaternion = result_quat.copy()
-            
+
                     pose_bone.keyframe_insert('rotation_quaternion', frame=frame * fps, group=pose_bone.name)
                     if max_frame < frame * fps:
                         max_frame = frame * fps
-            
 
         if self.set_frame:
             context.scene.frame_start = 0

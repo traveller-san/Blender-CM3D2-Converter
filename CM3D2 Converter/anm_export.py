@@ -26,8 +26,6 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
     is_backup = bpy.props.BoolProperty(name="Backup", default=True, description="Will backup overwritten files.")
     version = bpy.props.IntProperty(name="Version", default=1000, min=1000, max=1111, soft_min=1000, soft_max=1111, step=1)
 
-    is_anm_data_text = bpy.props.BoolProperty(name="From Anm Text", default=False, description="Input data from JSON file")
-
     frame_start = bpy.props.IntProperty(name="Starting Frame", default=0, min=0, max=99999, soft_min=0, soft_max=99999, step=1)
     frame_end = bpy.props.IntProperty(name="Last Frame", default=0, min=0, max=99999, soft_min=0, soft_max=99999, step=1)
     key_frame_count = bpy.props.IntProperty(name="Number of key frames", default=1, min=1, max=99999, soft_min=1, soft_max=99999, step=1)
@@ -82,10 +80,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         box.prop(self, 'is_backup', icon='FILE_BACKUP')
         box.prop(self, 'version')
 
-        self.layout.prop(self, 'is_anm_data_text', icon='TEXT')
-
         box = self.layout.box()
-        box.enabled = not self.is_anm_data_text
         sub_box = box.box()
         row = sub_box.row()
         row.prop(self, 'frame_start')
@@ -118,10 +113,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
         try:
             with file:
-                if self.is_anm_data_text:
-                    self.write_animation_from_text(context, file)
-                else:
-                    self.write_animation(context, file)
+                self.write_animation(context, file)
         except common.CM3D2ExportException as e:
             self.report(type={'ERROR'}, message=str(e))
             return {'CANCELLED'}
@@ -355,35 +347,6 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                         file.write(struct.pack('<2f', 0.0, 0.0))
 
         file.write(struct.pack('<?', False))
-
-    def write_animation_from_text(self, context, file):
-        txt = context.blend_data.texts["AnmData"]
-
-        import json
-        anm_data = json.loads(txt.as_string())
-
-        common.write_str(file, 'CM3D2_ANIM')
-        file.write(struct.pack('<i', self.version))
-
-        for base_bone_name, bone_data in anm_data.items():
-            path = bone_data['path']
-            file.write(struct.pack('<?', True))
-            common.write_str(file, path)
-
-            for channel_id, channel in bone_data['channels'].items():
-                file.write(struct.pack('<B', int(channel_id)))
-                channel_data_count = len(channel)
-                file.write(struct.pack('<i', channel_data_count))
-                for channel_data in channel:
-                    frame = channel_data['frame']
-                    data = ( channel_data['f0'], channel_data['f1'], channel_data['f2'] )
-                    file.write(struct.pack('<f' , frame))
-                    file.write(struct.pack('<3f', *data ))
-
-        file.write(struct.pack('<?', False))
-
-
-
 
 
 # メニューに登録する関数
