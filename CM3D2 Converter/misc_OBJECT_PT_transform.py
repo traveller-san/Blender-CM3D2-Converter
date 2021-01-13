@@ -73,8 +73,8 @@ class CNV_OT_align_to_base_bone(bpy.types.Operator):
     bl_description = "Align the object to it's armature's base bone"
     bl_options = {'REGISTER', 'UNDO'}
 
-    scale        : bpy.props.FloatProperty(name="Scale"        , default=   5, min=0.1, max=100, soft_min=0.1, soft_max=100, step=100, precision=1, description="The amount by which the mesh is scaled when imported. Recommended that you use the same when at the time of export.")
-    preserve_mesh: bpy.props.BoolProperty (name="Preserve Mesh", default=True, description="Align object transform, then fix mesh transform so it remains in place.")
+    scale           : bpy.props.FloatProperty(name="Scale"        , default=   5, min=0.1, max=100, soft_min=0.1, soft_max=100, step=100, precision=1, description="The amount by which the mesh is scaled when imported. Recommended that you use the same when at the time of export.")
+    is_preserve_mesh: bpy.props.BoolProperty (name="Preserve Mesh", default=True, description="Align object transform, then fix mesh transform so it remains in place.")
 
     items = [
         ('ARMATURE'         , "Armature"     , "", 'OUTLINER_OB_ARMATURE', 1),
@@ -150,7 +150,7 @@ class CNV_OT_align_to_base_bone(bpy.types.Operator):
             return row
         
         self.layout.prop(self, 'scale')
-        self.layout.prop(self, 'preserve_mesh', icon=compat.icon('MESH_DATA'))
+        self.layout.prop(self, 'is_preserve_mesh', icon=compat.icon('MESH_DATA'))
 
         col = self.layout.column(align=True)
         col.label(text="Bone Data Source", icon='BONE_DATA')
@@ -205,7 +205,8 @@ class CNV_OT_align_to_base_bone(bpy.types.Operator):
     def from_armature(ob: bpy.types.Object, arm: bpy.types.Armature, base_bone_name):
         base_bone = arm.bones.get(base_bone_name)
         mat = base_bone.matrix_local.copy()
-        mat = compat.convert_cm_to_bl_bone_rotation(mat)
+        mat = compat.convert_bl_to_cm_bone_rotation(mat)
+        mat = compat.convert_cm_to_bl_local_space(mat)
         ob.matrix_basis = mat
 
 
@@ -237,10 +238,11 @@ class CNV_OT_align_to_base_bone(bpy.types.Operator):
         else:
             self.from_armature(ob, arm_ob.data, base_bone_name)
 
-        bm = bmesh.new(use_operators=False)
-        bm.from_mesh(ob.data)
-        bm.transform(compat.mul(ob.matrix_basis.inverted(), old_basis))
-        bm.to_mesh(ob.data)
+        if self.is_preserve_mesh:
+            bm = bmesh.new(use_operators=False)
+            bm.from_mesh(ob.data)
+            bm.transform(compat.mul(ob.matrix_basis.inverted(), old_basis))
+            bm.to_mesh(ob.data)
 
 
         return {'FINISHED'}
