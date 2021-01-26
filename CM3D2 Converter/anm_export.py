@@ -230,32 +230,41 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                     same_rots[bone.name] = []
 
                 pose_bone = pose.bones[bone.name]
-
-                pose_mat = ob.convert_space(pose_bone=pose_bone, matrix=pose_bone.matrix, from_space='POSE', to_space='WORLD')
-                if bone_parents[bone.name]:
-                    parent_mat = ob.convert_space(pose_bone=pose.bones[bone_parents[bone.name].name], matrix=pose.bones[bone_parents[bone.name].name].matrix, from_space='POSE', to_space='WORLD')
-                    pose_mat = compat.mul(parent_mat.inverted(), pose_mat)
+                pose_mat = pose_bone.matrix.copy() #ob.convert_space(pose_bone=pose_bone, matrix=pose_bone.matrix, from_space='POSE', to_space='WORLD')
+                parent = bone_parents[bone.name]
+                if parent:
+                    pose_mat = compat.convert_bl_to_cm_bone_rotation(pose_mat)
+                    pose_mat = compat.mul(pose.bones[parent.name].matrix.inverted(), pose_mat)
+                    pose_mat = compat.convert_bl_to_cm_bone_space(pose_mat)
+                else:
+                    pose_mat = compat.convert_bl_to_cm_space(pose_mat)
+                    pose_mat = compat.convert_bl_to_cm_bone_rotation(pose_mat)
 
                 loc = pose_mat.to_translation() * self.scale
                 rot = pose_mat.to_quaternion()
 
-                if bone.name in pre_rots:
-                    if 5.0 < pre_rots[bone.name].rotation_difference(rot).angle:
-                        rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, -rot.y, -rot.z
-                pre_rots[bone.name] = rot.copy()
+                #if bone.name in pre_rots:
+                #    if 5.0 < pre_rots[bone.name].rotation_difference(rot).angle:
+                #        rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, -rot.y, -rot.z
+                #pre_rots[bone.name] = rot.copy()
 
-                if bone_parents[bone.name]:
-                    loc.x, loc.y, loc.z = -loc.y, -loc.x, loc.z
-                    rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, rot.x, -rot.z
-                else:
-                    loc.x, loc.y, loc.z = -loc.x, loc.z, -loc.y
-
-                    fix_quat = mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
-                    fix_quat2 = mathutils.Euler((math.radians(-90), 0, 0), 'XYZ').to_quaternion()
-                    rot = compat.mul3(rot, fix_quat, fix_quat2)
-
-                    rot.w, rot.x, rot.y, rot.z = -rot.y, -rot.z, -rot.x, rot.w
-
+                #if parent:
+                #    #loc.x, loc.y, loc.z = -loc.y, -loc.x, loc.z
+                #    loc = compat.convert_bl_to_cm_bone_space(loc)
+                #    
+                #    # quat.w, quat.x, quat.y, quat.z = quat.w, -quat.z, quat.x, -quat.y
+                #    #rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, rot.x, -rot.z
+                #    rot.w, rot.x, rot.y, rot.z = rot.w, rot.y, -rot.z, -rot.x
+                #
+                #else:
+                #    loc.x, loc.y, loc.z = -loc.x, loc.z, -loc.y
+                #
+                #    fix_quat = mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
+                #    fix_quat2 = mathutils.Euler((math.radians(-90), 0, 0), 'XYZ').to_quaternion()
+                #    rot = compat.mul3(rot, fix_quat, fix_quat2)
+                #
+                #    rot.w, rot.x, rot.y, rot.z = -rot.y, -rot.z, -rot.x, rot.w
+                
                 if not self.is_keyframe_clean or key_frame_index == 0 or key_frame_index == self.key_frame_count - 1:
                     anm_data_raw[bone.name]["LOC"][time] = loc.copy()
                     anm_data_raw[bone.name]["ROT"][time] = rot.copy()

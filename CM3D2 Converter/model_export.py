@@ -295,7 +295,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             me.update()
 
         if self.is_align_to_base_bone:
-            bpy.ops.object.align_to_base_bone(scale=1.0/self.scale, preserve_mesh=True, bone_info_mode=self.bone_info_mode)
+            bpy.ops.object.align_to_base_bone(scale=1.0/self.scale, is_preserve_mesh=True, bone_info_mode=self.bone_info_mode)
             me.update()
 
         # データの成否チェック
@@ -854,7 +854,7 @@ class CNV_OT_export_cm3d2_model(bpy.types.Operator):
             else:
                 mat = compat.convert_bl_to_cm_space(mat)
                 mat = compat.convert_bl_to_cm_bone_rotation(mat)
-
+            
             co = mat.to_translation() * self.scale
             rot = mat.to_quaternion()
             
