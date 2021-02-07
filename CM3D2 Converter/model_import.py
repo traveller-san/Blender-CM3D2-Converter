@@ -75,7 +75,7 @@ class CNV_OT_import_cm3d2_model(bpy.types.Operator, bpy_extras.io_utils.ImportHe
         sub_box = box.box()
         sub_box.label(text="Mesh")
         sub_box.prop(self, 'is_remove_doubles', icon='STICKY_UVS_VERT')
-        sub_box.prop(self, 'is_seam',  icon='KEY_DEHLT')
+        sub_box.prop(self, 'is_seam' , icon='KEY_DEHLT')
         sub_box.prop(self, 'is_sharp', icon='KEY_DEHLT')
 
         sub_box = box.box()

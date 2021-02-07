@@ -311,9 +311,9 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
                         vec_in   = mathutils.Vector((1, tangent_in  / fps))   
                         vec_out  = mathutils.Vector((1, tangent_out / fps))
 
-                        this_keyframe = fcurve.keyframe_points[keyframe_index]
+                        this_keyframe = fcurve.keyframe_points[keyframe_index  ]
                         next_keyframe = fcurve.keyframe_points[keyframe_index+1] if keyframe_index+1 < len(axis_keyframes) else None
-                        last_keyframe = fcurve.keyframe_points[keyframe_index-1] if keyframe_index-1 >= 0 else None
+                        last_keyframe = fcurve.keyframe_points[keyframe_index-1] if keyframe_index-1 >= 0                  else None
                         
                         if vec_in.y != vec_out.y:
                             this_keyframe.handle_left_type  = 'FREE'
@@ -456,53 +456,20 @@ class CNV_OT_import_cm3d2_anm(bpy.types.Operator):
                 bone_quat = bone.matrix.to_quaternion()
                 def _convert_quat(quat) -> mathutils.Quaternion:
                     quat = mathutils.Quaternion(quat)
+                    #orig_quat = quat.copy()
+                    '''Can't use matrix transforms here as they would mess up interpolation.'''
                     if bone.parent:
-                        #quat.w, quat.x, quat.y, quat.z = quat.w, quat.y, quat.x, -quat.z
-                        
-                        ##rot.w, rot.y, -rot.z, -rot.x = rot.w, rot.x, rot.y, rot.z
                         quat.w, quat.x, quat.y, quat.z = quat.w, -quat.z, quat.x, -quat.y
-                        
-                        # (pq)^=q^p^
-                        #pq = mathutils.Quaternion((quat.w, -quat.z, quat.x, -quat.y))
-                        #I = pq.conjugated()
-                        #I.identity()
-                        #p = compat.mul(quat, pq.conjugated()).conjugated()
-                        ##p = compat.mul(pq.conjugated(), quat).conjugated()
-                        ##p = compat.mul(quat, pq.inverted()).inverted()
-                        ##p = compat.mul(pq.inverted(), quat).inverted()
-                        #p.make_compatible(I)
-                        #print(p.to_euler())
-                        #quat = pq
-            
-                        #quat = compat.convert_opengl_to_blend_quat(quat)
-            
-                        #quat = compat.mul(quat, mat.to_quaternion())
-                        
-                        #quat = compat.convert_cm_to_bl_space(quat)
-                        #quat = compat.convert_cm_to_bl_bone_space(quat)
-                        #quat = compat.mul(bone.parent.matrix_local.to_quaternion(), quat)
-                        #quat = compat.convert_cm_to_bl_bone_rotation(quat)
-                        #quat = compat.convert_cm_to_bl_bone_space(quat)
-                        #quat = compat.mul(bone.parent.matrix_local.to_quaternion().inverted(), quat)
+                        #quat_mat = compat.convert_cm_to_bl_bone_space(quat.to_matrix().to_4x4())
+                        #quat_mat = compat.convert_cm_to_bl_bone_rotation(quat_mat)
                     else:
-                        ##quat = compat.convert_opengl_y_up_to_blend_z_up_quat(quat)
-                        #quat.w, quat.x, quat.y, quat.z = quat.w, quat.y, quat.x, -quat.z
-                        #
-                        #fix_quat = mathutils.Euler((math.radians(90), math.radians(90), 0.0), 'XYZ').to_quaternion()
-                        #fix_quat2 = mathutils.Euler((0.0, 0.0, math.radians(90)), 'XYZ').to_quaternion()
-                        ##fix_quat = mathutils.Euler((math.radians(90), math.radians(90), 0.0), 'XYZ').to_quaternion()
-                        ##fix_quat2 = mathutils.Euler((0.0, 0.0, 0.0), 'XYZ').to_quaternion()
-                        #quat = compat.mul3(fix_quat, quat, fix_quat2)
-                        
-                        #base_quat = base_bone.matrix_local.to_quaternion()
-                        #base_quat = compat.convert_bl_to_cm_bone_rotation(base_quat)
-                        #base_quat = compat.convert_bl_to_cm_space(base_quat)
-                        #quat = compat.mul(base_quat.inverted(), quat)
-                        #quat = compat.convert_cm_to_bl_slider_space(quat)
-                        #quat = compat.convert_cm_to_bl_bone_rotation(quat)
-                        quat = compat.convert_cm_to_bl_space(quat)
-                        #quat = compat.convert_
-                    return compat.mul(bone_quat.inverted(), quat)
+                        quat.w, quat.x, quat.y, quat.z = quat.w, -quat.z, quat.x, -quat.y
+                        quat = compat.mul(mathutils.Matrix.Rotation(math.radians(-90.0), 4, 'Z').to_quaternion(), quat)
+                        #quat_mat = compat.convert_cm_to_bl_space(quat.to_matrix().to_4x4())
+                        #quat = compat.convert_cm_to_bl_bone_rotation(quat_mat).to_quaternion()
+                    quat = compat.mul(bone_quat.inverted(), quat)
+                    #quat.make_compatible(orig_quat)
+                    return quat
                         
                 for frame, quat in quats.items():
                     result_quat = _convert_quat(quat)

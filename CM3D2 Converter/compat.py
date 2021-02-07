@@ -5,6 +5,7 @@ import re
 import struct
 import os
 import mathutils
+import traceback
 from typing import Any, Optional
 
 
@@ -234,25 +235,25 @@ CM_TO_BL_SPACE_MAT4 = mul(
 )
 BL_TO_CM_SPACE_MAT4 = CM_TO_BL_SPACE_MAT4.inverted()
 CM_TO_BL_SPACE_QUAT = CM_TO_BL_SPACE_MAT4.to_quaternion()
-BL_TO_CM_SPACE_QUAT = CM_TO_BL_SPACE_QUAT.inverted()
+BL_TO_CM_SPACE_QUAT = BL_TO_CM_SPACE_MAT4.to_quaternion()
 def convert_cm_to_bl_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(CM_TO_BL_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(CM_TO_BL_SPACE_MAT4, x)
 def convert_bl_to_cm_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(BL_TO_CM_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(BL_TO_CM_SPACE_MAT4, x)
 def convert_cm_to_bl_local_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(x, BL_TO_CM_SPACE_QUAT)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(x, BL_TO_CM_SPACE_MAT4)
 def convert_bl_to_cm_local_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(x, CM_TO_BL_SPACE_QUAT)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(x, CM_TO_BL_SPACE_MAT4)
 
@@ -266,12 +267,12 @@ CM_TO_BL_BONE_ROTATION_QUAT = CM_TO_BL_BONE_ROTATION_MAT4.to_quaternion()
 BL_TO_CM_BONE_ROTATION_QUAT = BL_TO_CM_BONE_ROTATION_MAT4.to_quaternion()
 def convert_cm_to_bl_bone_rotation(x):
     if type(x) == mathutils.Quaternion:
-        return mul(x, CM_TO_BL_BONE_ROTATION_QUAT)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(x, CM_TO_BL_BONE_ROTATION_MAT4)
 def convert_bl_to_cm_bone_rotation(x):
     if type(x) == mathutils.Quaternion:
-        return mul(x, BL_TO_CM_BONE_ROTATION_QUAT)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(x, BL_TO_CM_BONE_ROTATION_MAT4)
 
@@ -283,15 +284,15 @@ def convert_bl_to_cm_bone_rotation(x):
 CM_TO_BL_BONE_SPACE_MAT4 = CM_TO_BL_BONE_ROTATION_MAT4.inverted()
 BL_TO_CM_BONE_SPACE_MAT4 = CM_TO_BL_BONE_SPACE_MAT4.inverted()
 CM_TO_BL_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_MAT4.to_quaternion()
-BL_TO_CM_BONE_SPACE_QUAT = CM_TO_BL_BONE_SPACE_QUAT.inverted()
+BL_TO_CM_BONE_SPACE_QUAT = BL_TO_CM_BONE_SPACE_MAT4.to_quaternion()
 def convert_cm_to_bl_bone_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(CM_TO_BL_BONE_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(CM_TO_BL_BONE_SPACE_MAT4, x)
 def convert_bl_to_cm_bone_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(BL_TO_CM_BONE_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(BL_TO_CM_BONE_SPACE_MAT4, x)
 
@@ -302,15 +303,15 @@ CM_TO_BL_WIDE_SLIDER_SPACE_MAT4 = mul(
 )
 BL_TO_CM_WIDE_SLIDER_SPACE_MAT4 = CM_TO_BL_WIDE_SLIDER_SPACE_MAT4.inverted()
 CM_TO_BL_WIDE_SLIDER_SPACE_QUAT = CM_TO_BL_WIDE_SLIDER_SPACE_MAT4.to_quaternion()
-BL_TO_CM_WIDE_SLIDER_SPACE_QUAT = CM_TO_BL_WIDE_SLIDER_SPACE_QUAT.inverted()
+BL_TO_CM_WIDE_SLIDER_SPACE_QUAT = BL_TO_CM_WIDE_SLIDER_SPACE_MAT4.to_quaternion()
 def convert_cm_to_bl_wide_slider_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(CM_TO_BL_WIDE_SLIDER_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(CM_TO_BL_WIDE_SLIDER_SPACE_MAT4, x)
 def convert_bl_to_cm_wide_slider_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(BL_TO_CM_WIDE_SLIDER_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(BL_TO_CM_WIDE_SLIDER_SPACE_MAT4, x)
 
@@ -318,15 +319,15 @@ def convert_bl_to_cm_wide_slider_space(x):
 CM_TO_BL_SLIDER_SPACE_MAT4 = bpy_extras.io_utils.axis_conversion(from_forward='X', from_up='Y', to_forward='Y', to_up='Z').to_4x4()
 BL_TO_CM_SLIDER_SPACE_MAT4 = CM_TO_BL_SLIDER_SPACE_MAT4.inverted()
 CM_TO_BL_SLIDER_SPACE_QUAT = CM_TO_BL_SLIDER_SPACE_MAT4.to_quaternion()
-BL_TO_CM_SLIDER_SPACE_QUAT = CM_TO_BL_SLIDER_SPACE_QUAT.inverted()
+BL_TO_CM_SLIDER_SPACE_QUAT = BL_TO_CM_SLIDER_SPACE_MAT4.to_quaternion()
 def convert_cm_to_bl_slider_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(CM_TO_BL_SLIDER_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(CM_TO_BL_SLIDER_SPACE_MAT4, x)
 def convert_bl_to_cm_slider_space(x):
     if type(x) == mathutils.Quaternion:
-        return mul(BL_TO_CM_SLIDER_SPACE_QUAT, x)
+        raise TypeError('Quaternion space conversions not supported')
     else:
         return mul(BL_TO_CM_SLIDER_SPACE_MAT4, x)
 

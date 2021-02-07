@@ -4,7 +4,7 @@
 bl_info = {
     "name": "CM3D2 Converter",
     "author": "@saidenka_cm3d2, @trzrz, @luvoid",
-    "version": ("luv", 2021, 1, 26),
+    "version": ("luv", 2021, 2, 7),
     "blender": (2, 80, 0),
     "location" : "File > Import/Export > CM3D2 Model (.model)",
     "description" : "A plugin dedicated to the editing, importing, and exporting of CM3D2 .model Files.",
@@ -56,6 +56,7 @@ if "bpy" in locals():
     imp.reload(misc_VIEW3D_MT_pose_apply)
     imp.reload(misc_VIEW3D_PT_tools_weightpaint)
     imp.reload(misc_VIEW3D_PT_tools_mesh_shapekey)
+    imp.reload(misc_DOPESHEET_MT_editor_menus)
 
 else:
     from . import compat
@@ -96,6 +97,7 @@ else:
     from . import misc_VIEW3D_MT_pose_apply
     from . import misc_VIEW3D_PT_tools_weightpaint
     from . import misc_VIEW3D_PT_tools_mesh_shapekey
+    from . import misc_DOPESHEET_MT_editor_menus
 
 import bpy, os.path, bpy.utils.previews
 
@@ -344,6 +346,9 @@ def register():
     setattr(bpy.types.Object, 'cm3d2_bone_morph',  bpy.props.PointerProperty(type=misc_DATA_PT_context_arm.CNV_PG_cm3d2_bone_morph ))
     setattr(bpy.types.Object, 'cm3d2_wide_slider', bpy.props.PointerProperty(type=misc_DATA_PT_context_arm.CNV_PG_cm3d2_wide_slider))
 
+    bpy.types.DOPESHEET_MT_editor_menus.append(misc_DOPESHEET_MT_editor_menus.menu_func)
+    bpy.types.GRAPH_MT_editor_menus.append(misc_DOPESHEET_MT_editor_menus.menu_func)
+
     system = compat.get_system(bpy.context)
     if hasattr(system, 'use_international_fonts') and not system.use_international_fonts:
         system.use_international_fonts = True
@@ -429,6 +434,9 @@ def unregister():
         delattr(bpy.types.Object, 'cm3d2_bone_morph')
     if hasattr(bpy.types.Object, 'cm3d2_wide_slider'):
         delattr(bpy.types.Object, 'cm3d2_wide_slider')
+
+    bpy.types.DOPESHEET_MT_editor_menus.remove(misc_DOPESHEET_MT_editor_menus.menu_func)
+    bpy.types.GRAPH_MT_editor_menus.remove(misc_DOPESHEET_MT_editor_menus.menu_func)
 
     for pcoll in common.preview_collections.values():
         bpy.utils.previews.remove(pcoll)

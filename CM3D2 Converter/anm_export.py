@@ -32,8 +32,12 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
     frame_end = bpy.props.IntProperty(name="Last Frame", default=0, min=0, max=99999, soft_min=0, soft_max=99999, step=1)
     key_frame_count = bpy.props.IntProperty(name="Number of key frames", default=1, min=1, max=99999, soft_min=1, soft_max=99999, step=1)
     time_scale = bpy.props.FloatProperty(name="Playback Speed", default=1.0, min=0.1, max=10.0, soft_min=0.1, soft_max=10.0, step=10, precision=1)
-    is_keyframe_clean = bpy.props.BoolProperty(name="Clean Keyframes", default=True)
-    is_smooth_handle = bpy.props.BoolProperty(name="Smooth Transitions", default=True)
+    
+    is_all_frames       = bpy.props.BoolProperty(name="Bake All Frames"      , default=True , description="Export every frame as a keyframe (legacy behavior, large file sizes)")
+    is_keyframe_clean   = bpy.props.BoolProperty(name="Clean Keyframes"      , default=True )
+    
+    is_visual_transform = bpy.props.BoolProperty(name="Use Visual Transforms", default=True )
+    is_smooth_handle    = bpy.props.BoolProperty(name="Smooth Transitions"   , default=True )
 
     items = [
         ('ARMATURE', "Armature", "", 'OUTLINER_OB_ARMATURE', 1),
@@ -41,10 +45,11 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
     ]
     bone_parent_from = bpy.props.EnumProperty(items=items, name="Bone Parent From", default='ARMATURE_PROPERTY')
 
-    is_remove_alone_bone = bpy.props.BoolProperty(name="Remove Loose Bones", default=True)
-    is_remove_ik_bone = bpy.props.BoolProperty(name="Remove IK Bones", default=True)
-    is_remove_serial_number_bone = bpy.props.BoolProperty(name="Remove Duplicate Numbers", default=True)
-    is_remove_japanese_bone = bpy.props.BoolProperty(name="Remove Japanese Characters from Bones", default=True)
+    is_remove_unkeyed_bone       = bpy.props.BoolProperty(name="Remove Unkeyed Bones"                 , default=True )  
+    is_remove_alone_bone         = bpy.props.BoolProperty(name="Remove Loose Bones"                   , default=True )
+    is_remove_ik_bone            = bpy.props.BoolProperty(name="Remove IK Bones"                      , default=True )
+    is_remove_serial_number_bone = bpy.props.BoolProperty(name="Remove Duplicate Numbers"             , default=True )
+    is_remove_japanese_bone      = bpy.props.BoolProperty(name="Remove Japanese Characters from Bones", default=True )
 
     @classmethod
     def poll(cls, context):
@@ -92,7 +97,11 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         row.prop(self, 'frame_end')
         sub_box.prop(self, 'key_frame_count')
         sub_box.prop(self, 'time_scale')
-        sub_box.prop(self, 'is_keyframe_clean', icon='DISCLOSURE_TRI_DOWN')
+        col = sub_box.column() 
+        col.prop(self, 'is_all_frames')
+        row = col.row()
+        row.prop(self, 'is_keyframe_clean', icon='DISCLOSURE_TRI_DOWN')
+        row.enabled = self.is_all_frames
         sub_box.prop(self, 'is_smooth_handle', icon='SMOOTHCURVE')
 
         sub_box = box.box()
@@ -102,10 +111,11 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         sub_box = box.box()
         sub_box.label(text="Bones to Exclude", icon='X')
         column = sub_box.column(align=True)
-        column.prop(self, 'is_remove_alone_bone', icon='UNLINKED')
-        column.prop(self, 'is_remove_ik_bone', icon='CONSTRAINT_BONE')
-        column.prop(self, 'is_remove_serial_number_bone', icon='SEQUENCE')
-        column.prop(self, 'is_remove_japanese_bone', icon=compat.icon('HOLDOUT_ON'))
+        column.prop(self, 'is_remove_unkeyed_bone'      , icon='KEY_DEHLT'              )
+        column.prop(self, 'is_remove_alone_bone'        , icon='UNLINKED'               )
+        column.prop(self, 'is_remove_ik_bone'           , icon='CONSTRAINT_BONE'        )
+        column.prop(self, 'is_remove_serial_number_bone', icon='SEQUENCE'               )
+        column.prop(self, 'is_remove_japanese_bone'     , icon=compat.icon('HOLDOUT_ON'))
 
     def execute(self, context):
         common.preferences().anm_export_path = self.filepath
@@ -128,84 +138,21 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
         return {'FINISHED'}
 
-    def write_animation(self, context, file):
-        ob = context.active_object
-        arm = ob.data
-        pose = ob.pose
-        fps = context.scene.render.fps
-
-        common.write_str(file, 'CM3D2_ANIM')
-        file.write(struct.pack('<i', self.version))
-
-        bone_parents = {}
-        if self.bone_parent_from == 'ARMATURE_PROPERTY':
-            for i in range(9999):
-                name = "BoneData:" + str(i)
-                if name not in arm:
-                    continue
-                elems = arm[name].split(",")
-                if len(elems) != 5:
-                    continue
-                if elems[0] in arm.bones:
-                    if elems[2] in arm.bones:
-                        bone_parents[elems[0]] = arm.bones[elems[2]]
-                    else:
-                        bone_parents[elems[0]] = None
-            for bone in arm.bones:
-                if bone.name in bone_parents:
-                    continue
-                bone_parents[bone.name] = bone.parent
-        else:
-            for bone in arm.bones:
-                bone_parents[bone.name] = bone.parent
-
-        def is_japanese(string):
-            for ch in string:
-                name = unicodedata.name(ch)
-                if 'CJK UNIFIED' in name or 'HIRAGANA' in name or 'KATAKANA' in name:
-                    return True
-            return False
-        bones = []
-        already_bone_names = []
-        bones_queue = arm.bones[:]
-        while len(bones_queue):
-            bone = bones_queue.pop(0)
-
-            if not bone_parents[bone.name]:
-                already_bone_names.append(bone.name)
-                if self.is_remove_serial_number_bone:
-                    if common.has_serial_number(bone.name):
-                        continue
-                if self.is_remove_japanese_bone:
-                    if is_japanese(bone.name):
-                        continue
-                if self.is_remove_alone_bone and len(bone.children) == 0:
-                    continue
-                bones.append(bone)
-                continue
-            elif bone_parents[bone.name].name in already_bone_names:
-                already_bone_names.append(bone.name)
-                if self.is_remove_serial_number_bone:
-                    if common.has_serial_number(bone.name):
-                        continue
-                if self.is_remove_japanese_bone:
-                    if is_japanese(bone.name):
-                        continue
-                if self.is_remove_ik_bone:
-                    bone_name_low = bone.name.lower()
-                    if '_ik_' in bone_name_low or bone_name_low.endswith('_nub') or bone.name.endswith('Nub'):
-                        continue
-                bones.append(bone)
-                continue
-
-            bones_queue.append(bone)
-
+    def get_animation_frames(self, context, fps, pose, bones, bone_parents):
         anm_data_raw = {}
-
         class KeyFrame:
-            def __init__(self, time, value):
+            def __init__(self, time, value, slope=None):
                 self.time = time
                 self.value = value
+                if slope:
+                    self.slope = slope
+                elif type(value) == mathutils.Vector:
+                    self.slope = mathutils.Vector.Fill(len(value))
+                elif type(value) == mathutils.Quaternion:
+                    self.slope = mathutils.Quaternion((0,0,0,0))
+                else:
+                    self.slope = 0
+
         same_locs = {}
         same_rots = {}
         pre_rots = {}
@@ -237,8 +184,8 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                     pose_mat = compat.mul(pose.bones[parent.name].matrix.inverted(), pose_mat)
                     pose_mat = compat.convert_bl_to_cm_bone_space(pose_mat)
                 else:
-                    pose_mat = compat.convert_bl_to_cm_space(pose_mat)
                     pose_mat = compat.convert_bl_to_cm_bone_rotation(pose_mat)
+                    pose_mat = compat.convert_bl_to_cm_space(pose_mat)
 
                 loc = pose_mat.to_translation() * self.scale
                 rot = pose_mat.to_quaternion()
@@ -276,36 +223,283 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                     def is_mismatch(a, b):
                         return 0.000001 < abs(a - b)
 
-                    a, b = loc, same_locs[bone.name][-1].value
+                    a = same_locs[bone.name][-1].value - loc
+                    b = same_locs[bone.name][-1].slope
                     if is_mismatch(a.x, b.x) or is_mismatch(a.y, b.y) or is_mismatch(a.z, b.z):
                         if 2 <= len(same_locs[bone.name]):
                             anm_data_raw[bone.name]["LOC"][same_locs[bone.name][-1].time] = same_locs[bone.name][-1].value.copy()
                         anm_data_raw[bone.name]["LOC"][time] = loc.copy()
-                        same_locs[bone.name] = [KeyFrame(time, loc.copy())]
+                        same_locs[bone.name] = [KeyFrame(time, loc.copy(), a.copy())] # update last position and slope
                     else:
-                        same_locs[bone.name].append(KeyFrame(time, loc.copy()))
-
-                    a, b = rot, same_rots[bone.name][-1].value
+                        same_locs[bone.name].append(KeyFrame(time, loc.copy(), b.copy())) # update last position, but not last slope
+                    
+                    a = same_rots[bone.name][-1].value - rot
+                    b = same_rots[bone.name][-1].slope
                     if is_mismatch(a.w, b.w) or is_mismatch(a.x, b.x) or is_mismatch(a.y, b.y) or is_mismatch(a.z, b.z):
                         if 2 <= len(same_rots[bone.name]):
                             anm_data_raw[bone.name]["ROT"][same_rots[bone.name][-1].time] = same_rots[bone.name][-1].value.copy()
                         anm_data_raw[bone.name]["ROT"][time] = rot.copy()
-                        same_rots[bone.name] = [KeyFrame(time, rot.copy())]
+                        same_rots[bone.name] = [KeyFrame(time, rot.copy(), a.copy())] # update last position and slope
                     else:
-                        same_rots[bone.name].append(KeyFrame(time, rot.copy()))
+                        same_rots[bone.name].append(KeyFrame(time, rot.copy(), b.copy())) # update last position, but not last slope
+        
+        return anm_data_raw
+
+    def get_animation_keyframes(self, context, fps, pose, keyed_bones, fcurves):
+        anm_data_raw = {}
+
+        prop_sizes = {'location': 3, 'rotation_quaternion': 4, 'rotation_euler': 3}
+        
+        #class KeyFrame:
+        #    def __init__(self, time, value):
+        #        self.time = time
+        #        self.value = value
+        #same_locs = {}
+        #same_rots = {}
+        #pre_rots = {}
+        
+        def _convert_loc(pose_bone, loc):
+            loc = mathutils.Vector(loc)
+            loc = compat.mul(pose_bone.bone.matrix_local, loc)
+            if pose_bone.parent:
+                loc = compat.mul(pose_bone.parent.bone.matrix_local.inverted(), loc)
+                loc = compat.convert_bl_to_cm_bone_space(loc)
+            else:
+                loc = compat.convert_bl_to_cm_space(loc)
+            return loc * self.scale
+
+        def _convert_quat(pose_bone, quat):
+            #quat = mathutils.Quaternion(quat)
+            #'''Can't use matrix transforms here as they would mess up interpolation.'''
+            #quat = compat.mul(pose_bone.bone.matrix_local.to_quaternion(), quat)
+            
+            quat_mat = mathutils.Quaternion(quat).to_matrix().to_4x4()
+            quat_mat = compat.mul(pose_bone.bone.matrix_local, quat_mat)
+            #quat = quat_mat.to_quaternion()
+            if pose_bone.parent:
+                ## inverse of quat.w, quat.x, quat.y, quat.z = quat.w, -quat.z, quat.x, -quat.y
+                #quat.w, quat.x, quat.y, quat.z = quat.w, quat.y, -quat.z, -quat.x
+                #quat = compat.mul(pose_bone.parent.bone.matrix_local.to_quaternion().inverted(), quat)
+                ##quat = compat.mul(pose_bone.parent.bone.matrix_local.inverted().to_quaternion(), quat)\
+                quat_mat = compat.convert_bl_to_cm_bone_rotation(quat_mat)
+                quat_mat = compat.mul(pose_bone.parent.bone.matrix_local.inverted(), quat_mat)
+                quat_mat = compat.convert_bl_to_cm_bone_space(quat_mat)
+                quat = quat_mat.to_quaternion()
+            else:
+                #fix_quat = mathutils.Euler((0, 0, math.radians(-90)), 'XYZ').to_quaternion()
+                #fix_quat2 = mathutils.Euler((math.radians(-90), 0, 0), 'XYZ').to_quaternion()
+                #quat = compat.mul3(quat, fix_quat, fix_quat2)
+                #
+                #quat.w, quat.x, quat.y, quat.z = -quat.y, -quat.z, -quat.x, quat.w
+                
+                #quat.w, quat.x, quat.y, quat.z = quat.w, quat.y, -quat.z, -quat.x
+                #quat = compat.mul(mathutils.Matrix.Rotation(math.radians(90.0), 4, 'Z').to_quaternion(), quat)
+
+                quat_mat = compat.convert_bl_to_cm_bone_rotation(quat_mat)
+                quat_mat = compat.convert_bl_to_cm_space(quat_mat)
+                quat = quat_mat.to_quaternion()
+            return quat
+
+        for prop, prop_keyed_bones in keyed_bones.items():
+            #self.report(type={'INFO'}, message="{prop} {list}".format(prop=prop, list=prop_keyed_bones))
+            for bone_name in prop_keyed_bones:
+                if bone_name not in anm_data_raw:
+                    anm_data_raw[bone_name] = {}
+                    #same_locs[bone_name] = []
+                    #same_rots[bone_name] = []
+                
+                pose_bone = pose.bones[bone_name]
+                rna_data_path = 'pose.bones["{bone_name}"].{property}'.format(bone_name=bone_name, property=prop)
+                prop_fcurves = [ fcurves.find(rna_data_path, index=axis_index) for axis_index in range(prop_sizes[prop]) ]
+                
+                # Create missing fcurves
+                for axis_index, fcurve in enumerate(prop_fcurves):
+                    if not fcurve:
+                        fcurve = fcurves.new(rna_data_path, index=axis_index, action_group=pose_bone.name)
+                        prop_fcurves[axis_index] = fcurve
+                        self.report(type={'WARNING'}, message="Creating missing FCurve for {path}[{index}]".format(path=rna_data_path, index=axis_index))
+
+                # Create a list by frame, indicating wether or not there is a keyframe at that time for each fcurve
+                is_keyframes = {}
+                for fcurve in prop_fcurves:
+                    for keyframe in fcurve.keyframe_points:
+                        frame = keyframe.co[0]
+                        if frame not in is_keyframes:
+                            is_keyframes[frame] = [False] * prop_sizes[prop]
+                        is_keyframes[frame][fcurve.array_index] = True
+                
+                # Make sure that no keyframe times are missing any components
+                for frame, is_axes in is_keyframes.items():
+                    for axis_index, is_axis in enumerate(is_axes):
+                        if not is_axis:
+                            fcurve = prop_fcurves[axis_index]
+                            keyframe = fcurve.keyframe_points.insert(
+                                frame         = frame                 , 
+                                value         = fcurve.evaluate(frame), 
+                                options       = {'NEEDED', 'FAST'}                        
+                            )
+                            self.report(type={'WARNING'}, message="Creating missing keyframe @ frame {frame} for {path}[{index}]".format(path=rna_data_path, index=axis_index, frame=frame))
+                
+                for fcurve in prop_fcurves:
+                    fcurve.update()
+                
+                for keyframe_index, frame in enumerate(is_keyframes.keys()):
+                    time = frame / fps * (1.0 / self.time_scale)
+
+                    _kf = lambda fcurve: fcurve.keyframe_points[keyframe_index]
+                    raw_keyframe = mathutils.Quaternion( [ _kf(fc).co[1] for fc in prop_fcurves ]                                                                             )
+                    tangent_in   = mathutils.Quaternion( [ ( _kf(fc).handle_left [1] - _kf(fc).co[1] ) / ( _kf(fc).handle_left [0] - _kf(fc).co[0] ) for fc in prop_fcurves ] )
+                    tangent_out  = mathutils.Quaternion( [ ( _kf(fc).handle_right[1] - _kf(fc).co[1] ) / ( _kf(fc).handle_right[0] - _kf(fc).co[0] ) for fc in prop_fcurves ] )
+                                                                              
+                    if prop == 'location':
+                        if 'LOC' not in anm_data_raw[bone_name]:
+                            anm_data_raw[bone_name]['LOC'    ] = {}
+                            anm_data_raw[bone_name]['LOC_IN' ] = {}
+                            anm_data_raw[bone_name]['LOC_OUT'] = {}
+                        anm_data_raw[bone_name]['LOC'    ][time] = _convert_loc(pose_bone, raw_keyframe).copy()
+                        anm_data_raw[bone_name]['LOC_IN' ][time] = _convert_loc(pose_bone, tangent_in  ).copy()
+                        anm_data_raw[bone_name]['LOC_OUT'][time] = _convert_loc(pose_bone, tangent_out ).copy()
+                    elif prop == 'rotation_quaternion':
+                        if 'ROT' not in anm_data_raw[bone_name]:
+                            anm_data_raw[bone_name]['ROT'    ] = {}
+                            anm_data_raw[bone_name]['ROT_IN' ] = {}
+                            anm_data_raw[bone_name]['ROT_OUT'] = {}
+                        converted_quat = _convert_quat(pose_bone, raw_keyframe).copy()
+                        anm_data_raw[bone_name]['ROT'    ][time] = converted_quat.copy()
+                        anm_data_raw[bone_name]['ROT_IN' ][time] = converted_quat.inverted() @ _convert_quat(pose_bone, raw_keyframe @ tangent_in  )
+                        anm_data_raw[bone_name]['ROT_OUT'][time] = converted_quat.inverted() @ _convert_quat(pose_bone, raw_keyframe @ tangent_out )
+        
+        return anm_data_raw
+
+    def write_animation(self, context, file):
+        ob = context.active_object
+        arm = ob.data
+        pose = ob.pose
+        fps = context.scene.render.fps
+
+        common.write_str(file, 'CM3D2_ANIM')
+        file.write(struct.pack('<i', self.version))
+
+        bone_parents = {}
+        if self.bone_parent_from == 'ARMATURE_PROPERTY':
+            for i in range(9999):
+                name = "BoneData:" + str(i)
+                if name not in arm:
+                    continue
+                elems = arm[name].split(",")
+                if len(elems) != 5:
+                    continue
+                if elems[0] in arm.bones:
+                    if elems[2] in arm.bones:
+                        bone_parents[elems[0]] = arm.bones[elems[2]]
+                    else:
+                        bone_parents[elems[0]] = None
+            for bone in arm.bones:
+                if bone.name in bone_parents:
+                    continue
+                bone_parents[bone.name] = bone.parent
+        else:
+            for bone in arm.bones:
+                bone_parents[bone.name] = bone.parent
+
+        fcurves = ob.animation_data.action.fcurves
+        keyed_bones = {'location': [], 'rotation_quaternion': [], 'rotation_euler': []}
+        for bone in arm.bones:
+            rna_data_stub = 'pose.bones["{bone_name}"]'.format(bone_name=bone.name)
+            for prop, axes in [('location', 3), ('rotation_quaternion', 4), ('rotation_euler', 3)]:
+                found_fcurve = False
+                for axis_index in range(0, axes):
+                    if fcurves.find(rna_data_stub + '.' + prop, index=axis_index):
+                        found_fcurve = True
+                        break
+                if found_fcurve:
+                    keyed_bones[prop].append(bone.name)
+                
+
+        def is_japanese(string):
+            for ch in string:
+                name = unicodedata.name(ch)
+                if 'CJK UNIFIED' in name or 'HIRAGANA' in name or 'KATAKANA' in name:
+                    return True
+            return False
+        bones = []
+        already_bone_names = []
+        bones_queue = arm.bones[:]
+        while len(bones_queue):
+            bone = bones_queue.pop(0)
+
+            if not bone_parents[bone.name]:
+                already_bone_names.append(bone.name)
+                if self.is_remove_serial_number_bone:
+                    if common.has_serial_number(bone.name):
+                        continue
+                if self.is_remove_japanese_bone:
+                    if is_japanese(bone.name):
+                        continue
+                if self.is_remove_alone_bone and len(bone.children) == 0:
+                    continue
+                if self.is_remove_unkeyed_bone:
+                    is_keyed = False
+                    for prop in keyed_bones:
+                        if bone.name in keyed_bones[prop]:
+                            is_keyed = True
+                            break
+                    if not is_keyed:
+                        continue
+                bones.append(bone)
+                continue
+            elif bone_parents[bone.name].name in already_bone_names:
+                already_bone_names.append(bone.name)
+                if self.is_remove_serial_number_bone:
+                    if common.has_serial_number(bone.name):
+                        continue
+                if self.is_remove_japanese_bone:
+                    if is_japanese(bone.name):
+                        continue
+                if self.is_remove_ik_bone:
+                    bone_name_low = bone.name.lower()
+                    if '_ik_' in bone_name_low or bone_name_low.endswith('_nub') or bone.name.endswith('Nub'):
+                        continue
+                if self.is_remove_unkeyed_bone:
+                    is_keyed = False
+                    for prop in keyed_bones:
+                        if bone.name in keyed_bones[prop]:
+                            is_keyed = True
+                            break
+                    if not is_keyed:
+                        continue
+                bones.append(bone)
+                continue
+
+            bones_queue.append(bone)
+
+        if self.is_all_frames:
+            anm_data_raw = self.get_animation_frames(context, fps, pose, bones, bone_parents)
+        else:
+            anm_data_raw = self.get_animation_keyframes(context, fps, pose, keyed_bones, fcurves)
 
         anm_data = {}
         for bone_name, channels in anm_data_raw.items():
             anm_data[bone_name] = {100: {}, 101: {}, 102: {}, 103: {}, 104: {}, 105: {}, 106: {}}
-            for time, loc in channels["LOC"].items():
-                anm_data[bone_name][104][time] = loc.x
-                anm_data[bone_name][105][time] = loc.y
-                anm_data[bone_name][106][time] = loc.z
-            for time, rot in channels["ROT"].items():
-                anm_data[bone_name][100][time] = rot.x
-                anm_data[bone_name][101][time] = rot.y
-                anm_data[bone_name][102][time] = rot.z
-                anm_data[bone_name][103][time] = rot.w
+            if channels.get('LOC'):
+                has_tangents = bool(channels.get('LOC_IN') and channels.get('LOC_OUT'))
+                for time, loc in channels["LOC"].items():
+                    tangent_in  = channels['LOC_IN' ][time] if has_tangents else mathutils.Vector()
+                    tangent_out = channels['LOC_OUT'][time] if has_tangents else mathutils.Vector()
+                    anm_data[bone_name][104][time] = (loc.x, tangent_in.x, tangent_out.x)
+                    anm_data[bone_name][105][time] = (loc.y, tangent_in.y, tangent_out.y)
+                    anm_data[bone_name][106][time] = (loc.z, tangent_in.z, tangent_out.z)
+            if channels.get('ROT'):
+                has_tangents = bool(channels.get('ROT_IN') and channels.get('ROT_OUT'))
+                for time, rot in channels["ROT"].items():
+                    tangent_in  = channels['ROT_IN' ][time] if has_tangents else mathutils.Quaternion((0,0,0,0))
+                    tangent_out = channels['ROT_OUT'][time] if has_tangents else mathutils.Quaternion((0,0,0,0))
+                    anm_data[bone_name][100][time] = (rot.x, tangent_in.x, tangent_out.x)
+                    anm_data[bone_name][101][time] = (rot.y, tangent_in.y, tangent_out.y)
+                    anm_data[bone_name][102][time] = (rot.z, tangent_in.z, tangent_out.z)
+                    anm_data[bone_name][103][time] = (rot.w, tangent_in.w, tangent_out.w)
+                                                      
+        time_step = 1 / fps * (1.0 / self.time_scale)
 
         for bone in bones:
             file.write(struct.pack('<?', True))
@@ -326,7 +520,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                 keyframes_list = sorted(keyframes.items(), key=lambda x: x[0])
                 for i in range(len(keyframes_list)):
                     x = keyframes_list[i][0]
-                    y = keyframes_list[i][1]
+                    y, dydx_in, dydx_out = keyframes_list[i][1]
 
                     if len(keyframes_list) <= 1:
                         file.write(struct.pack('<f', x))
@@ -334,34 +528,38 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                         file.write(struct.pack('<2f', 0.0, 0.0))
                         continue
 
-                    if i == 0:
-                        prev_x = x - (keyframes_list[i + 1][0] - x)
-                        prev_y = y - (keyframes_list[i + 1][1] - y)
-                        next_x = keyframes_list[i + 1][0]
-                        next_y = keyframes_list[i + 1][1]
-                    elif i == len(keyframes_list) - 1:
-                        prev_x = keyframes_list[i - 1][0]
-                        prev_y = keyframes_list[i - 1][1]
-                        next_x = x + (x - keyframes_list[i - 1][0])
-                        next_y = y + (y - keyframes_list[i - 1][1])
-                    else:
-                        prev_x = keyframes_list[i - 1][0]
-                        prev_y = keyframes_list[i - 1][1]
-                        next_x = keyframes_list[i + 1][0]
-                        next_y = keyframes_list[i + 1][1]
-
-                    prev_rad = (prev_y - y) / (prev_x - x)
-                    next_rad = (next_y - y) / (next_x - x)
-                    join_rad = (prev_rad + next_rad) / 2
-
                     file.write(struct.pack('<f', x))
                     file.write(struct.pack('<f', y))
 
-                    if self.is_smooth_handle:
-                        file.write(struct.pack('<2f', join_rad, join_rad))
-                        # file.write(struct.pack('<2f', prev_rad, next_rad))
+                    if self.is_smooth_handle and self.is_all_frames:
+                        if i == 0:
+                            prev_x = x - (keyframes_list[i + 1][0] - x)
+                            prev_y = y - (keyframes_list[i + 1][1][0] - y)
+                            next_x = keyframes_list[i + 1][0]
+                            next_y = keyframes_list[i + 1][1][0]
+                        elif i == len(keyframes_list) - 1:
+                            prev_x = keyframes_list[i - 1][0]
+                            prev_y = keyframes_list[i - 1][1][0]
+                            next_x = x + (x - keyframes_list[i - 1][0])
+                            next_y = y + (y - keyframes_list[i - 1][1][0])
+                        else:
+                            prev_x = keyframes_list[i - 1][0]
+                            prev_y = keyframes_list[i - 1][1][0]
+                            next_x = keyframes_list[i + 1][0]
+                            next_y = keyframes_list[i + 1][1][0]
+
+                        prev_rad = (prev_y - y) / (prev_x - x)
+                        next_rad = (next_y - y) / (next_x - x)
+                        join_rad = (prev_rad + next_rad) / 2
+
+                        tan_in  = join_rad if x - prev_x <= time_step * 1.5 else prev_rad
+                        tan_out = join_rad if next_x - x <= time_step * 1.5 else next_rad
+                        
+                        file.write(struct.pack('<2f', tan_in, tan_out))
+                        #file.write(struct.pack('<2f', join_rad, join_rad))
+                        #file.write(struct.pack('<2f', prev_rad, next_rad))
                     else:
-                        file.write(struct.pack('<2f', 0.0, 0.0))
+                        file.write(struct.pack('<2f', dydx_in, dydx_out))
 
         file.write(struct.pack('<?', False))
 
