@@ -305,6 +305,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
             bone_quat = pose_bone.bone.matrix.to_quaternion()
             quat = mathutils.Quaternion(quat)
             
+            '''Can't use matrix transforms here as they would mess up interpolation.'''
             quat = compat.mul(bone_quat, quat)
             
             if pose_bone.bone.parent:
@@ -363,17 +364,17 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
                     _kf = lambda fcurve: fcurve.keyframe_points[keyframe_index]
                     raw_keyframe = [ _kf(fc).co[1] for fc in prop_fcurves ]                                                                            
-                    tangent_in   = [ ( _kf(fc).handle_left [1] - _kf(fc).co[1] ) / ( _kf(fc).handle_left [0] - _kf(fc).co[0] ) for fc in prop_fcurves ]
-                    tangent_out  = [ ( _kf(fc).handle_right[1] - _kf(fc).co[1] ) / ( _kf(fc).handle_right[0] - _kf(fc).co[0] ) for fc in prop_fcurves ]
-                                                                              
+                    tangent_in   = [ ( _kf(fc).handle_left [1] - _kf(fc).co[1] ) / ( _kf(fc).handle_left [0] - _kf(fc).co[0] ) * fps for fc in prop_fcurves ]
+                    tangent_out  = [ ( _kf(fc).handle_right[1] - _kf(fc).co[1] ) / ( _kf(fc).handle_right[0] - _kf(fc).co[0] ) * fps for fc in prop_fcurves ]
+                                                   
                     if prop == 'location':
                         if 'LOC' not in anm_data_raw[bone_name]:
                             anm_data_raw[bone_name]['LOC'    ] = {}
-                            #anm_data_raw[bone_name]['LOC_IN' ] = {}
-                            #anm_data_raw[bone_name]['LOC_OUT'] = {}
+                            anm_data_raw[bone_name]['LOC_IN' ] = {}
+                            anm_data_raw[bone_name]['LOC_OUT'] = {}
                         anm_data_raw[bone_name]['LOC'    ][time] = _convert_loc(pose_bone, raw_keyframe).copy()
-                        #anm_data_raw[bone_name]['LOC_IN' ][time] = _convert_loc(pose_bone, tangent_in  ).copy()
-                        #anm_data_raw[bone_name]['LOC_OUT'][time] = _convert_loc(pose_bone, tangent_out ).copy()
+                        anm_data_raw[bone_name]['LOC_IN' ][time] = _convert_loc(pose_bone, tangent_in  ).copy()
+                        anm_data_raw[bone_name]['LOC_OUT'][time] = _convert_loc(pose_bone, tangent_out ).copy()
                     elif prop == 'rotation_quaternion':
                         if 'ROT' not in anm_data_raw[bone_name]:
                             anm_data_raw[bone_name]['ROT'    ] = {}
