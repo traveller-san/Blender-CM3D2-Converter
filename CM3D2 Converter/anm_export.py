@@ -267,7 +267,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
             else:
                 loc = compat.convert_bl_to_cm_space(loc)
             return loc * self.scale
-
+        """
         def _convert_quat(pose_bone, quat):
             #quat = mathutils.Quaternion(quat)
             #'''Can't use matrix transforms here as they would mess up interpolation.'''
@@ -298,6 +298,21 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                 quat_mat = compat.convert_bl_to_cm_bone_rotation(quat_mat)
                 quat_mat = compat.convert_bl_to_cm_space(quat_mat)
                 quat = quat_mat.to_quaternion()
+            return quat
+        """
+
+        def _convert_quat(pose_bone, quat):
+            bone_quat = pose_bone.bone.matrix.to_quaternion()
+            quat = mathutils.Quaternion(quat)
+            
+            quat = compat.mul(bone_quat, quat)
+            
+            if pose_bone.bone.parent:
+                #quat.w, quat.x, quat.y, quat.z = quat.w, -quat.z, quat.x, -quat.y
+                quat.w, quat.y, quat.x, quat.z = quat.w, -quat.z, quat.y, -quat.x
+            else:
+                quat = compat.mul(mathutils.Matrix.Rotation(math.radians(90.0), 4, 'Z').to_quaternion(), quat)
+                quat.w, quat.y, quat.x, quat.z = quat.w, -quat.z, quat.y, -quat.x
             return quat
 
         for prop, prop_keyed_bones in keyed_bones.items():
