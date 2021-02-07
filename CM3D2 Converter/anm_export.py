@@ -347,27 +347,34 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                     time = frame / fps * (1.0 / self.time_scale)
 
                     _kf = lambda fcurve: fcurve.keyframe_points[keyframe_index]
-                    raw_keyframe = mathutils.Quaternion( [ _kf(fc).co[1] for fc in prop_fcurves ]                                                                             )
-                    tangent_in   = mathutils.Quaternion( [ ( _kf(fc).handle_left [1] - _kf(fc).co[1] ) / ( _kf(fc).handle_left [0] - _kf(fc).co[0] ) for fc in prop_fcurves ] )
-                    tangent_out  = mathutils.Quaternion( [ ( _kf(fc).handle_right[1] - _kf(fc).co[1] ) / ( _kf(fc).handle_right[0] - _kf(fc).co[0] ) for fc in prop_fcurves ] )
+                    raw_keyframe = [ _kf(fc).co[1] for fc in prop_fcurves ]                                                                            
+                    tangent_in   = [ ( _kf(fc).handle_left [1] - _kf(fc).co[1] ) / ( _kf(fc).handle_left [0] - _kf(fc).co[0] ) for fc in prop_fcurves ]
+                    tangent_out  = [ ( _kf(fc).handle_right[1] - _kf(fc).co[1] ) / ( _kf(fc).handle_right[0] - _kf(fc).co[0] ) for fc in prop_fcurves ]
                                                                               
                     if prop == 'location':
                         if 'LOC' not in anm_data_raw[bone_name]:
                             anm_data_raw[bone_name]['LOC'    ] = {}
-                            anm_data_raw[bone_name]['LOC_IN' ] = {}
-                            anm_data_raw[bone_name]['LOC_OUT'] = {}
+                            #anm_data_raw[bone_name]['LOC_IN' ] = {}
+                            #anm_data_raw[bone_name]['LOC_OUT'] = {}
                         anm_data_raw[bone_name]['LOC'    ][time] = _convert_loc(pose_bone, raw_keyframe).copy()
-                        anm_data_raw[bone_name]['LOC_IN' ][time] = _convert_loc(pose_bone, tangent_in  ).copy()
-                        anm_data_raw[bone_name]['LOC_OUT'][time] = _convert_loc(pose_bone, tangent_out ).copy()
+                        #anm_data_raw[bone_name]['LOC_IN' ][time] = _convert_loc(pose_bone, tangent_in  ).copy()
+                        #anm_data_raw[bone_name]['LOC_OUT'][time] = _convert_loc(pose_bone, tangent_out ).copy()
                     elif prop == 'rotation_quaternion':
                         if 'ROT' not in anm_data_raw[bone_name]:
                             anm_data_raw[bone_name]['ROT'    ] = {}
                             anm_data_raw[bone_name]['ROT_IN' ] = {}
                             anm_data_raw[bone_name]['ROT_OUT'] = {}
-                        converted_quat = _convert_quat(pose_bone, raw_keyframe).copy()
-                        anm_data_raw[bone_name]['ROT'    ][time] = converted_quat.copy()
-                        anm_data_raw[bone_name]['ROT_IN' ][time] = converted_quat.inverted() @ _convert_quat(pose_bone, raw_keyframe @ tangent_in  )
-                        anm_data_raw[bone_name]['ROT_OUT'][time] = converted_quat.inverted() @ _convert_quat(pose_bone, raw_keyframe @ tangent_out )
+                        anm_data_raw[bone_name]['ROT'    ][time] = _convert_quat(pose_bone, raw_keyframe).copy()
+                        anm_data_raw[bone_name]['ROT_OUT'][time] = _convert_quat(pose_bone, tangent_out ).copy()
+                        anm_data_raw[bone_name]['ROT_IN' ][time] = _convert_quat(pose_bone, tangent_in  ).copy()
+                        # - - - Alternative Method - - -
+                        #raw_keyframe = mathutils.Quaternion(raw_keyframe)
+                        #tangent_in   = mathutils.Quaternion(tangent_in)
+                        #tangent_out  = mathutils.Quaternion(tangent_out)
+                        #converted_quat = _convert_quat(pose_bone, raw_keyframe).copy()
+                        #anm_data_raw[bone_name]['ROT'    ][time] = converted_quat.copy()
+                        #anm_data_raw[bone_name]['ROT_IN' ][time] = converted_quat.inverted() @ _convert_quat(pose_bone, raw_keyframe @ tangent_in  )
+                        #anm_data_raw[bone_name]['ROT_OUT'][time] = converted_quat.inverted() @ _convert_quat(pose_bone, raw_keyframe @ tangent_out )
         
         return anm_data_raw
 
