@@ -250,6 +250,8 @@ class CNV_OT_ANIM_convert_to_cm3d2_interpolation(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         fcurves = context.editable_fcurves
+        if not fcurves:
+            return False
         return len(fcurves) > 0
     
     def invoke(self, context, event):

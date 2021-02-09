@@ -462,7 +462,14 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                         keyed_bones[prop].append(bone.name)
 
         elif self.export_method == 'KEYED' or self.is_remove_unkeyed_bone:
-            raise common.CM3D2ExportException("Active armature has no animation data")
+            raise common.CM3D2ExportException(
+                "Active armature has no animation data / action. Please use \"{method}\" with \"{option}\" disabled, or bake keyframes before exporting".format(
+                    method = "Bake All Frames",
+                    option = "Remove Unkeyed Bones"
+                )
+            )
+
+
 
 
         def is_japanese(string):
