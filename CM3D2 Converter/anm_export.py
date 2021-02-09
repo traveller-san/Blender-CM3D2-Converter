@@ -68,18 +68,23 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
     def invoke(self, context, event):
         prefs = common.preferences()
+
+        ob = context.active_object
+        arm = ob.data
+        action_name = None
+        if ob.animation_data and ob.animation_data.action:
+            action_name = common.remove_serial_number(ob.animation_data.action.name)
+
         if prefs.anm_default_path:
-            self.filepath = common.default_cm3d2_dir(prefs.anm_default_path, None, "anm")
+            self.filepath = common.default_cm3d2_dir(prefs.anm_default_path, action_name, "anm")
         else:
-            self.filepath = common.default_cm3d2_dir(prefs.anm_export_path, None, "anm")
+            self.filepath = common.default_cm3d2_dir(prefs.anm_export_path, action_name, "anm")
         self.frame_start = context.scene.frame_start
         self.frame_end = context.scene.frame_end
         self.scale = 1.0 / prefs.scale
         self.is_backup = bool(prefs.backup_ext)
         self.key_frame_count = (context.scene.frame_end - context.scene.frame_start) + 1
 
-        ob = context.active_object
-        arm = ob.data
         if "BoneData:0" in arm:
             self.bone_parent_from = 'ARMATURE_PROPERTY'
         else:
@@ -439,8 +444,8 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
             for bone in arm.bones:
                 bone_parents[bone.name] = bone.parent
 
-
-        if ob.animation_data:
+        copied_action = None
+        if ob.animation_data and ob.animation_data.action:
             copied_action = ob.animation_data.action.copy()
             copied_action.name = ob.animation_data.action.name + "__anm_export"
             fcurves = copied_action.fcurves
@@ -521,6 +526,9 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
             anm_data_raw = self.get_animation_frames(context, fps, pose, bones, bone_parents)
         elif self.export_method == 'KEYED':
             anm_data_raw = self.get_animation_keyframes(context, fps, pose, keyed_bones, fcurves)
+
+        if copied_action:
+            context.blend_data.actions.remove(copied_action, do_unlink=True, do_id_user=True, do_ui_user=True)
 
         anm_data = {}
         for bone_name, channels in anm_data_raw.items():
