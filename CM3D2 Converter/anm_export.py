@@ -8,6 +8,7 @@ import bmesh
 import mathutils
 from . import common
 from . import compat
+from . import misc_DOPESHEET_MT_editor_menus
 
 
 # メインオペレーター
@@ -26,14 +27,21 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
     is_backup = bpy.props.BoolProperty(name="Backup", default=True, description="Will backup overwritten files.")
     version = bpy.props.IntProperty(name="Version", default=1000, min=1000, max=1111, soft_min=1000, soft_max=1111, step=1)
 
-    is_anm_data_text = bpy.props.BoolProperty(name="From Anm Text", default=False, description="Input data from JSON file")
+    #is_anm_data_text = bpy.props.BoolProperty(name="From Anm Text", default=False, description="Input data from JSON file")
+    items = [
+        ('ALL'  , "Bake All Frames"      , "Export every frame as a keyframe (legacy behavior, large file sizes)", 'SEQUENCE' , 1),
+        ('KEYED', "Only Export Keyframes", "Only export keyframes and their tangents (for more advance users)"   , 'KEYINGSET', 2),
+        ('TEXT' , "From Anm Text JSON"   , "Export data from the JSON in the 'AnmData' text file"                , 'TEXT'     , 3)
+    ]
+    export_method = bpy.props.EnumProperty(items=items, name="Export Method", default='ALL')
 
     frame_start = bpy.props.IntProperty(name="Starting Frame", default=0, min=0, max=99999, soft_min=0, soft_max=99999, step=1)
     frame_end = bpy.props.IntProperty(name="Last Frame", default=0, min=0, max=99999, soft_min=0, soft_max=99999, step=1)
     key_frame_count = bpy.props.IntProperty(name="Number of key frames", default=1, min=1, max=99999, soft_min=1, soft_max=99999, step=1)
     time_scale = bpy.props.FloatProperty(name="Playback Speed", default=1.0, min=0.1, max=10.0, soft_min=0.1, soft_max=10.0, step=10, precision=1)
     
-    is_all_frames       = bpy.props.BoolProperty(name="Bake All Frames"      , default=True , description="Export every frame as a keyframe (legacy behavior, large file sizes)")
+    
+    
     is_keyframe_clean   = bpy.props.BoolProperty(name="Clean Keyframes"      , default=True )
     
     is_visual_transform = bpy.props.BoolProperty(name="Use Visual Transforms", default=True )
@@ -45,7 +53,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
     ]
     bone_parent_from = bpy.props.EnumProperty(items=items, name="Bone Parent From", default='ARMATURE_PROPERTY')
 
-    is_remove_unkeyed_bone       = bpy.props.BoolProperty(name="Remove Unkeyed Bones"                 , default=True )  
+    is_remove_unkeyed_bone       = bpy.props.BoolProperty(name="Remove Unkeyed Bones"                 , default=False)  
     is_remove_alone_bone         = bpy.props.BoolProperty(name="Remove Loose Bones"                   , default=True )
     is_remove_ik_bone            = bpy.props.BoolProperty(name="Remove IK Bones"                      , default=True )
     is_remove_serial_number_bone = bpy.props.BoolProperty(name="Remove Duplicate Numbers"             , default=True )
@@ -87,21 +95,21 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         box.prop(self, 'is_backup', icon='FILE_BACKUP')
         box.prop(self, 'version')
 
-        self.layout.prop(self, 'is_anm_data_text', icon='TEXT')
+        #self.layout.prop(self, 'is_anm_data_text', icon='TEXT')
+        box = self.layout.box()
+        box.label(text="Export Method")
+        box.prop(self, 'export_method', expand=True)
 
         box = self.layout.box()
-        box.enabled = not self.is_anm_data_text
+        box.enabled = not (self.export_method == 'TEXT')
+        box.prop(self, 'time_scale')
         sub_box = box.box()
+        sub_box.enabled = (self.export_method == 'ALL')
         row = sub_box.row()
         row.prop(self, 'frame_start')
         row.prop(self, 'frame_end')
         sub_box.prop(self, 'key_frame_count')
-        sub_box.prop(self, 'time_scale')
-        col = sub_box.column() 
-        col.prop(self, 'is_all_frames')
-        row = col.row()
-        row.prop(self, 'is_keyframe_clean', icon='DISCLOSURE_TRI_DOWN')
-        row.enabled = self.is_all_frames
+        sub_box.prop(self, 'is_keyframe_clean', icon='DISCLOSURE_TRI_DOWN')
         sub_box.prop(self, 'is_smooth_handle', icon='SMOOTHCURVE')
 
         sub_box = box.box()
@@ -128,7 +136,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
         try:
             with file:
-                if self.is_anm_data_text:
+                if self.export_method == 'TEXT':
                     self.write_animation_from_text(context, file)
                 else:
                     self.write_animation(context, file)
@@ -304,7 +312,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         def _convert_quat(pose_bone, quat):
             bone_quat = pose_bone.bone.matrix.to_quaternion()
             quat = mathutils.Quaternion(quat)
-            
+
             '''Can't use matrix transforms here as they would mess up interpolation.'''
             quat = compat.mul(bone_quat, quat)
             
@@ -328,12 +336,20 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                 rna_data_path = 'pose.bones["{bone_name}"].{property}'.format(bone_name=bone_name, property=prop)
                 prop_fcurves = [ fcurves.find(rna_data_path, index=axis_index) for axis_index in range(prop_sizes[prop]) ]
                 
-                # Create missing fcurves
+                # Create missing fcurves, and make existing fcurves CM3D2 compatible.
                 for axis_index, fcurve in enumerate(prop_fcurves):
                     if not fcurve:
                         fcurve = fcurves.new(rna_data_path, index=axis_index, action_group=pose_bone.name)
                         prop_fcurves[axis_index] = fcurve
                         self.report(type={'WARNING'}, message="Creating missing FCurve for {path}[{index}]".format(path=rna_data_path, index=axis_index))
+                    else:
+                        override = context.copy()
+                        override['active_editable_fcurve'] = fcurve
+                        bpy.ops.fcurve.convert_to_cm3d2_interpolation(override, only_selected=False, keep_reports=True)
+                        for kwargs in misc_DOPESHEET_MT_editor_menus.REPORTS:
+                            self.report(**kwargs)
+                        misc_DOPESHEET_MT_editor_menus.REPORTS.clear()
+
 
                 # Create a list by frame, indicating wether or not there is a keyframe at that time for each fcurve
                 is_keyframes = {}
@@ -400,8 +416,6 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         pose = ob.pose
         fps = context.scene.render.fps
 
-        common.write_str(file, 'CM3D2_ANIM')
-        file.write(struct.pack('<i', self.version))
 
         bone_parents = {}
         if self.bone_parent_from == 'ARMATURE_PROPERTY':
@@ -425,19 +439,26 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
             for bone in arm.bones:
                 bone_parents[bone.name] = bone.parent
 
-        fcurves = ob.animation_data.action.fcurves
-        keyed_bones = {'location': [], 'rotation_quaternion': [], 'rotation_euler': []}
-        for bone in arm.bones:
-            rna_data_stub = 'pose.bones["{bone_name}"]'.format(bone_name=bone.name)
-            for prop, axes in [('location', 3), ('rotation_quaternion', 4), ('rotation_euler', 3)]:
-                found_fcurve = False
-                for axis_index in range(0, axes):
-                    if fcurves.find(rna_data_stub + '.' + prop, index=axis_index):
-                        found_fcurve = True
-                        break
-                if found_fcurve:
-                    keyed_bones[prop].append(bone.name)
-                
+
+        if ob.animation_data:
+            copied_action = ob.animation_data.action.copy()
+            copied_action.name = ob.animation_data.action.name + "__anm_export"
+            fcurves = copied_action.fcurves
+            keyed_bones = {'location': [], 'rotation_quaternion': [], 'rotation_euler': []}
+            for bone in arm.bones:
+                rna_data_stub = 'pose.bones["{bone_name}"]'.format(bone_name=bone.name)
+                for prop, axes in [('location', 3), ('rotation_quaternion', 4), ('rotation_euler', 3)]:
+                    found_fcurve = False
+                    for axis_index in range(0, axes):
+                        if fcurves.find(rna_data_stub + '.' + prop, index=axis_index):
+                            found_fcurve = True
+                            break
+                    if found_fcurve:
+                        keyed_bones[prop].append(bone.name)
+
+        elif self.export_method == 'KEYED' or self.is_remove_unkeyed_bone:
+            raise common.CM3D2ExportException("Active armature has no animation data")
+
 
         def is_japanese(string):
             for ch in string:
@@ -496,9 +517,9 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
             bones_queue.append(bone)
 
-        if self.is_all_frames:
+        if self.export_method == 'ALL':
             anm_data_raw = self.get_animation_frames(context, fps, pose, bones, bone_parents)
-        else:
+        elif self.export_method == 'KEYED':
             anm_data_raw = self.get_animation_keyframes(context, fps, pose, keyed_bones, fcurves)
 
         anm_data = {}
@@ -524,7 +545,16 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                                                       
         time_step = 1 / fps * (1.0 / self.time_scale)
 
+
+        ''' Write data to the file '''
+
+        common.write_str(file, 'CM3D2_ANIM')
+        file.write(struct.pack('<i', self.version))
+
         for bone in bones:
+            if not anm_data.get(bone.name):
+                continue
+
             file.write(struct.pack('<?', True))
 
             bone_names = [bone.name]
@@ -535,7 +565,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
             bone_names.reverse()
             common.write_str(file, "/".join(bone_names))
-
+            
             for channel_id, keyframes in sorted(anm_data[bone.name].items(), key=lambda x: x[0]):
                 file.write(struct.pack('<B', channel_id))
                 file.write(struct.pack('<i', len(keyframes)))
@@ -554,7 +584,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
                     file.write(struct.pack('<f', x))
                     file.write(struct.pack('<f', y))
 
-                    if self.is_smooth_handle and self.is_all_frames:
+                    if self.is_smooth_handle and self.export_method == 'ALL':
                         if i == 0:
                             prev_x = x - (keyframes_list[i + 1][0] - x)
                             prev_y = y - (keyframes_list[i + 1][1][0] - y)
@@ -587,7 +617,9 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
         file.write(struct.pack('<?', False))
 
     def write_animation_from_text(self, context, file):
-        txt = context.blend_data.texts["AnmData"]
+        txt = context.blend_data.texts.get("AnmData")
+        if not txt:
+            raise common.CM3D2ExportException("There is no 'AnmData' text file.")
 
         import json
         anm_data = json.loads(txt.as_string())
