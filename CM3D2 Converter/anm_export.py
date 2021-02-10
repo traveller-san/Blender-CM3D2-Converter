@@ -202,11 +202,11 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
                 loc = pose_mat.to_translation() * self.scale
                 rot = pose_mat.to_quaternion()
-
-                #if bone.name in pre_rots:
-                #    if 5.0 < pre_rots[bone.name].rotation_difference(rot).angle:
-                #        rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, -rot.y, -rot.z
-                #pre_rots[bone.name] = rot.copy()
+                
+                if bone.name in pre_rots:
+                    if 5.0 < pre_rots[bone.name].rotation_difference(rot).angle:
+                        rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, -rot.y, -rot.z
+                pre_rots[bone.name] = rot.copy()
 
                 #if parent:
                 #    #loc.x, loc.y, loc.z = -loc.y, -loc.x, loc.z
@@ -463,7 +463,7 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
         elif self.export_method == 'KEYED' or self.is_remove_unkeyed_bone:
             raise common.CM3D2ExportException(
-                "Active armature has no animation data / action. Please use \"{method}\" with \"{option}\" disabled, or bake keyframes before exporting".format(
+                "Active armature has no animation data / action. Please use \"{method}\" with \"{option}\" disabled, or bake keyframes before exporting.".format(
                     method = "Bake All Frames",
                     option = "Remove Unkeyed Bones"
                 )
