@@ -202,7 +202,8 @@ class CNV_OT_export_cm3d2_anm(bpy.types.Operator):
 
                 loc = pose_mat.to_translation() * self.scale
                 rot = pose_mat.to_quaternion()
-                
+
+                # This fixes rotations that jump to alternate representations.
                 if bone.name in pre_rots:
                     if 5.0 < pre_rots[bone.name].rotation_difference(rot).angle:
                         rot.w, rot.x, rot.y, rot.z = -rot.w, -rot.x, -rot.y, -rot.z
