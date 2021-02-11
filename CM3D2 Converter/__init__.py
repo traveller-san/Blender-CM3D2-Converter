@@ -58,6 +58,8 @@ if "bpy" in locals():
     imp.reload(misc_VIEW3D_PT_tools_mesh_shapekey)
     imp.reload(misc_DOPESHEET_MT_editor_menus)
 
+    imp.reload(misc_VIEW3D_MT_pose_showhide)
+
 else:
     from . import compat
     from . import common
@@ -98,6 +100,8 @@ else:
     from . import misc_VIEW3D_PT_tools_weightpaint
     from . import misc_VIEW3D_PT_tools_mesh_shapekey
     from . import misc_DOPESHEET_MT_editor_menus
+
+    from . import misc_VIEW3D_MT_pose_showhide
 
 import bpy, os.path, bpy.utils.previews
 
@@ -342,6 +346,7 @@ def register():
     bpy.types.OBJECT_PT_transform.append(misc_OBJECT_PT_transform.menu_func)
     bpy.types.TEXT_HT_header.append(misc_TEXT_HT_header.menu_func)
     bpy.types.VIEW3D_MT_pose_apply.append(misc_VIEW3D_MT_pose_apply.menu_func)
+    bpy.types.VIEW3D_MT_pose_showhide.append(misc_VIEW3D_MT_pose_showhide.menu_func)
 
     setattr(bpy.types.Object, 'cm3d2_bone_morph',  bpy.props.PointerProperty(type=misc_DATA_PT_context_arm.CNV_PG_cm3d2_bone_morph ))
     setattr(bpy.types.Object, 'cm3d2_wide_slider', bpy.props.PointerProperty(type=misc_DATA_PT_context_arm.CNV_PG_cm3d2_wide_slider))
