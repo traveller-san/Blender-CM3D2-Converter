@@ -235,6 +235,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
                     apply_results = bpy.ops.object.forced_modifier_apply(override, apply_viewport_visible=True, is_preserve_shape_key_values=self.is_preserve_shape_key_values)
                     if ('FINISHED' in apply_results) and had_armature:
                         new_mod = o.modifiers.new(name=old_name, type='ARMATURE')
+                        new_mod.object              = ob
                         new_mod.use_deform_preserve_volume = self.is_deform_preserve_volume
                         new_mod.show_expanded       = old_show_expanded      
                         new_mod.show_in_editmode    = old_show_in_editmode   
@@ -246,7 +247,8 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
                         new_mod.use_bone_envelopes  = old_use_bone_envelopes 
                         #new_mod.use_multi_modifier  = old_use_multi_modifier 
                         new_mod.use_vertex_groups   = old_use_vertex_groups  
-                        new_mod.vertex_group        = old_vertex_group       
+                        new_mod.vertex_group        = old_vertex_group
+                    
 
         temp_ob = ob.copy()
         temp_arm = arm.copy()

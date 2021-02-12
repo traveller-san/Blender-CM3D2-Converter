@@ -330,13 +330,13 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                         for before, after in replace_list:
                             mirrored_name = re.sub(before, after, vg.name)
                             if mirrored_name not in ob.vertex_groups:
-                                ob.vertex_groups.new(name=mirrored_name)
+                                ob.vertex_groups.new(override, name=mirrored_name)
 
                 try:
                     bpy.ops.object.modifier_apply(override, modifier=mod.name)
                 except Exception as e:
                     #ob.modifiers.remove(mod)
-                    self.report(type={'WARNING'}, message="Could not apply '{type}' modifier \"{name}\"".format(type=mod.type, name=mod.name))
+                    self.report(type={'ERROR', 'WARNING'}, message="Could not apply '{type}' modifier \"{name}\"".format(type=mod.type, name=mod.name))
                     print("Error applying '{type}' modifier \"{name}\":\n\t".format(type=mod.type, name=mod.name), e)
                     
 
@@ -345,6 +345,7 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             if mod.type == "ARMATURE":
                 arm_ob = mod.object
 
+        # Calculate custom normals for armature modifiers
         if arm_ob:
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -377,25 +378,29 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                     total_weight += vge.weight
 
                 total_quat = mathutils.Quaternion()
-                for vge in vert.groups:
-                    vg = ob.vertex_groups[vge.group]
-                    try:
-                        total_quat = total_quat.slerp(pose_quats[vg.name], vge.weight / total_weight)
-                    except KeyError:
-                        pass
-
+                if total_weight != 0.0:
+                    for vge in vert.groups:
+                        vg = ob.vertex_groups[vge.group]
+                        try:
+                            total_quat = total_quat.slerp(pose_quats[vg.name], vge.weight / total_weight)
+                        except KeyError:
+                            pass
+                
                 no.rotate(total_quat)
                 custom_normals.append(no)
 
+        override = context.copy()
+        override['object'] = ob
         for index, mod in enumerate(copy_modifiers):
             #if index >= 32: # luvoid : can only apply 32 modifiers at once.
             #    break
             if self.is_applies[index].value and mod.type == 'ARMATURE':
                 try:
-                    bpy.ops.object.modifier_apply(modifier=mod.name)
-                except:
+                    bpy.ops.object.modifier_apply(override, modifier=mod.name)
+                except Exception as e:
                     #ob.modifiers.remove(mod)
-                    self.report(type={'WARNING'}, message="Could not apply '%s' modifier \"%s\"" % (mod.type, mod.name) )
+                    self.report(type={'ERROR', 'WARNING'}, message="Could not apply '{mod_type}' modifier \"{mod_name}\"".format(mod_type=mod.type, mod_name=mod.name) )
+                    print("Could not apply '{mod_type}' modifier \"{mod_name}\":\n\t".format(mod_type=mod.type, mod_name=mod.name), e)
 
         compat.set_active(context, ob)
 
