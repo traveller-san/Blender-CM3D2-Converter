@@ -173,6 +173,8 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
 
     apply_viewport_visible: bpy.props.BoolProperty(name="Apply Viewport-Visible Modifiers", default=False)
     apply_renderer_visible: bpy.props.BoolProperty(name="Apply Renderer-Visible Modifiers", default=False)
+
+    initial_progress: bpy.props.FloatProperty(name="Progress", default=-1, options={'HIDDEN', 'SKIP_SAVE'})
     
     
     @classmethod
@@ -217,7 +219,8 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
 
     def draw(self, context):
         prefs = common.preferences()
-        self.layout.prop(prefs, 'custom_normal_blend'         , icon=compat.icon('SNAP_NORMAL'  ), slider=True)
+        if compat.IS_LEGACY:
+            self.layout.prop(prefs, 'custom_normal_blend'         , icon=compat.icon('SNAP_NORMAL'  ), slider=True)
         self.layout.prop(self , 'is_preserve_shape_key_values', icon=compat.icon('SHAPEKEY_DATA'), slider=True)
         self.layout.label(text="Apply")
         ob = context.active_object
@@ -230,12 +233,20 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         #        self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon=icon)
         #    except:
         #        self.layout.prop(self, 'is_applies', text=mod.name, index=index, icon='MODIFIER')
-
+        
         self.layout.template_list("CNV_UL_modifier_selector", "", self, "is_applies", self, "active_modifier")
         self.layout.label(text="Show filters", icon='FILE_PARENT')
 
     def execute(self, context):
         ob = context.object
+
+        did_start_progress = False
+        if self.initial_progress == -1:
+            progress_start = 0
+            context.window_manager.progress_begin(0, 1)
+            did_start_progress = True
+        else:
+            progress_start = self.initial_progress
 
         if self.apply_viewport_visible or self.apply_renderer_visible:
             for index, mod in enumerate(ob.modifiers):
@@ -257,6 +268,9 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 break
         if not is_any:
             self.report(type={'INFO'}, message="There are no applicable modifiers, so cancel")
+            context.window_manager.progress_update(progress_start + 1)
+            if did_start_progress:
+                context.window_manager.progress_end()
             return {'CANCELLED'}
 
         custom_normal_blend = common.preferences().custom_normal_blend
@@ -268,23 +282,38 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
         pre_selected_objects = context.selected_objects[:]
         pre_mode = ob.mode
 
-        if is_shaped:
-            pre_relative_keys = [s.relative_key.name for s in me.shape_keys.key_blocks]
-            pre_shape_key_values = [s.value for s in me.shape_keys.key_blocks]
-            pre_active_shape_key_index = ob.active_shape_key_index
+        arm_ob = None
+        if compat.IS_LEGACY:
+            for mod in ob.modifiers:
+                if mod.type == "ARMATURE":
+                    arm_ob = mod.object
 
-            shape_names = [s.name for s in me.shape_keys.key_blocks]
-            shape_deforms = []
-            for shape in me.shape_keys.key_blocks:
-                shape_deforms.append([shape.data[v.index].co.copy() for v in me.vertices])
+        progress = 0
+        progress_count = 1
+        progress_count += 2 if arm_ob else 0
+        progress_count += len(me.shape_keys.key_blocks) * 3 if is_shaped else 0
+
+        if is_shaped:
+            pre_active_shape_key_index = ob.active_shape_key_index
+            pre_relative_keys          = [None] * len(me.shape_keys.key_blocks)
+            pre_shape_key_values       = [0]    * len(me.shape_keys.key_blocks)
+            shape_names                = [""]   * len(me.shape_keys.key_blocks)
+            shape_deforms              = [None] * len(me.shape_keys.key_blocks)
+            for shape_index, shape in enumerate(me.shape_keys.key_blocks):
+                pre_relative_keys   [shape_index] = shape.relative_key.name
+                pre_shape_key_values[shape_index] = shape.value
+                shape_names         [shape_index] = shape.name
+                shape_deforms       [shape_index] = [shape.data[v.index].co.copy() for v in me.vertices]
+                
+                progress += 1
+                context.window_manager.progress_update(progress_start + progress / progress_count)
 
             ob.active_shape_key_index = len(me.shape_keys.key_blocks) - 1
             for i in me.shape_keys.key_blocks[:]:
                 ob.shape_key_remove(ob.active_shape_key)
-
+            
             new_shape_deforms = []
             for shape_index, deforms in enumerate(shape_deforms):
-
                 temp_ob = ob.copy()
                 temp_me = me.copy()
                 temp_ob.data = temp_me
@@ -311,17 +340,22 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                     common.remove_data(temp_ob)
                     common.remove_data(temp_me)
 
+                    progress += 1
+                    context.window_manager.progress_update(progress_start + progress / progress_count)
+
         if ob.active_shape_key_index != 0:
             ob.active_shape_key_index = 0
             me.update()
 
         copy_modifiers = ob.modifiers[:]
+        mod_count = len(copy_modifiers)
+        mod_progress = 0
         override = context.copy()
         override['object'] = ob
         for index, mod in enumerate(copy_modifiers):
             #if index >= 32: # luvoid : can only apply 32 modifiers at once.
             #    break
-            if self.is_applies[index].value and mod.type != 'ARMATURE':
+            if self.is_applies[index].value and (mod.type != 'ARMATURE' or not compat.IS_LEGACY):
                 if mod.type == 'MIRROR' and mod.use_mirror_vertex_groups:
                     if bpy.ops.object.decode_cm3d2_vertex_group_names.poll():
                         self.report(type={'WARNING'}, message="Vertex groups are not in blender naming style. Mirror modifier results may not be as expected")
@@ -331,21 +365,17 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                             mirrored_name = re.sub(before, after, vg.name)
                             if mirrored_name not in ob.vertex_groups:
                                 ob.vertex_groups.new(override, name=mirrored_name)
-
                 try:
                     bpy.ops.object.modifier_apply(override, modifier=mod.name)
                 except Exception as e:
                     #ob.modifiers.remove(mod)
                     self.report(type={'ERROR', 'WARNING'}, message="Could not apply '{type}' modifier \"{name}\"".format(type=mod.type, name=mod.name))
                     print("Error applying '{type}' modifier \"{name}\":\n\t".format(type=mod.type, name=mod.name), e)
-                    
+            
+            mod_progress += 1 if (mod.type != 'ARMATURE' or not compat.IS_LEGACY) else 0
+            context.window_manager.progress_update( progress_start + (progress + mod_progress / mod_count) / progress_count )
 
-        arm_ob = None
-        for mod in ob.modifiers:
-            if mod.type == "ARMATURE":
-                arm_ob = mod.object
-
-        # Calculate custom normals for armature modifiers
+        # Calculate custom normals for armature modifiers in legacy blender
         if arm_ob:
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.object.mode_set(mode='OBJECT')
@@ -389,36 +419,49 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
                 no.rotate(total_quat)
                 custom_normals.append(no)
 
+            progress += 1
+            context.window_manager.progress_update(progress_start + progress / progress_count)
+
         override = context.copy()
         override['object'] = ob
         for index, mod in enumerate(copy_modifiers):
             #if index >= 32: # luvoid : can only apply 32 modifiers at once.
             #    break
-            if self.is_applies[index].value and mod.type == 'ARMATURE':
+            if self.is_applies[index].value and (mod.type == 'ARMATURE' and compat.IS_LEGACY):
                 try:
                     bpy.ops.object.modifier_apply(override, modifier=mod.name)
                 except Exception as e:
                     #ob.modifiers.remove(mod)
                     self.report(type={'ERROR', 'WARNING'}, message="Could not apply '{mod_type}' modifier \"{mod_name}\"".format(mod_type=mod.type, mod_name=mod.name) )
                     print("Could not apply '{mod_type}' modifier \"{mod_name}\":\n\t".format(mod_type=mod.type, mod_name=mod.name), e)
+            
+            mod_progress += 1 if (mod.type == 'ARMATURE' and compat.IS_LEGACY) else 0
+            context.window_manager.progress_update( progress_start + (progress + mod_progress / mod_count) / progress_count )
+
+        progress += 1
+        context.window_manager.progress_update(progress_start + progress / progress_count)
 
         compat.set_active(context, ob)
 
         if is_shaped:
-
             for deforms in new_shape_deforms:
                 if len(me.vertices) != len(deforms):
                     self.report(type={'ERROR'}, message="Since the number of vertices has changed due to mirror etc, The shape key can not be stored. Please undo with Ctrl + Z or other.")
+                    context.window_manager.progress_update(progress_start + 1)
+                    if did_start_progress:
+                        context.window_manager.progress_end()
                     return {'FINISHED', 'CANCELLED'}
 
             for shape_index, deforms in enumerate(new_shape_deforms):
-
                 bpy.ops.object.shape_key_add(context.copy(), from_mix=False)
                 shape = ob.active_shape_key
                 shape.name = shape_names[shape_index]
 
                 for vert in me.vertices:
                     shape.data[vert.index].co = deforms[vert.index].copy()
+
+                progress += 1
+                context.window_manager.progress_update(progress_start + progress / progress_count)
 
             for shape_index, shape in enumerate(me.shape_keys.key_blocks):
                 shape.relative_key = me.shape_keys.key_blocks[pre_relative_keys[shape_index]]
@@ -450,4 +493,10 @@ class CNV_OT_forced_modifier_apply(bpy.types.Operator):
             me.use_auto_smooth = True
             me.normals_split_custom_set(custom_normals)
 
+            progress += 1
+            context.window_manager.progress_update(progress_start + progress / progress_count)
+
+        context.window_manager.progress_update(progress_start + 1)
+        if did_start_progress:
+            context.window_manager.progress_end()
         return {'FINISHED'}
