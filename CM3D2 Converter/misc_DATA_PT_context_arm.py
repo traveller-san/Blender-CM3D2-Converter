@@ -444,7 +444,7 @@ class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
                 expr = expression[i]
             driver.expression = expr.format(*args, axis=['x','y','z'][index], index=index, i=i)
 
-    def constrainTwistBone(self, ob, boneName, targetName, flip='BOTH', type='COPY_ROTATION', space=None, map=None, **kwargs):
+    def constrainTwistBone(self, ob, boneName, targetName="", flip='BOTH', type='COPY_ROTATION', space=None, map=None, **kwargs):
         if flip == 'BOTH':
             const_l = self.constrainTwistBone(ob, boneName, targetName, flip=False, type=type, space=space, map=map, **kwargs)
             const_r = self.constrainTwistBone(ob, boneName, targetName, flip=True , type=type, space=space, map=map, **kwargs)
@@ -452,12 +452,13 @@ class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
 
         bone   = self.getPoseBone(ob, boneName  , flip=flip)
         target = self.getPoseBone(ob, targetName, flip=flip)
-        if not bone or not target:
+        if not bone or (not target and targetName):
             return None
 
         const = bone.constraints.new(type)
-        const.target = ob
-        const.subtarget = target.name
+        if target:
+            const.target = ob
+            const.subtarget = target.name
         if space:
             const.target_space = space
             const.owner_space  = space
@@ -475,7 +476,8 @@ class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
         pre_mode = ob.mode
         if pre_mode != 'POSE':
             bpy.ops.object.mode_set(mode='POSE')
-                         
+
+        # TODO : Fix shoulder constraints
         # AutoTwist() ... Shoulder : 'TBody.cs' line 2775
         self.constrainTwistBone(ob, 'Uppertwist_?', 'Bip01 ? UpperArm',
             type  = 'TRANSFORM'                 ,
@@ -514,6 +516,13 @@ class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
             from_max_y_rot = 1                  ,
             to_max_y_rot   = 1
         )
+        self.constrainTwistBone(ob, 'Foretwist1_?',
+            type  = 'LIMIT_ROTATION',
+            space = 'LOCAL'         ,
+            use_limit_x = True      ,
+            use_limit_y = True      ,
+            use_limit_z = True      ,
+        )
         self.constrainTwistBone(ob, 'Foretwist1_?', 'Bip01 ? Hand', 
             type  = 'TRANSFORM'                 ,
             space = 'LOCAL'                     ,
@@ -526,7 +535,7 @@ class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
             influence      = 0.5
         )
 
-
+        # TODO : Fix thigh constraints
         # AutoTwist() ... Thigh : 'TBody.cs' line 2813
         self.constrainTwistBone(ob, 'momotwist_?', 'Bip01 ? Thigh',
             type  = 'TRANSFORM'                 ,
@@ -554,6 +563,13 @@ class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
         # MoveMomoniku() : 'TBody.cs' line 2841
         self.driveTwistBone(ob, 'momoniku_?', flip=False, expression=("", "", "min(0,max(-8, self.id_data.pose.bones['{0}'].matrix.col[2].xyz.dot( (0,0,-1) ) *  10 * (pi/180) ))"), infulencers=('Bip01 ? Thigh'))
         self.driveTwistBone(ob, 'momoniku_?', flip=True , expression=("", "", "min(8,max( 0, self.id_data.pose.bones['{0}'].matrix.col[2].xyz.dot( (0,0,-1) ) * -10 * (pi/180) ))"), infulencers=('Bip01 ? Thigh'))
+        self.constrainTwistBone(ob, 'Hip_?',
+            type  = 'LIMIT_ROTATION',
+            space = 'LOCAL'         ,
+            use_limit_x = True      ,
+            use_limit_y = True      ,
+            use_limit_z = True      ,
+        )
         self.constrainTwistBone(ob, 'Hip_?', 'Bip01 ? Thigh', 
             space = 'LOCAL_WITH_PARENT', 
             influence = 0.67
@@ -656,9 +672,43 @@ class CNV_OT_add_cm3d2_twist_bones(bpy.types.Operator):
 """
 - - - - - - For Bone Sliders - - - - - - 
 """
+def get_axis_index_vector(axis_index, size=3):
+    vec = mathutils.Vector.Fill(size)
+    vec[axis_index] = 1
+    return vec
+
+def get_axis_order_matrix(axis_order):
+    size = len(axis_order)
+    mat = mathutils.Matrix.Diagonal( [0] * size )
+    for index, axis_index in enumerate(axis_order):
+        mat[index][axis_index] = 1
+    return mathutils.Matrix(mat)
+
+def get_vector_axis_index(vec):
+    length = len(vec)
+    for axis_index, axis_value in enumerate(vec):
+        if axis_index == length-1:
+            return axis_index
+        else:
+            axis_value = abs(axis_value)
+            largest = True
+            for i in range(axis_index+1, length):
+                if axis_value < abs(vec[i]):
+                    largest = False
+                    break
+            if largest:
+                return axis_index
+
+def get_matrix_axis_order(mat):
+    return [ get_vector_axis_index(row) for row in mat ]
+
+
+
 @compat.BlRegister()
 class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
     bl_idname = 'CNV_PG_cm3d2_bone_morph'
+
+    scale = bpy.props.FloatProperty(name="Scale", default=5, min=0.1, max=100, soft_min=0.1, soft_max=100, step=100, precision=1, description="The amount by which the mesh is scaled when imported. Recommended that you use the same when at the time of export.")
 
     def __calcMeasurements(self, context):                                               
         num    =  1340                         +                   self.sintyou * 4    +      self.DouPer * (1 + self.sintyou * 0.005) + self.KubiScl * 0.5 + self.HeadY * 0.5
@@ -811,7 +861,7 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
     def GetPoseBone(self, boneName, flip=False, override=None):
         context = bpy.context
         
-        side = "R" if flip else "L"
+        side = "L" if flip else "R"
         armature, override = self.GetArmature()
         if not armature:
             return
@@ -881,22 +931,53 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
         if value == 0:
             return
         
-        driver = drivers[axis] or bone.driver_add("location", axis).driver
+        driver = drivers[axis]
         prefix = " + "
         
-        # if just created
-        if not driver.use_self:
+        if not driver:
+            driver = bone.driver_add("location", axis).driver
             driver.type = 'SCRIPTED'
-            driver.use_self = True
+            
+            parent_length_var = driver.variables.new()
+            parent_length_var.type = 'SINGLE_PROP'
+            parent_length_var.name = "parent_length"
+            
+            driver_target = parent_length_var.targets[0]
+            driver_target.id_type = 'ARMATURE'
+            driver_target.id = bone.parent.bone.id_data
+            driver_target.data_path = bone.parent.bone.path_from_id("length")
+
+            head_var = driver.variables.new()
+            head_var.type = 'SINGLE_PROP'
+            head_var.name = "head"
+
+            driver_target = head_var.targets[0]
+            driver_target.id_type = 'OBJECT'
+            driver_target.id = bone.id_data
+            driver_target.data_path = bone.path_from_id("head") + "[{index}]".format(index=axis)
+            
             if axis == 1: # if y axis, include parent bone's length, because head coords are based on parent's tail
-                driver.expression = "(self.parent.bone.length+self.bone.head[%d])_" % axis
+                driver.expression = "(parent_length+head)_"
             else:
-                driver.expression = "self.bone.head[%d]_" % axis
+                driver.expression = "head_"
             prefix = " * ("
+            
+            #driver.expression = "-{direction} + {direction}".format(direction=rest_value)
+
+        driver_var = driver.variables.get(prop)
+        if not driver_var:
+            driver_var = driver.variables.new()
+            driver_var.type = 'SINGLE_PROP'
+            driver_var.name = prop
+
+            driver_target = driver_var.targets[0]
+            driver_target.id_type = 'OBJECT'
+            driver_target.id = bone.id_data
+            driver_target.data_path = bone.id_data.cm3d2_bone_morph.path_from_id(prop)
         
         # if prop isn't already a factor
         if not prop in driver.expression:
-            driver.expression = driver.expression[:-1] + prefix + ("(self.id_data.cm3d2_bone_morph.%s-%g)*%g)" % (prop, default, value/(100-default) ))
+            driver.expression = driver.expression[:-1] + prefix + "({var}-{offset})*{factor})".format(var=prop, offset=default, factor=value/(100-default))
             
         return
 
@@ -905,18 +986,29 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
         if value == 0:
             return
         
-        driver = drivers[axis] or bone.driver_add("scale", axis).driver
+        driver = drivers[axis]
         
         # if just created
-        if not driver.use_self:
+        if not driver:
+            driver = bone.driver_add("scale", axis).driver
             driver.type = 'SCRIPTED'
-            driver.use_self = True
             driver.expression = "(1)"
+
+        driver_var = driver.variables.get(prop) 
+        if not driver_var:
+            driver_var = driver.variables.new()
+            driver_var.type = 'SINGLE_PROP'
+            driver_var.name = prop
+
+            driver_target = driver_var.targets[0]
+            driver_target.id_type = 'OBJECT'
+            driver_target.id = bone.id_data
+            driver_target.data_path = bone.id_data.cm3d2_bone_morph.path_from_id(prop)
         
         # if prop isn't already a factor
         if not prop in driver.expression:
-            driver.expression = driver.expression[:-1] + (" + (self.id_data.cm3d2_bone_morph.%s-%g)*%g)" % (prop, default, value/(100-default) ))
-                
+            driver.expression = driver.expression[:-1] + " + ({var}-{offset})*{factor})".format(var=prop, offset=default, factor=value/(100-default))
+ 
         return
 
     def SetPosition(self, prop, boneName, x, y, z, default=50):
@@ -931,30 +1023,51 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
         #loc.x, loc.y, loc.z = loc.z, -loc.x, loc.y
         #x, y, z = z, x, y
 
-        mat = mathutils.Matrix.Translation((x, y, z)).to_4x4()
-        mat = compat.convert_cm_to_bl_slider_space(mat)
-        x, y, z = mat.to_translation()
-        
-        bone = self.GetPoseBone(boneName)
-        if bone:
-            bone.bone.use_local_location = False
-            drivers = self.GetDrivers(bone.name,'location')
-            
-            self.AddPositionDriver(prop, bone, drivers, 0, x, default=default)
-            self.AddPositionDriver(prop, bone, drivers, 1, y, default=default)
-            self.AddPositionDriver(prop, bone, drivers, 2, z, default=default)
-        
+        vec = mathutils.Vector((x, y, z))
+        vec = compat.convert_cm_to_bl_slider_space(vec)
+
+        pose_bone = self.GetPoseBone(boneName)
+        if pose_bone:                                                       
+            #rest_pos = pose_bone.bone.head_local + (pose_bone.bone.head_local - pose_bone.bone.parent.head_local) 
+            #rest_pos = compat.mul(pose_bone.bone.matrix_local.inverted(), rest_pos)
+            #vec = mathutils.Vector((x, y, z))# * self.scale
+            #if pose_bone.parent:
+            #    vec = compat.convert_cm_to_bl_bone_space(vec)
+            #    vec = compat.mul(pose_bone.parent.bone.matrix_local, vec)
+            #else:
+            #    vec = compat.convert_cm_to_bl_space(vec)
+            #vec = compat.mul(pose_bone.bone.matrix_local.inverted(), vec)
+
+            pose_bone.bone.use_local_location = False
+            drivers = self.GetDrivers(pose_bone.name,'location')
+                                                        
+            self.AddPositionDriver(prop, pose_bone, drivers, 0, vec[0], default=default)
+            self.AddPositionDriver(prop, pose_bone, drivers, 1, vec[1], default=default)
+            self.AddPositionDriver(prop, pose_bone, drivers, 2, vec[2], default=default)
+                                                                   
         # repeat for left side
         if '?' in boneName:
-            bone = self.GetPoseBone(boneName, flip=True)
-            if bone:
-                bone.bone.use_local_location = False
-                drivers = self.GetDrivers(bone.name,'location')
+            pose_bone = self.GetPoseBone(boneName, flip=True)
+            if pose_bone:
+                #rest_pos = pose_bone.bone.head_local + pose_bone.bone.head
+                #rest_pos = compat.mul(pose_bone.bone.matrix_local.inverted(), rest_pos)
+                #vec = mathutils.Vector((x, y, z))# * self.scale
+                #if pose_bone.parent:
+                #    vec = compat.convert_cm_to_bl_bone_space(vec)
+                #    vec = compat.mul(pose_bone.parent.bone.matrix_local, vec)
+                #else:
+                #    vec = compat.convert_cm_to_bl_space(vec)
+                #vec = compat.mul(pose_bone.bone.matrix_local.inverted(), vec)
                 
-                self.AddPositionDriver(prop, bone, drivers, 0, x, default=default)
-                self.AddPositionDriver(prop, bone, drivers, 1, y, default=default)
-                self.AddPositionDriver(prop, bone, drivers, 2, (1-z)+1, default=default) # mirror z axis
-        
+                pose_bone.bone.use_local_location = False
+                drivers = self.GetDrivers(pose_bone.name,'location')
+
+                vec[2] = (1-vec[2])+1 # mirror z axis
+                
+                self.AddPositionDriver(prop, pose_bone, drivers, 0, vec[0], default=default)
+                self.AddPositionDriver(prop, pose_bone, drivers, 1, vec[1], default=default)
+                self.AddPositionDriver(prop, pose_bone, drivers, 2, vec[2], default=default)
+                                                                            
         return
 
     def SetScale(self, prop, boneName, x, y, z, default=50):
@@ -967,7 +1080,7 @@ class CNV_PG_cm3d2_bone_morph(bpy.types.PropertyGroup):
 
         mat = mathutils.Matrix.Diagonal((x, y, z)).to_4x4()
         mat = compat.convert_cm_to_bl_bone_rotation(mat)
-        x, y, z = mat.to_scale()
+        x, y, z = -mat.to_scale()
 
         bone = self.GetPoseBone(boneName)
         if bone:
@@ -1053,17 +1166,29 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
         if value == 0:
             return
               
-        driver = drivers[axis] or bone.driver_add("location",axis).driver
-              
-        # if just created
-        if not driver.use_self:
+        driver = drivers[axis]
+
+        if not driver:
+            driver = bone.driver_add("location",axis).driver
             driver.type = 'SCRIPTED'
-            driver.use_self = True
             driver.expression = "0"
+
+        prop_var = prop + "_{index}_".format(index=index)
+        driver_var = driver.variables.get(prop_var) 
+        if not driver_var:
+            driver_var = driver.variables.new()
+            driver_var.type = 'SINGLE_PROP'
+            driver_var.name = prop_var
+
+            driver_target = driver_var.targets[0]
+            driver_target.id_type = 'OBJECT'
+            driver_target.id = bone.id_data
+            driver_target.data_path = bone.id_data.cm3d2_wide_slider.path_from_id(prop) + "[{index}]".format(index=index)
+
               
         # if prop isn't already a factor
-        if not prop in driver.expression:
-            driver.expression = driver.expression + (" + self.id_data.cm3d2_wide_slider.%s[%d]*%g" % (prop,index,value))
+        if not prop_var in driver.expression:
+            driver.expression = driver.expression + (" + {var}*{factor}".format(var=prop_var, factor=value))
                 
         return
               
@@ -1072,17 +1197,28 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
         if index < 0:
             return
               
-        driver = drivers[axis] or bone.driver_add("scale",axis).driver
-              
-        # if just created
-        if not driver.use_self:
+        driver = drivers[axis]
+        if not driver:
+            driver = bone.driver_add("scale", axis).driver
             driver.type = 'SCRIPTED'
-            driver.use_self = True
             driver.expression = "1"
+        
+        prop_var = prop + "_{index}_".format(index=index)
+        driver_var = driver.variables.get(prop_var) 
+        if not driver_var:
+            driver_var = driver.variables.new()
+            driver_var.type = 'SINGLE_PROP'
+            driver_var.name = prop_var
+
+            driver_target = driver_var.targets[0]
+            driver_target.id_type = 'OBJECT'
+            driver_target.id = bone.id_data
+            driver_target.data_path = bone.id_data.cm3d2_wide_slider.path_from_id(prop) + "[{index}]".format(index=index)
+
               
         # if prop isn't already a factor
-        if not prop in driver.expression:
-            driver.expression = driver.expression + (" * self.id_data.cm3d2_wide_slider.%s[%d]" % (prop,index))
+        if not prop_var in driver.expression:
+            driver.expression = driver.expression + (" * {var}".format(var=prop_var))
                 
         return
               
@@ -1107,26 +1243,33 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
         #    self.AddVectorProperty(bpy.context.object, prop)
         #    if ONLY_FIX_SETTINGS:
         #        return
-        
-        mat = mathutils.Matrix.Translation((ux, uy, uz)).to_4x4() * self.scale
-        mat = compat.convert_cm_to_bl_wide_slider_space(mat)
-        ux, uy, uz = mat.to_translation()
 
-        #ux, uy, uz = uz*5, ux*5, -uy*5
-        #axisFlip = axisOrder[axisFlip] if axisFlip else None
-        axisFlip = 1 if axisFlip == 0 else ( 2 if axisFlip == 1 else (0 if axisFlip == 2 else None) )
-        #axisFlip = axisOrder[axisFlip] if axisFlip else None
-        axisOrder[0], axisOrder[1], axisOrder[2] = axisOrder[2], axisOrder[0], axisOrder[1]
-        #axisFlip = axisOrder[axisFlip] if axisFlip != None else None
+        mat = get_axis_order_matrix(axisOrder).to_4x4()
+        mat.translation = mathutils.Vector((ux, uy, uz)) * self.scale
+        mat = compat.convert_cm_to_bl_bone_space(mat)
+        uVec = mat.to_translation()
+        axisOrder = get_matrix_axis_order(mat.to_3x3())
+
+        if axisFlip != None:
+            flipVec = get_axis_index_vector(axisFlip)
+            flipVec = compat.convert_cm_to_bl_bone_space(flipVec)
+            axisFlip = get_vector_axis_index(flipVec)
+        
+        ##ux, uy, uz = uz*5, ux*5, -uy*5
+        ##axisFlip = axisOrder[axisFlip] if axisFlip else None
+        #axisFlip = 1 if axisFlip == 0 else ( 2 if axisFlip == 1 else (0 if axisFlip == 2 else None) )
+        ##axisFlip = axisOrder[axisFlip] if axisFlip else None
+        #axisOrder[0], axisOrder[1], axisOrder[2] = axisOrder[2], axisOrder[0], axisOrder[1]
+        ##axisFlip = axisOrder[axisFlip] if axisFlip != None else None
         
         bone = self.GetPoseBone(boneName)
         if bone:
             bone.bone.use_local_location = False
             drivers = self.GetDrivers(bone.name,'location')
         
-            self.AddPositionDriver(prop, axisOrder[0], bone, drivers, 0, -ux)
-            self.AddPositionDriver(prop, axisOrder[1], bone, drivers, 1, -uy)
-            self.AddPositionDriver(prop, axisOrder[2], bone, drivers, 2, -uz)
+            self.AddPositionDriver(prop, axisOrder[0], bone, drivers, 0, uVec[0])
+            self.AddPositionDriver(prop, axisOrder[1], bone, drivers, 1, uVec[1])
+            self.AddPositionDriver(prop, axisOrder[2], bone, drivers, 2, uVec[2])
         
         # repeat for left side
         if '?' in boneName:
@@ -1134,18 +1277,22 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
             if bone:
                 bone.bone.use_local_location = False
                 drivers = self.GetDrivers(bone.name,'location')
+
+                if axisFlip != None:
+                    print(axisFlip)
+                    uVec[axisFlip] *= -1
                 
-                if   axisFlip == 0:
-                    ux = -ux
-                elif axisFlip == 1:
-                    uy = -uy
-                elif axisFlip == 2:
-                    uz = -uz
+                #if   axisFlip == 0:
+                #    ux = -ux
+                #elif axisFlip == 1:
+                #    uy = -uy
+                #elif axisFlip == 2:
+                #    uz = -uz
                 
-                self.AddPositionDriver(prop, axisOrder[0], bone, drivers, 0, -ux)
-                self.AddPositionDriver(prop, axisOrder[1], bone, drivers, 1, -uy)
-                self.AddPositionDriver(prop, axisOrder[2], bone, drivers, 2, -uz)
-        
+                self.AddPositionDriver(prop, axisOrder[0], bone, drivers, 0, uVec[0])
+                self.AddPositionDriver(prop, axisOrder[1], bone, drivers, 1, uVec[1])
+                self.AddPositionDriver(prop, axisOrder[2], bone, drivers, 2, uVec[2])
+                                                                             
         return
 
 
@@ -1157,15 +1304,20 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
         #        return
 
         # x, y, z = x, z, y
-        axisOrder[0], axisOrder[1], axisOrder[2] = axisOrder[0], axisOrder[2], axisOrder[1]
+        #axisOrder[0], axisOrder[1], axisOrder[2] = axisOrder[0], axisOrder[2], axisOrder[1]
+        
+        axisMat = get_axis_order_matrix(axisOrder).to_4x4()
+        axisMat = compat.convert_cm_to_bl_bone_rotation(axisMat)
+        #axisMat = compat.convert_cm_to_bl_bone_space(axisMat)
+        axisOrder = get_matrix_axis_order(axisMat)
         
         bone = self.GetPoseBone(boneName)
         if bone:
             drivers = self.GetDrivers(bone.name,'scale')
             
-            self.AddScaleDriver(prop, axisOrder[0], bone, drivers, 0)
+            self.AddScaleDriver(prop, axisOrder[0], bone, drivers, 2)
             self.AddScaleDriver(prop, axisOrder[1], bone, drivers, 1)
-            self.AddScaleDriver(prop, axisOrder[2], bone, drivers, 2)
+            self.AddScaleDriver(prop, axisOrder[2], bone, drivers, 0)
         
         # repeat for left side
         if '?' in boneName:
@@ -1173,9 +1325,9 @@ class CNV_PG_cm3d2_wide_slider(bpy.types.PropertyGroup):
             if bone:
                 drivers = self.GetDrivers(bone.name,'scale')
 
-                self.AddScaleDriver(prop, axisOrder[0], bone, drivers, 0)
+                self.AddScaleDriver(prop, axisOrder[0], bone, drivers, 2)
                 self.AddScaleDriver(prop, axisOrder[1], bone, drivers, 1)
-                self.AddScaleDriver(prop, axisOrder[2], bone, drivers, 2)
+                self.AddScaleDriver(prop, axisOrder[2], bone, drivers, 0)
         
         return
 
@@ -1255,6 +1407,7 @@ class CNV_OT_add_cm3d2_body_sliders(bpy.types.Operator):
         morph   = ob.cm3d2_bone_morph
         sliders = ob.cm3d2_wide_slider
 
+        morph.scale   = self.scale
         sliders.scale = self.scale
 
 
@@ -1553,55 +1706,81 @@ class DATA_PT_cm3d2_wide_sliders(bpy.types.Panel):
 
         flow = self.layout.grid_flow(row_major=True, columns=0, even_columns=False, even_rows=False, align=False)
         flow.scale_x = 0.5
-        #col = flow
-        col = flow.column();           col.prop(sliders, "PELSCL"    , text="Pelvis Scale"            , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "HIPPOS"    , text="Hips Position"           , slider=True         )
-        pass;                          col.prop(sliders, "HIPSCL"    , text="Hips Scale"              , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "THIPOS"    , text="Legs Position X"         , slider=True, index=0)                     
-        row = col.row(align=True);     row.prop(sliders, "empty"     , text=              "Y"         , emboss=False        ); row.enabled = False
-        pass;                          col.prop(sliders, "THIPOS"    , text=              "Z"         , slider=True, index=2)                     
-        pass;                          col.prop(sliders, "THISCL"    , text="Legs Scale X"            , slider=True, index=0)                      
-        pass;                          col.prop(sliders, "THISCL"    , text=           "Y"            , slider=True, index=1)
-        row = col.row(align=True);     row.prop(sliders, "empty"     , text=           "Z"            , emboss=False        ); row.enabled = False
-        col = flow.column(align=True); col.prop(sliders, "MTWPOS"    , text="Thigh Position"          , slider=True         )
-        pass;                          col.prop(sliders, "MTWSCL"    , text="Thigh Scale"             , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "MMNPOS"    , text="Rear Thigh Position"     , slider=True         )
-        pass;                          col.prop(sliders, "MMNSCL"    , text="Rear Thigh Scale"        , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "THI2POS"   , text="Knee Position"           , slider=True         )
-        pass;                          col.prop(sliders, "THISCL2"   , text="Knee Scale X"            , slider=True, index=0)                      
-        pass;                          col.prop(sliders, "THISCL2"   , text=           "Y"            , slider=True, index=1)                      
-        row = col.row(align=True);     row.prop(sliders, "THISCL2"   , text=           "Z"            , slider=True, index=2); row.enabled = sliders.enable_all 
-        col = flow.column()
-        col = col.column(align=True);  col.prop(sliders, "CALFSCL"   , text="Calf Scale X"            , slider=True, index=0)                     
-        pass;                          col.prop(sliders, "CALFSCL"   , text=           "Y"            , slider=True, index=1)                     
-        row = col.row(align=True);     row.prop(sliders, "CALFSCL"   , text=           "Z"            , slider=True, index=2); row.enabled = sliders.enable_all
-        col = flow.column();           col.prop(sliders, "FOOTSCL"   , text="Foot Scale"              , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "SKTPOS"    , text="Skirt Position"          , slider=True         )
-        pass;                          col.prop(sliders, "SKTSCL"    , text="Skirt Scale"             , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "SPIPOS"    , text="Lower Abdomen Position"  , slider=True         )
-        pass;                          col.prop(sliders, "SPISCL"    , text="Lower Abdomen Scale"     , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "S0APOS"    , text="Upper Abdomen Position"  , slider=True         )
-        pass;                          col.prop(sliders, "S0ASCL"    , text="Upper Abdomen Scale"     , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "S1POS"     , text="Lower Chest Position"    , slider=True         )
-        pass;                          col.prop(sliders, "S1_SCL"    , text="Lower Chest Scale"       , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "S1APOS"    , text="Upper Chest Position"    , slider=True         )
-        pass;                          col.prop(sliders, "S1ASCL"    , text="Upper Chest Scale"       , slider=True         )
-        col = flow.column()
-        col = col.column(align=True);  col.prop(sliders, "S1ABASESCL", text="Upper Torso Scale X"     , slider=True, index=0)                       
-        pass;                          col.prop(sliders, "S1ABASESCL", text=                  "Y"     , slider=True, index=1)                       
-        row = col.row(align=True);     row.prop(sliders, "S1ABASESCL", text=                  "Z"     , slider=True, index=2); row.enabled = sliders.enable_all  
-        col = flow.column(align=True); col.prop(sliders, "MUNEPOS"   , text="Breasts Position"        , slider=True         )
-        pass;                          col.prop(sliders, "MUNESCL"   , text="Breasts Scale"           , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "MUNESUBPOS", text="Breasts Sub-Position"    , slider=True         )
-        pass;                          col.prop(sliders, "MUNESUBSCL", text="Breasts Sub-Scale"       , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "NECKPOS"   , text="Neck Position"           , slider=True         )
-        pass;                          col.prop(sliders, "NECKSCL"   , text="Neck Scale"              , slider=True         )
-        col = flow.column(align=True); col.prop(sliders, "CLVPOS"    , text="Clavicle Position"       , slider=True         )
-        pass;                          col.prop(sliders, "CLVSCL"    , text="Clavicle Scale"          , slider=True         )
-        col = flow.column();           col.prop(sliders, "KATASCL"   , text="Shoulders Scale"         , slider=True         )
-        col = flow.column();           col.prop(sliders, "UPARMSCL"  , text="Upper Arm Scale"         , slider=True         )
-        col = flow.column();           col.prop(sliders, "FARMSCL"   , text="Forearm Scale"           , slider=True         )
-        col = flow.column();           col.prop(sliders, "HANDSCL"   , text="Hand Scale"              , slider=True         )
+
+        def _transform_prop(name, pos_prop=None, scl_prop=None, pos_enabled=(True, True, True), scl_enabled=(True, True, True)):
+            #lab = flow.row(align=True)
+            #lab.alignment = 'RIGHT'
+            #lab.label(text=name)
+            #sub = lab.column()
+            #sub.label(text=name)
+            #sub.alignment = 'RIGHT'
+            
+            tab = flow.column()#align=True)
+            #tab.alignment = 'LEFT'
+            #tab.label(text=name)
+
+            col = tab.column(align=True)
+            
+            global used_name
+            used_name = False
+            def _vec_prop(type_name, prop_id, enabled_axes, axis_names):
+                #vec = tab.row(align=True)
+                #vec.label(text=type_name)
+                #col = vec.column(align=True)
+                
+                for i in range(0, 3):
+                    is_enabled  = enabled_axes[i] or sliders.enable_all
+                    is_disabled = enabled_axes[i] == None
+
+                    row = col.row(align=True)
+                    row.enabled = not is_disabled and is_enabled
+                    
+                    axis_name = axis_names[i]
+                    if i == 0:
+                        axis_name = type_name + " " + axis_name
+                        global used_name
+                        if not used_name:
+                            axis_name = name + " " + axis_name
+                            used_name = True
+
+                    row.prop(
+                        sliders                                , 
+                        prop_id if not is_disabled else "empty", 
+                        text   = axis_name                     , 
+                        slider = not is_disabled               ,
+                        emboss = not is_disabled               ,
+                        index  = -1 if is_disabled else i      ,
+                    )
+
+            if pos_prop:
+                _vec_prop("Position", pos_prop, pos_enabled, ("X", "Y", "Z"))
+            if scl_prop:
+                _vec_prop("Scale"   , scl_prop, scl_enabled, ("X", "Y", "Z"))
+
+
+        _transform_prop("Pelvis"       , None        , "PELSCL"                                                                           )
+        _transform_prop("Hips"         , "HIPPOS"    , "HIPSCL"                                                                           )
+        _transform_prop("Legs"         , "THIPOS"    , "THISCL"    , pos_enabled=(True , None , True ), scl_enabled=(True , True , None ) )
+        _transform_prop("Thigh"        , "MTWPOS"    , "MTWSCL"                                                                           )
+        _transform_prop("Rear Thigh"   , "MMNPOS"    , "MMNSCL"                                                                           )
+        _transform_prop("Knee"         , "THI2POS"   , "THISCL2"                                      , scl_enabled=(True , True , False) )
+        _transform_prop("Calf"         , None        , "CALFSCL"                                      , scl_enabled=(True , True , False) )
+        _transform_prop("Foot"         , None        , "FOOTSCL"                                                                          )
+        _transform_prop("Skirt"        , "SKTPOS"    , "SKTSCL"    , pos_enabled=(False, False, True )                                    )
+        _transform_prop("Lower Abdomen", "SPIPOS"    , "SPISCL"    , pos_enabled=(True , False, True )                                    )
+        _transform_prop("Upper Abdomen", "S0APOS"    , "S0ASCL"    , pos_enabled=(True , True , False)                                    )
+        _transform_prop("Lower Chest"  , "S1POS"     , "S1_SCL"    , pos_enabled=(True , True , False)                                    )
+        _transform_prop("Upper Chest"  , "S1APOS"    , "S1ASCL"    , pos_enabled=(True , True , False)                                    )
+        _transform_prop("Upper Torso"  , None        , "S1ABASESCL"                                   , scl_enabled=(True , True , False) )
+        _transform_prop("Breasts"      , "MUNEPOS"   , "MUNESCL"                                                                          )
+        _transform_prop("Breasts Sub"  , "MUNESUBPOS", "MUNESUBSCL"                                                                       )
+        _transform_prop("Neck"         , "NECKPOS"   , "NECKSCL"                                                                          )
+        _transform_prop("Clavicle"     , "CLVPOS"    , "CLVSCL"                                                                           )
+        _transform_prop("Shoulders"    , None        , "KATASCL"                                                                          )
+        _transform_prop("Upper Arm"    , None        , "UPARMSCL"                                                                         )
+        _transform_prop("Forearm"      , None        , "FARMSCL"                                                                          )
+        _transform_prop("Hand"         , None        , "HANDSCL"                                                                          )              
+
                                                            
 
 

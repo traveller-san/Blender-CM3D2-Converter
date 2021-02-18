@@ -183,10 +183,16 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self)
 
     def draw(self, context):
-        self.layout.prop(self, 'is_apply_armature_modifier'  )
-        self.layout.prop(self, 'is_preserve_shape_key_values')
-        #self.layout.prop(self, 'is_bake_drivers'           )
-        self.layout.prop(self, 'is_deform_preserve_volume' )
+        self.layout.prop(self, 'is_apply_armature_modifier')
+
+        col = self.layout.column()
+        col.enabled = self.is_apply_armature_modifier
+        col.layout.prop(self , 'is_preserve_shape_key_values')
+        col.layout.prop(self , 'is_deform_preserve_volume'   )
+        if compat.IS_LEGACY:
+            col.layout.prop(prefs, 'custom_normal_blend', icon=compat.icon('SNAP_NORMAL'  ), slider=True)
+
+        self.layout.prop(self, 'is_bake_drivers')
         if self.was_t_stance:
             self.layout.prop(self, 'is_keep_original')
 
@@ -194,6 +200,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         ob = context.active_object
         arm = ob.data
         pose = ob.pose
+        progress = 0
 
         pre_selected_objects = context.selected_objects
         pre_selected_pose_bones = context.selected_pose_bones
@@ -207,13 +214,15 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         if self.is_swap_prime_field:
             #context.scene.frame_set(1)
             bpy.ops.poselib.apply_pose(pose_index=1)
+            bpy.context.view_layer.update()
 
-        if self.is_apply_armature_modifier:
+        if self.is_apply_armature_modifier and ob.children:
             override = context.copy()
-            for o in ob.children:
-                override['object'], override['active_object'] = o, o
-                if o.type == 'MESH' and len(o.modifiers) and bpy.ops.object.forced_modifier_apply.poll(override):
-                    for mod in o.modifiers:
+            context.window_manager.progress_begin(0, len(ob.children)+1)  
+            for child in ob.children:
+                override['object'], override['active_object'] = child, child
+                if child.type == 'MESH' and len(child.modifiers) and bpy.ops.object.forced_modifier_apply.poll(override):
+                    for mod in child.modifiers:
                         if mod.type == 'ARMATURE':
                             mod.use_deform_preserve_volume = self.is_deform_preserve_volume
                             if not mod.object == ob:
@@ -232,9 +241,10 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
                                 #old_use_multi_modifier  = mod.use_multi_modifier        
                                 old_use_vertex_groups   = mod.use_vertex_groups         
                                 old_vertex_group        = mod.vertex_group        
-                    apply_results = bpy.ops.object.forced_modifier_apply(override, apply_viewport_visible=True, is_preserve_shape_key_values=self.is_preserve_shape_key_values)
+                    apply_results = bpy.ops.object.forced_modifier_apply(override, apply_viewport_visible=True, is_preserve_shape_key_values=self.is_preserve_shape_key_values, initial_progress=progress)
                     if ('FINISHED' in apply_results) and had_armature:
-                        new_mod = o.modifiers.new(name=old_name, type='ARMATURE')
+                        new_mod = child.modifiers.new(name=old_name, type='ARMATURE')
+                        new_mod.object              = ob
                         new_mod.use_deform_preserve_volume = self.is_deform_preserve_volume
                         new_mod.show_expanded       = old_show_expanded      
                         new_mod.show_in_editmode    = old_show_in_editmode   
@@ -246,7 +256,13 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
                         new_mod.use_bone_envelopes  = old_use_bone_envelopes 
                         #new_mod.use_multi_modifier  = old_use_multi_modifier 
                         new_mod.use_vertex_groups   = old_use_vertex_groups  
-                        new_mod.vertex_group        = old_vertex_group       
+                        new_mod.vertex_group        = old_vertex_group
+                
+                progress += 1
+                context.window_manager.progress_update(progress)
+
+        else:
+            context.window_manager.progress_begin(0, 1)  
 
         temp_ob = ob.copy()
         temp_arm = arm.copy()
@@ -294,7 +310,10 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         # CNV_OT_copy_prime_field.execute()
         compat.set_select(temp_ob, True)
         compat.set_active(context, ob)
+        bpy.context.view_layer.update()
         response = bpy.ops.pose.copy_prime_field(is_only_selected=False, is_key_location=True, is_key_scale=True, is_apply_prime=(not self.is_swap_prime_field))#is_key_location=self.is_bake_drivers, is_key_scale=self.is_bake_drivers, is_apply_prime=True)
+
+        context.window_manager.progress_end()
 
         if not 'FINISHED' in response:
             return response
@@ -318,4 +337,7 @@ class CNV_OT_apply_prime_field(bpy.types.Operator):
         bpy.ops.object.mode_set(mode=pre_mode)
 
         context.scene.frame_set(pre_frame)
+
+
+
         return {'FINISHED'}
